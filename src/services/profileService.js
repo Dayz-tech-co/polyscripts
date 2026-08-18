@@ -5,6 +5,7 @@
 
 import { provider } from "./providers";
 import { cacheGet, cacheSet } from "./cache";
+import { NotFoundError } from "./errors";
 import { resolveIdentifier, getAccountByAddress, getLeaderboardEntryForAddress } from "./polymarketService";
 import { mergeAccounts } from "../adapters/accountAdapter";
 import {
@@ -66,6 +67,24 @@ export async function getAccountProfile(identifier, { signal } = {}) {
   const activity = (rawActivity || [])
     .map(normalizeActivity)
     .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
+
+  // "Account not found" only after the direct lookups have conclusively
+  // returned no usable public data: no identity metadata and no analytics.
+  // The demo roster, autocomplete and leaderboard never decide this - an
+  // address with activity but no profile still renders under its address.
+  // Zero counts/values are treated as "no data", since the public API
+  // returns exactly that for addresses it has never seen.
+  const hasIdentity = Boolean(account.username || account.displayName || account.bio || account.avatar);
+  const hasAnalytics =
+    positions.length > 0 ||
+    resolvedPositions.length > 0 ||
+    activity.length > 0 ||
+    (value != null && value > 0) ||
+    (traded != null && traded > 0) ||
+    rankEntry != null;
+  if (!hasIdentity && !hasAnalytics) {
+    throw new NotFoundError();
+  }
 
   const stats = deriveStats({
     positions,

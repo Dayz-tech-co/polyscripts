@@ -2,7 +2,7 @@
 // talks to the active data provider for search/leaderboard/lookup calls -
 // UI components and hooks always go through the functions below.
 
-import { provider, providerMode } from "./providers";
+import { provider } from "./providers";
 import { cacheGet, cacheSet } from "./cache";
 import { normalizeProfile, normalizeLeaderboardEntry, dedupeAccounts } from "../adapters/accountAdapter";
 import { isValidAddress, looksLikeAddressInput, normalizeAddress } from "../utils/address";
@@ -63,10 +63,11 @@ export async function getAccountByAddress(address, { signal } = {}) {
 
   const raw = await provider.getPublicProfileByAddress(normalized, { signal });
 
-  // In demo mode an address that isn't part of the demo roster simply
-  // doesn't exist - report that instead of fabricating a placeholder account.
-  if (!raw && providerMode === "mock") return null;
-
+  // The roster/search/leaderboard lists are discovery mechanisms, not the
+  // source of truth for whether an address exists. A wallet without a gamma
+  // profile still resolves - identity simply falls back to the address
+  // itself. Whether it has any usable public data is decided downstream in
+  // getAccountProfile once the public analytics endpoints have answered.
   const account = raw
     ? { ...normalizeProfile(raw), address: normalized }
     : {

@@ -42,10 +42,16 @@ Overview, Positions, Activity and History tabs
 
 ## Data sources
 
-### Live mode
+### Live mode (production default)
 
-All account data comes from Polymarket's public, unauthenticated, CORS-open
-endpoints (see `src/services/providers/livePolymarketProvider.js`):
+Production builds resolve accounts directly through Polymarket's public,
+unauthenticated, CORS-open endpoints (see
+`src/services/providers/livePolymarketProvider.js`). A full wallet address
+is looked up on its own - search, leaderboard and any local data are only
+discovery aids, never the source of truth for whether an address exists. An
+address with no profile metadata but real public analytics still renders,
+identified by its shortened address. "Account not found" is shown only when
+the direct lookups conclusively return no usable public data.
 
 - `gamma-api.polymarket.com/public-search` - account search/autocomplete
 - `gamma-api.polymarket.com/public-profile` - profile lookup by address
@@ -63,15 +69,19 @@ Switch the provider with:
 VITE_DATA_PROVIDER=live npm run dev
 ```
 
-### Mock mode (default)
+### Mock mode (development fallback)
 
-The default provider is `mock`, backed by `src/providers/demoProvider.js` - a
+The `mock` provider is only used for offline development (an explicit
+`VITE_DATA_PROVIDER=mock` wins in any environment). It is backed by
+`src/providers/demoProvider.js` - a
 single source of truth for a deterministic roster of demo accounts (canonical
 PnL, volume, win rate, portfolio value, open positions) plus market titles,
 category breakdowns and ecosystem resources. Because every page reads from
 this one provider, the same numbers always agree across a profile, the
-leaderboard, the dashboard and the compare tool. Unknown addresses resolve to
-a not-found state. No network requests are made in mock mode.
+leaderboard, the dashboard and the compare tool. No network requests are made
+in mock mode. Mock data never gates account resolution - the same direct
+lookup semantics apply, with addresses outside the roster resolving to
+"Account not found" only after no usable data is found.
 
 ## Stack
 

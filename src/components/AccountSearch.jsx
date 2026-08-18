@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { LoaderCircle, Search } from "lucide-react";
 import SearchDropdown from "./SearchDropdown";
 import { useAccountSearch } from "../hooks/useAccountSearch";
+import { isValidAddress, normalizeAddress } from "../utils/address";
 import { addRecentAccount, clearRecentAccounts, getRecentAccounts } from "../utils/recentSearches";
 
 /**
@@ -67,6 +68,11 @@ export default function AccountSearch({
       if (activeIndex >= 0 && results[activeIndex]) {
         e.preventDefault();
         goToAccount(results[activeIndex]);
+      } else if (isValidAddress(query.trim())) {
+        // A complete address resolves through the direct profile lookup even
+        // when discovery (search/leaderboard/demo roster) returned nothing.
+        e.preventDefault();
+        goToAccount({ address: normalizeAddress(query.trim()), username: null });
       }
     } else if (e.key === "Escape") {
       setOpen(false);
