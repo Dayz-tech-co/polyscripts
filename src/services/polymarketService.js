@@ -2,7 +2,7 @@
 // talks to the active data provider for search/leaderboard/lookup calls -
 // UI components and hooks always go through the functions below.
 
-import { provider } from "./providers";
+import { provider, providerMode } from "./providers";
 import { cacheGet, cacheSet } from "./cache";
 import { normalizeProfile, normalizeLeaderboardEntry, dedupeAccounts } from "../adapters/accountAdapter";
 import { isValidAddress, looksLikeAddressInput, normalizeAddress } from "../utils/address";
@@ -62,6 +62,11 @@ export async function getAccountByAddress(address, { signal } = {}) {
   if (cached) return cached;
 
   const raw = await provider.getPublicProfileByAddress(normalized, { signal });
+
+  // In demo mode an address that isn't part of the demo roster simply
+  // doesn't exist - report that instead of fabricating a placeholder account.
+  if (!raw && providerMode === "mock") return null;
+
   const account = raw
     ? { ...normalizeProfile(raw), address: normalized }
     : {

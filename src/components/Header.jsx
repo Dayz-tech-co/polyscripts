@@ -29,8 +29,17 @@ export default function Header() {
             <span className="brand-word">PolyScripts</span>
           </Link>
           <nav className="nav" aria-label="Primary">
-            <NavLink to="/leaderboard" className={({ isActive }) => `nav-link ${isActive ? "is-active" : ""}`}>
+            <NavLink to="/" end className={({ isActive }) => `nav-link ${isActive ? "is-active" : ""}`}>
               Explore
+            </NavLink>
+            <NavLink to="/leaderboard" className={({ isActive }) => `nav-link ${isActive ? "is-active" : ""}`}>
+              Leaderboard
+            </NavLink>
+            <NavLink to="/dashboard" className={({ isActive }) => `nav-link ${isActive ? "is-active" : ""}`}>
+              Dashboard
+            </NavLink>
+            <NavLink to="/tools" className={({ isActive }) => `nav-link ${isActive ? "is-active" : ""}`}>
+              Tools
             </NavLink>
           </nav>
         </div>

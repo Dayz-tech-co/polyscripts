@@ -28,7 +28,7 @@ export function normalizePosition(raw) {
   return {
     id: `${raw.conditionId || raw.asset}-open`,
     market: raw.title || "Unknown market",
-    category: null,
+    category: raw.category ?? null,
     tag: shortTag(raw.slug, raw.title),
     side: sideFromOutcome(raw.outcome),
     outcomeIndex: raw.outcomeIndex ?? null,
@@ -54,7 +54,7 @@ export function normalizeClosedPosition(raw) {
   return {
     id: `${raw.conditionId || raw.asset}-closed-${raw.timestamp ?? ""}`,
     market: raw.title || "Unknown market",
-    category: null,
+    category: raw.category ?? null,
     tag: shortTag(raw.slug, raw.title),
     side: sideFromOutcome(raw.outcome),
     outcomeIndex: raw.outcomeIndex ?? null,
@@ -97,6 +97,7 @@ export function normalizeActivity(raw) {
     type: activityTypeLabel(raw.type, raw.side),
     rawType: raw.type,
     market: raw.title || "Unknown market",
+    category: raw.category ?? null,
     side: sideFromOutcome(raw.outcome),
     amount: raw.usdcSize ?? null,
     price: raw.price ?? null,
@@ -111,14 +112,22 @@ export function normalizeActivity(raw) {
  * Derives whatever overview statistics can genuinely be computed from the
  * fetched data. Any input list/value that is missing simply leaves the
  * corresponding stat as null instead of being estimated.
+ *
+ * When a canonical account record carries authoritative stats (demo data,
+ * or a future provider that exposes them directly), those are preferred so
+ * the profile never contradicts the leaderboard or comparison surfaces.
  */
-export function deriveStats({ positions, closedPositions, value, traded, rankEntry, publicProfile }) {
+export function deriveStats({ positions, closedPositions, value, traded, rankEntry, publicProfile, account }) {
+  const canonical = account || publicProfile || null;
   const hasPositions = Array.isArray(positions);
   const hasClosed = Array.isArray(closedPositions);
 
-  const unrealizedPnl = hasPositions ? positions.reduce((sum, p) => sum + (p.pnl ?? 0), 0) : null;
-  const realizedPnl = hasClosed ? closedPositions.reduce((sum, p) => sum + (p.pnl ?? 0), 0) : null;
-  const pnl = unrealizedPnl != null || realizedPnl != null ? (unrealizedPnl ?? 0) + (realizedPnl ?? 0) : null;
+  const derivedUnrealizedPnl = hasPositions ? positions.reduce((sum, p) => sum + (p.pnl ?? 0), 0) : null;
+  const derivedRealizedPnl = hasClosed ? closedPositions.reduce((sum, p) => sum + (p.pnl ?? 0), 0) : null;
+
+  const unrealizedPnl = canonical?.unrealizedPnl ?? derivedUnrealizedPnl;
+  const realizedPnl = canonical?.realizedPnl ?? derivedRealizedPnl;
+  const pnl = canonical?.pnl ?? (unrealizedPnl != null || realizedPnl != null ? (unrealizedPnl ?? 0) + (realizedPnl ?? 0) : null);
 
   const investedBasis =
     (hasPositions ? positions.reduce((sum, p) => sum + (p.invested ?? 0), 0) : 0) +
@@ -126,21 +135,23 @@ export function deriveStats({ positions, closedPositions, value, traded, rankEnt
   const pnlPercent = pnl != null && investedBasis > 0 ? pnl / investedBasis : null;
 
   const openPositionValue = hasPositions ? positions.reduce((sum, p) => sum + (p.currentValue ?? 0), 0) : null;
-  const portfolioValue = value != null ? value : openPositionValue;
+  const portfolioValue = canonical?.portfolioValue ?? value ?? openPositionValue;
 
-  const wins = hasClosed ? closedPositions.filter((p) => (p.pnl ?? 0) >= 0).length : null;
-  const winRate = hasClosed && closedPositions.length > 0 ? wins / closedPositions.length : null;
+  const derivedWins = hasClosed ? closedPositions.filter((p) => (p.pnl ?? 0) >= 0).length : null;
+  const derivedWinRate = hasClosed && closedPositions.length > 0 ? derivedWins / closedPositions.length : null;
+  const winRate = canonical?.winRate ?? derivedWinRate;
 
-  const volume = publicProfile?.volume ?? rankEntry?.volume ?? null;
+  const volume = canonical?.volume ?? publicProfile?.volume ?? rankEntry?.volume ?? null;
 
   return {
     portfolioValue,
     pnl,
     pnlPercent,
     volume,
-    marketsTraded: traded ?? null,
+    marketsTraded: canonical?.markets ?? traded ?? null,
     winRate,
-    openPositionsCount: hasPositions ? positions.length : null,
+    openPositionsCount: canonical?.openPositions ?? (hasPositions ? positions.length : null),
+    activityCount: canonical?.activityCount ?? null,
     resolvedPositionsCount: hasClosed ? closedPositions.length : null,
     realizedPnl,
     unrealizedPnl,

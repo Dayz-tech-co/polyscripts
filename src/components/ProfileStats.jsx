@@ -1,4 +1,4 @@
-import { BarChart3, CircleDollarSign, Layers3, TrendingUp } from "lucide-react";
+import { BarChart3, CircleDollarSign, Layers3, Percent, TrendingUp, Wallet } from "lucide-react";
 import StatCard from "./StatCard";
 import { StatsSkeleton } from "./Skeleton";
 import { formatCompactCurrency, formatCurrency, formatNumber, formatPercentage, formatSignedCurrency } from "../utils/formatters";
@@ -9,12 +9,7 @@ export default function ProfileStats({ stats, loading }) {
   const pnlPositive = (stats.pnl ?? 0) >= 0;
 
   return (
-    <div className="stats-grid">
-      <StatCard
-        icon={CircleDollarSign}
-        label="Position Value"
-        value={stats.portfolioValue != null ? formatCurrency(stats.portfolioValue) : "--"}
-      />
+    <div className="stats-grid stats-grid-six">
       <StatCard
         icon={TrendingUp}
         label="Profit / Loss"
@@ -28,10 +23,25 @@ export default function ProfileStats({ stats, loading }) {
         value={stats.volume != null ? formatCompactCurrency(stats.volume) : "--"}
       />
       <StatCard
+        icon={Wallet}
+        label="Portfolio Value"
+        value={stats.portfolioValue != null ? formatCurrency(stats.portfolioValue) : "--"}
+      />
+      <StatCard
         icon={Layers3}
-        label="Markets Traded"
+        label="Markets"
         value={stats.marketsTraded != null ? formatNumber(stats.marketsTraded) : "--"}
-        sub={stats.winRate != null ? `${formatPercentage(stats.winRate)} win rate` : undefined}
+      />
+      <StatCard
+        icon={Percent}
+        label="Win Rate"
+        value={stats.winRate != null ? formatPercentage(stats.winRate) : "--"}
+      />
+      <StatCard
+        icon={CircleDollarSign}
+        label="Open Positions"
+        value={stats.openPositionsCount != null ? formatNumber(stats.openPositionsCount) : "--"}
+        sub={stats.rank != null ? `Rank #${formatNumber(stats.rank)}` : undefined}
         subTone="neutral"
       />
     </div>

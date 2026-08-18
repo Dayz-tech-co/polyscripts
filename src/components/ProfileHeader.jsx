@@ -21,8 +21,8 @@ export default function ProfileHeader({ account, loading }) {
   }
 
   const hasUsername = Boolean(account.username);
-  const primary = hasUsername ? account.username : shortenAddress(account.address);
-  const secondary = hasUsername ? shortenAddress(account.address) : "Public account";
+  const primary = hasUsername ? account.username : account.displayName || shortenAddress(account.address);
+  const secondary = hasUsername || account.displayName ? shortenAddress(account.address) : "Public account";
   const explorerUrl = `https://polygonscan.com/address/${account.address}`;
 
   async function handleCopy() {

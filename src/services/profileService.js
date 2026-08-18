@@ -74,6 +74,7 @@ export async function getAccountProfile(identifier, { signal } = {}) {
     traded,
     rankEntry,
     publicProfile: enrichedAccount,
+    account: enrichedAccount,
   });
 
   const performance = Object.fromEntries(

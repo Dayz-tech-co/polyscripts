@@ -30,8 +30,8 @@ export function ProfileHeaderSkeleton() {
 
 export function StatsSkeleton() {
   return (
-    <div className="stats-grid">
-      {Array.from({ length: 4 }).map((_, i) => (
+    <div className="stats-grid stats-grid-six">
+      {Array.from({ length: 6 }).map((_, i) => (
         <div className="stat-card" key={i}>
           <Skeleton width={90} height={12} style={{ marginBottom: 12 }} />
           <Skeleton width={120} height={24} style={{ marginBottom: 8 }} />

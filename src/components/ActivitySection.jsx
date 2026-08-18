@@ -6,13 +6,13 @@ import ActivityCardMobile from "./ActivityCardMobile";
 import EmptyState from "./EmptyState";
 import { TableSkeleton } from "./Skeleton";
 
-const TYPE_FILTERS = ["All", "Buys", "Sells", "Redeemed"];
+const TYPE_FILTERS = ["All", "Buys", "Sells", "Other"];
 
 function matchesFilter(activity, filter) {
   if (filter === "All") return true;
   if (filter === "Buys") return activity.type === "Bought";
   if (filter === "Sells") return activity.type === "Sold";
-  if (filter === "Redeemed") return activity.type === "Redeemed";
+  if (filter === "Other") return activity.type !== "Bought" && activity.type !== "Sold";
   return true;
 }
 

@@ -7,6 +7,11 @@ import HomePage from "./pages/HomePage";
 import ProfilePage from "./pages/ProfilePage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import SearchPage from "./pages/SearchPage";
+import DashboardPage from "./pages/DashboardPage";
+import ToolsPage from "./pages/ToolsPage";
+import AccountCheckerPage from "./pages/AccountCheckerPage";
+import ComparePage from "./pages/ComparePage";
+import EcosystemPage from "./pages/EcosystemPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 function AppContent() {
@@ -23,6 +28,11 @@ function AppContent() {
         <Route path="/profile/:identifier" element={<ProfilePage />} />
         <Route path="/leaderboard" element={<LeaderboardPage />} />
         <Route path="/search" element={<SearchPage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/tools" element={<ToolsPage />} />
+        <Route path="/checker" element={<AccountCheckerPage />} />
+        <Route path="/compare" element={<ComparePage />} />
+        <Route path="/ecosystem" element={<EcosystemPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
 

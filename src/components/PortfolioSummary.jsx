@@ -1,4 +1,4 @@
-import { formatCurrency, formatNumber, formatPercentage, formatSignedCurrency } from "../utils/formatters";
+import { formatCurrency, formatNumber, formatSignedCurrency } from "../utils/formatters";
 
 export default function PortfolioSummary({ stats, loading }) {
   if (loading || !stats) {
@@ -12,7 +12,7 @@ export default function PortfolioSummary({ stats, loading }) {
 
   const rows = [
     { label: "Open Position Value", value: stats.openPositionValue != null ? formatCurrency(stats.openPositionValue) : "--" },
-    { label: "Open Positions", value: stats.openPositionsCount != null ? formatNumber(stats.openPositionsCount) : "--" },
+    { label: "Resolved Positions", value: stats.resolvedPositionsCount != null ? formatNumber(stats.resolvedPositionsCount) : "--" },
     { divider: true },
     {
       label: "Realized PnL",
@@ -25,8 +25,7 @@ export default function PortfolioSummary({ stats, loading }) {
       tone: stats.unrealizedPnl != null ? (stats.unrealizedPnl >= 0 ? "positive" : "negative") : undefined,
     },
     { divider: true },
-    { label: "Markets Traded", value: stats.marketsTraded != null ? formatNumber(stats.marketsTraded) : "--" },
-    { label: "Win Rate", value: stats.winRate != null ? formatPercentage(stats.winRate) : "--" },
+    { label: "Activity Count", value: stats.activityCount != null ? formatNumber(stats.activityCount) : "--" },
     { label: "Leaderboard Rank", value: stats.rank != null ? `#${formatNumber(stats.rank)}` : "Unranked" },
   ];
 

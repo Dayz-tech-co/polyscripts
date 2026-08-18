@@ -2,14 +2,31 @@
 
 **Polymarket Bots, Strategies & Education.**
 
-A public account search and analytics explorer for Polymarket. Visitors
-search for any public account by username or wallet address, pick it from
-an autocomplete dropdown, and land on a dynamic, read only profile with its
-public statistics, positions, activity and trading volume over time.
+A public market analytics ecosystem for Polymarket: Explore, Leaderboard,
+Dashboard, Compare, Tools, Ecosystem and per-account profiles with public
+statistics, positions, activity and trading volume over time.
 
 This is a research and analytics interface only. There is no trading,
 depositing, order placement, wallet connection, login or signup anywhere in
 the app.
+
+## Pages
+
+- **Explore** (`/`) - hero search, recently viewed accounts, top accounts and
+  trending accounts
+- **Profile** (`/profile/:identifier`) - Overview, Positions, Activity and
+  History tabs for any username or wallet address
+- **Leaderboard** (`/leaderboard`) - ranked accounts, sortable by PnL, volume
+  and win rate across Day / Week / Month / All Time
+- **Dashboard** (`/dashboard`) - ecosystem stats, activity trend, performance
+  distribution, top movers, recent activity and category breakdown
+- **Tools** (`/tools`) - account checker and compare tool
+- **Account Checker** (`/checker`) - quick PnL / volume / win-rate lookup by
+  username or address
+- **Compare** (`/compare`) - side-by-side account comparison with performance
+  series charts
+- **Ecosystem** (`/ecosystem`) - public data resources for building on top of
+  Polymarket
 
 ## Main flow
 
@@ -25,6 +42,8 @@ Overview, Positions, Activity and History tabs
 
 ## Data sources
 
+### Live mode
+
 All account data comes from Polymarket's public, unauthenticated, CORS-open
 endpoints (see `src/services/providers/livePolymarketProvider.js`):
 
@@ -38,18 +57,21 @@ endpoints (see `src/services/providers/livePolymarketProvider.js`):
 - `data-api.polymarket.com/value` - current total position value
 - `data-api.polymarket.com/traded` - count of markets traded
 
-Nothing here claims a metric it can't back up: fields that aren't available
-from these endpoints (like a true historical portfolio balance) are simply
-left out or, in the case of the performance chart, reframed as what can
-genuinely be derived (cumulative trading volume from the real activity
-feed) instead of invented.
-
-A `mockPolymarketProvider` implementing the exact same function signatures
-is also included for offline development. Switch to it with:
+Switch the provider with:
 
 ```bash
-VITE_DATA_PROVIDER=mock npm run dev
+VITE_DATA_PROVIDER=live npm run dev
 ```
+
+### Mock mode (default)
+
+The default provider is `mock`, backed by `src/providers/demoProvider.js` - a
+single source of truth for a deterministic roster of demo accounts (canonical
+PnL, volume, win rate, portfolio value, open positions) plus market titles,
+category breakdowns and ecosystem resources. Because every page reads from
+this one provider, the same numbers always agree across a profile, the
+leaderboard, the dashboard and the compare tool. Unknown addresses resolve to
+a not-found state. No network requests are made in mock mode.
 
 ## Stack
 
@@ -75,10 +97,13 @@ npm run build
 
 ```
 src/
+  providers/      demoProvider.js - single source of truth for demo data
   components/     UI components (search, profile, stats, chart, tables, ...)
-  pages/          Route-level pages (Home, Profile, Leaderboard, Search, 404)
+  pages/          Route-level pages (Explore, Profile, Leaderboard, Dashboard,
+                  Tools, Checker, Compare, Ecosystem, Search, 404)
   services/       Account discovery + profile data service layer
   services/providers/  Live (real API) and mock data providers
+  services/       ecosystemService.js - cached dashboard/leaderboard queries
   adapters/       Normalizes raw API records into internal shapes
   hooks/          useAccountSearch, useProfile
   utils/          Address, avatar, formatting and recent-search helpers

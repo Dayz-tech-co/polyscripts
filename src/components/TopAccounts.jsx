@@ -90,7 +90,7 @@ export default function TopAccounts({ title = "Top Accounts", limit = 8, showOrd
                 <span className="top-account-rank">{account.rank ?? "-"}</span>
                 <Avatar account={account} size={30} radius={9} />
                 <span className="top-account-identity">
-                  <span className="top-account-name">{account.username || shortenAddress(account.address)}</span>
+                  <span className="top-account-name">{account.username || account.displayName || shortenAddress(account.address)}</span>
                   <span className="top-account-address">{shortenAddress(account.address)}</span>
                 </span>
                 {account.volume != null && (

@@ -4,8 +4,9 @@ import { shortenAddress } from "../utils/address";
 import { formatCompactCurrency, formatNumber, formatSignedCurrency } from "../utils/formatters";
 
 export default function SearchResultItem({ account, active, id, onSelect, onMouseEnter }) {
-  const primary = account.username || shortenAddress(account.address);
-  const secondary = account.username ? shortenAddress(account.address) : "Wallet account";
+  const hasUsername = Boolean(account.username);
+  const primary = account.username || account.displayName || shortenAddress(account.address);
+  const secondary = hasUsername || account.displayName ? shortenAddress(account.address) : "Wallet account";
   const hasMeta = account.pnl != null || account.volume != null || account.rank != null;
 
   return (

@@ -1,18 +1,25 @@
 import { useEffect } from "react";
-import { BarChart3, Search, ShieldCheck } from "lucide-react";
+import { BarChart3, LayoutDashboard, Search, ShieldCheck } from "lucide-react";
 import AccountSearch from "../components/AccountSearch";
+import RecentAccounts from "../components/RecentAccounts";
 import TopAccounts from "../components/TopAccounts";
+import TrendingAccounts from "../components/TrendingAccounts";
 
 const CAPABILITIES = [
   {
     icon: Search,
     title: "Find any account",
-    description: "Look up a public Polymarket account by username or wallet address in seconds.",
+    description: "Look up a public account by username or wallet address and open its analytics profile.",
   },
   {
     icon: BarChart3,
-    title: "Public analytics",
-    description: "Positions, activity and trading volume derived from real, publicly available data.",
+    title: "Rankings and analytics",
+    description: "Browse the leaderboard, compare profiles and inspect public positions and activity.",
+  },
+  {
+    icon: LayoutDashboard,
+    title: "Ecosystem overview",
+    description: "Track aggregate volume, active accounts and category breakdowns on the dashboard.",
   },
   {
     icon: ShieldCheck,
@@ -23,25 +30,27 @@ const CAPABILITIES = [
 
 export default function HomePage() {
   useEffect(() => {
-    document.title = "PolyScripts | Polymarket Bots, Strategies & Education";
+    document.title = "Explore | PolyScripts";
   }, []);
 
   return (
     <main id="main-content" className="container main-content">
       <section className="hero">
         <span className="hero-eyebrow">Polymarket account explorer</span>
-        <h1 className="hero-title">Find any public Polymarket account</h1>
-        <p className="hero-subtitle">Search by username or wallet address to view public statistics, positions and activity.</p>
+        <h1 className="hero-title">Explore public accounts</h1>
+        <p className="hero-subtitle">Search by username or wallet address to view statistics, positions and activity across the ecosystem.</p>
         <div className="hero-search-wrap">
           <AccountSearch variant="hero" />
         </div>
         <p className="hero-hint">
-          Try <code>swisstony</code> or <code>0x3048d65321be3497164cdfc2996f94f98a2e7537</code>
+          Try <code>swisstony</code>, <code>RWCS</code> or <code>0x3048d65321be3497164cdfc2996f94f98a2e7537</code>
         </p>
       </section>
 
       <div className="home-sections">
+        <RecentAccounts />
         <TopAccounts />
+        <TrendingAccounts />
 
         <section className="section" aria-labelledby="capabilities-heading">
           <h2 className="section-title" id="capabilities-heading">
