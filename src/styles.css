@@ -328,7 +328,7 @@ h3 {
   gap: var(--space-4);
 }
 
-.search-control {
+.header-search-desktop {
   display: flex;
   align-items: center;
 }
@@ -337,34 +337,288 @@ h3 {
   display: none;
 }
 
-.search-input {
-  width: 190px;
-  height: 34px;
+.icon-btn.mobile-menu-btn {
+  display: none;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Account search                                                           */
+/* ---------------------------------------------------------------------- */
+
+.account-search {
+  position: relative;
+  width: 100%;
+}
+
+.account-search-box {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   background: var(--bg-card);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-xs);
-  padding: 0 var(--space-4);
-  font-size: 13px;
-  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-5);
   transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
 }
 
-.search-input::placeholder {
-  color: var(--text-muted);
-}
-
-.search-input:hover {
+.account-search-box:hover {
   border-color: var(--border-hover);
 }
 
-.search-input:focus {
-  outline: none;
-  border-color: rgba(255, 92, 69, 0.5);
+.account-search-box.is-focused {
+  border-color: rgba(255, 92, 69, 0.45);
   background: var(--bg-card-elevated);
 }
 
-.icon-btn.mobile-menu-btn {
-  display: none;
+.account-search-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.account-search-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.account-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.account-search-input:focus {
+  outline: none;
+}
+
+.account-search-spinner {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.account-search-compact {
+  width: 272px;
+  max-width: 100%;
+}
+
+.account-search-compact .account-search-box {
+  height: 40px;
+  border-radius: var(--radius-xs);
+  padding: 0 var(--space-4);
+}
+
+.account-search-compact .account-search-input {
+  font-size: 13px;
+}
+
+.account-search-hero {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.account-search-hero .account-search-box {
+  height: 48px;
+}
+
+.account-search-hero .account-search-input {
+  font-size: 15px;
+}
+
+.account-search-mobile .account-search-box {
+  height: 44px;
+}
+
+/* Dropdown ---------------------------------------------------------------- */
+
+.search-dropdown {
+  position: absolute;
+  top: calc(100% + var(--space-3));
+  left: 0;
+  right: 0;
+  z-index: 60;
+  background: var(--bg-card-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-pop);
+  overflow: hidden;
+  animation: dropdown-in var(--t-base) var(--ease);
+}
+
+@keyframes dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.search-dropdown-hint,
+.search-dropdown-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-5);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.search-dropdown-empty {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-5);
+  color: var(--text-muted);
+}
+
+.search-dropdown-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  font-size: 11px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-default);
+}
+
+.search-result-list {
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.search-page-list {
+  max-height: none;
+  margin-top: var(--space-6);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-3) var(--space-5);
+  min-height: 52px;
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease);
+}
+
+.search-result-item:hover,
+.search-result-item.is-active {
+  background: var(--bg-hover);
+}
+
+.search-result-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.search-result-primary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-result-secondary {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.search-result-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.search-result-rank {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.search-result-pnl {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Recent searches ----------------------------------------------------------- */
+
+.recent-searches-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5) var(--space-2);
+}
+
+.recent-searches-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.recent-searches-clear {
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: color var(--t-fast) var(--ease);
+}
+
+.recent-searches-clear:hover {
+  color: var(--text-primary);
+}
+
+/* Mobile search panel --------------------------------------------------- */
+
+.mobile-search-panel {
+  position: relative;
+  z-index: 90;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-default);
+  padding: var(--space-5) 0;
+  animation: panel-in var(--t-base) var(--ease);
+}
+
+/* Avatars ------------------------------------------------------------------ */
+
+.account-avatar {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.account-avatar-fallback {
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 /* Icon buttons -------------------------------------------------------- */
@@ -1174,11 +1428,17 @@ h3 {
   align-items: center;
   justify-content: center;
   min-width: 38px;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   padding: 3px var(--space-3);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.02em;
   border-radius: var(--radius-pill);
+  color: var(--text-secondary);
+  background: var(--bg-card-elevated);
 }
 
 .side-badge.side-yes {
@@ -1285,6 +1545,7 @@ h3 {
   gap: var(--space-2);
   font-size: 12px;
   font-weight: 600;
+  color: var(--text-secondary);
 }
 
 .activity-type-bought {
@@ -1617,6 +1878,253 @@ h3 {
 }
 
 /* ---------------------------------------------------------------------- */
+/* Homepage hero                                                            */
+/* ---------------------------------------------------------------------- */
+
+.hero {
+  padding: var(--space-11) 0 var(--space-9);
+  text-align: center;
+}
+
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.hero-title {
+  margin-top: var(--space-5);
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+}
+
+.hero-subtitle {
+  margin: var(--space-3) auto 0;
+  max-width: 46ch;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.hero-search-wrap {
+  margin-top: var(--space-8);
+}
+
+.hero-hint {
+  margin-top: var(--space-4);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.hero-hint code {
+  font-family: inherit;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  padding: 1px var(--space-2);
+  overflow-wrap: anywhere;
+}
+
+.home-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  padding-bottom: var(--space-11);
+}
+
+/* Top accounts / leaderboard list ---------------------------------------- */
+
+.top-accounts-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.top-account-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  width: 100%;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-default);
+  text-align: left;
+  transition: background var(--t-fast) var(--ease);
+}
+
+.top-accounts-list li:last-child .top-account-row {
+  border-bottom: none;
+}
+
+.top-account-row:hover {
+  background: var(--bg-hover);
+}
+
+.top-account-rank {
+  width: 22px;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.top-account-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.top-account-name {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.top-account-address {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.top-account-volume {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.top-account-pnl {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  min-width: 80px;
+  text-align: right;
+}
+
+.top-account-arrow {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+/* Capability section ------------------------------------------------------ */
+
+.capability-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
+}
+
+.capability-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+}
+
+.capability-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-card-elevated);
+  color: var(--brand-coral);
+  margin-bottom: var(--space-4);
+}
+
+.capability-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.capability-description {
+  margin-top: var(--space-2);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Not found / status pages -------------------------------------------------- */
+
+.status-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--space-4);
+  padding: var(--space-11) var(--space-6);
+}
+
+.status-page-icon {
+  color: var(--text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.status-page-title {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.status-page-description {
+  max-width: 40ch;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.status-page-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.status-page-search {
+  margin-top: var(--space-4);
+  width: 100%;
+  max-width: 420px;
+}
+
+/* Leaderboard page --------------------------------------------------------- */
+
+.leaderboard-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.leaderboard-page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.leaderboard-page-title {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.leaderboard-page-subtitle {
+  margin-top: var(--space-2);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ---------------------------------------------------------------------- */
 /* Responsive                                                               */
 /* ---------------------------------------------------------------------- */
 
@@ -1649,21 +2157,12 @@ h3 {
     display: none;
   }
 
-  .search-input {
+  .header-search-desktop {
     display: none;
   }
 
   .icon-btn.search-toggle {
     display: inline-flex;
-  }
-
-  .search-control.is-open .search-input {
-    display: block;
-    position: absolute;
-    right: var(--space-6);
-    top: 62px;
-    width: calc(100% - var(--space-12, 48px));
-    max-width: 320px;
   }
 
   .icon-btn.mobile-menu-btn {
@@ -1691,6 +2190,23 @@ h3 {
   .range-controls {
     align-self: flex-start;
   }
+
+  .hero {
+    padding: var(--space-9) 0 var(--space-7);
+  }
+
+  .hero-title {
+    font-size: 28px;
+  }
+
+  .capability-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .leaderboard-page-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1709,12 +2225,6 @@ h3 {
 
   .stat-card-value {
     font-size: 20px;
-  }
-
-  .profile-avatar {
-    width: 56px;
-    height: 56px;
-    border-radius: var(--radius-md);
   }
 
   .profile-name {
@@ -1776,6 +2286,30 @@ h3 {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-4);
+  }
+
+  .hero-title {
+    font-size: 24px;
+  }
+
+  .top-account-volume {
+    display: none;
+  }
+
+  .top-account-row {
+    gap: var(--space-3);
+    padding: var(--space-4);
+  }
+
+  .top-account-pnl {
+    min-width: 0;
+  }
+
+  .status-page-actions {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    max-width: 320px;
   }
 }
 

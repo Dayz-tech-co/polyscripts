@@ -1,7 +1,7 @@
-import { formatCurrency, formatPercentage, formatSignedCurrency } from "../utils/formatters";
+import { formatCurrency, formatNumber, formatPercentage, formatSignedCurrency } from "../utils/formatters";
 
-export default function PortfolioSummary({ summary, loading }) {
-  if (loading || !summary) {
+export default function PortfolioSummary({ stats, loading }) {
+  if (loading || !stats) {
     return (
       <div className="card portfolio-summary">
         <span className="card-label">Account Summary</span>
@@ -11,14 +11,23 @@ export default function PortfolioSummary({ summary, loading }) {
   }
 
   const rows = [
-    { label: "Available Balance", value: formatCurrency(summary.availableBalance) },
-    { label: "Open Position Value", value: formatCurrency(summary.openPositionValue) },
+    { label: "Open Position Value", value: stats.openPositionValue != null ? formatCurrency(stats.openPositionValue) : "--" },
+    { label: "Open Positions", value: stats.openPositionsCount != null ? formatNumber(stats.openPositionsCount) : "--" },
     { divider: true },
-    { label: "Realized PnL", value: formatSignedCurrency(summary.realizedPnl), tone: summary.realizedPnl >= 0 ? "positive" : "negative" },
-    { label: "Unrealized PnL", value: formatSignedCurrency(summary.unrealizedPnl), tone: summary.unrealizedPnl >= 0 ? "positive" : "negative" },
+    {
+      label: "Realized PnL",
+      value: stats.realizedPnl != null ? formatSignedCurrency(stats.realizedPnl) : "--",
+      tone: stats.realizedPnl != null ? (stats.realizedPnl >= 0 ? "positive" : "negative") : undefined,
+    },
+    {
+      label: "Unrealized PnL",
+      value: stats.unrealizedPnl != null ? formatSignedCurrency(stats.unrealizedPnl) : "--",
+      tone: stats.unrealizedPnl != null ? (stats.unrealizedPnl >= 0 ? "positive" : "negative") : undefined,
+    },
     { divider: true },
-    { label: "Total Markets", value: summary.totalMarkets },
-    { label: "Win Rate", value: formatPercentage(summary.winRate) },
+    { label: "Markets Traded", value: stats.marketsTraded != null ? formatNumber(stats.marketsTraded) : "--" },
+    { label: "Win Rate", value: stats.winRate != null ? formatPercentage(stats.winRate) : "--" },
+    { label: "Leaderboard Rank", value: stats.rank != null ? `#${formatNumber(stats.rank)}` : "Unranked" },
   ];
 
   return (

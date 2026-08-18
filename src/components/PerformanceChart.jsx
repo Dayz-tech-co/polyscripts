@@ -24,7 +24,7 @@ function buildSmoothPath(points) {
   return d;
 }
 
-export default function PerformanceChart({ data, positive = true }) {
+export default function PerformanceChart({ data, positive = true, volumeMode = false }) {
   const [hoverIndex, setHoverIndex] = useState(null);
   const svgRef = useRef(null);
 
@@ -90,7 +90,7 @@ export default function PerformanceChart({ data, positive = true }) {
   const areaGradientId = "performance-area-gradient";
 
   if (!data || data.length === 0) {
-    return <div className="chart-empty">No performance data available</div>;
+    return <div className="chart-empty">No trading activity in this period</div>;
   }
 
   return (
@@ -103,7 +103,7 @@ export default function PerformanceChart({ data, positive = true }) {
         onPointerMove={handlePointerMove}
         onPointerLeave={() => setHoverIndex(null)}
         role="img"
-        aria-label="Portfolio performance chart"
+        aria-label={volumeMode ? "Cumulative trading volume chart" : "Portfolio performance chart"}
       >
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="0">
@@ -157,9 +157,11 @@ export default function PerformanceChart({ data, positive = true }) {
         >
           <div className="chart-tooltip-date">{formatDate(activePoint.date)}</div>
           <div className="chart-tooltip-value">{formatCurrency(activePoint.value)}</div>
-          <div className={`chart-tooltip-pnl tone-${hoverPnl >= 0 ? "positive" : "negative"}`}>
-            {formatSignedCurrency(hoverPnl)}
-          </div>
+          {!volumeMode && (
+            <div className={`chart-tooltip-pnl tone-${hoverPnl >= 0 ? "positive" : "negative"}`}>
+              {formatSignedCurrency(hoverPnl)}
+            </div>
+          )}
         </div>
       )}
     </div>
