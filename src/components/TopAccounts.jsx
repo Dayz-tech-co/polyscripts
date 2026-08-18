@@ -8,6 +8,7 @@ import { TableSkeleton } from "./Skeleton";
 import { getTopAccounts } from "../services/polymarketService";
 import { shortenAddress } from "../utils/address";
 import { formatCompactCurrency, formatSignedCurrency } from "../utils/formatters";
+import { getToneClass } from "../utils/states";
 
 const PERIODS = [
   { label: "Daily", value: "DAY" },
@@ -97,7 +98,7 @@ export default function TopAccounts({ title = "Top Accounts", limit = 8, showOrd
                   <span className="top-account-volume text-muted">{formatCompactCurrency(account.volume)}</span>
                 )}
                 {account.pnl != null && (
-                  <span className={`top-account-pnl tone-${account.pnl >= 0 ? "positive" : "negative"}`}>
+                  <span className={`top-account-pnl ${getToneClass(account.pnl)}`}>
                     {formatSignedCurrency(account.pnl, { decimals: 0 })}
                   </span>
                 )}

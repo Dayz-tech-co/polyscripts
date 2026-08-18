@@ -7,8 +7,9 @@ import MarketIcon from "./MarketIcon";
 import EmptyState from "./EmptyState";
 import { TableSkeleton } from "./Skeleton";
 import { formatCurrency, formatDate, formatPrice, formatSignedCurrency } from "../utils/formatters";
+import { getToneClass } from "../utils/states";
 
-const STATUS_FILTERS = ["All", "Open", "Resolved"];
+const STATUS_FILTERS = ["Active", "Closed"];
 const SORT_OPTIONS = ["Highest Value", "Highest PnL", "Lowest PnL", "Newest"];
 
 function sortPositions(positions, sort) {
@@ -28,7 +29,7 @@ function sortPositions(positions, sort) {
 }
 
 function UnifiedRow({ position }) {
-  const pnlTone = position.pnl >= 0 ? "positive" : "negative";
+  const pnlTone = getToneClass(position.pnl);
   const isOpen = position.status === "open";
 
   return (
@@ -50,11 +51,12 @@ function UnifiedRow({ position }) {
         <span className={`side-badge side-${position.side.toLowerCase()}`}>{position.side}</span>
       </td>
       <td className="num-cell">{formatPrice(position.averagePrice)}</td>
+      <td className="num-cell">{isOpen ? formatPrice(position.currentPrice) : "--"}</td>
       <td className="num-cell">{formatCurrency(position.currentValue)}</td>
-      <td className={`num-cell tone-${pnlTone}`}>{formatSignedCurrency(position.pnl)}</td>
+      <td className={`num-cell ${pnlTone}`}>{formatSignedCurrency(position.pnl)}</td>
       <td>
         <span className={`status-pill ${isOpen ? "status-open" : "status-resolved"}`}>
-          {isOpen ? "Open" : "Resolved"}
+          {isOpen ? "Active" : "Closed"}
         </span>
       </td>
     </tr>
@@ -62,7 +64,7 @@ function UnifiedRow({ position }) {
 }
 
 function UnifiedCardMobile({ position }) {
-  const pnlTone = position.pnl >= 0 ? "positive" : "negative";
+  const pnlTone = getToneClass(position.pnl);
   const isOpen = position.status === "open";
 
   return (
@@ -86,12 +88,12 @@ function UnifiedCardMobile({ position }) {
         </div>
         <div className="position-card-stat">
           <span className="position-card-stat-label">PnL</span>
-          <span className={`position-card-stat-value tone-${pnlTone}`}>{formatSignedCurrency(position.pnl)}</span>
+          <span className={`position-card-stat-value ${pnlTone}`}>{formatSignedCurrency(position.pnl)}</span>
         </div>
         <div className="position-card-stat">
           <span className="position-card-stat-label">Status</span>
           <span className={`status-pill ${isOpen ? "status-open" : "status-resolved"}`}>
-            {isOpen ? "Open" : "Resolved"}
+            {isOpen ? "Active" : "Closed"}
           </span>
         </div>
       </div>
@@ -111,7 +113,8 @@ export default function PositionsTab({ openPositions, resolvedPositions, loading
 
   const visible = useMemo(() => {
     let list = combined;
-    if (status !== "All") list = list.filter((p) => p.status === status.toLowerCase());
+    if (status === "Active") list = list.filter((p) => p.status === "open");
+    if (status === "Closed") list = list.filter((p) => p.status === "resolved");
     if (query.trim()) {
       const q = query.trim().toLowerCase();
       list = list.filter((p) => p.market.toLowerCase().includes(q));
@@ -147,8 +150,9 @@ export default function PositionsTab({ openPositions, resolvedPositions, loading
               <thead>
                 <tr>
                   <th>Market</th>
-                  <th>Position</th>
-                  <th>Average</th>
+                  <th>Side</th>
+                  <th>Entry</th>
+                  <th>Current</th>
                   <th>Value</th>
                   <th>PnL</th>
                   <th>Status</th>

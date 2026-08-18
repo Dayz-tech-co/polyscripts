@@ -2,6 +2,7 @@ import { BadgeCheck } from "lucide-react";
 import Avatar from "./Avatar";
 import { shortenAddress } from "../utils/address";
 import { formatCompactCurrency, formatNumber, formatSignedCurrency } from "../utils/formatters";
+import { getToneClass } from "../utils/states";
 
 export default function SearchResultItem({ account, active, id, onSelect, onMouseEnter }) {
   const hasUsername = Boolean(account.username);
@@ -33,7 +34,7 @@ export default function SearchResultItem({ account, active, id, onSelect, onMous
         <div className="search-result-meta">
           {account.rank != null && <span className="search-result-rank">#{formatNumber(account.rank)}</span>}
           {account.pnl != null && (
-            <span className={`search-result-pnl tone-${account.pnl >= 0 ? "positive" : "negative"}`}>
+            <span className={`search-result-pnl ${getToneClass(account.pnl)}`}>
               {formatSignedCurrency(account.pnl, { decimals: 0 })}
             </span>
           )}

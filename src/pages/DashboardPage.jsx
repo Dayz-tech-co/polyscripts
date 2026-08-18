@@ -82,12 +82,12 @@ export default function DashboardPage() {
           <div className="performance-header">
             <div>
               <span className="card-label">Activity Trend</span>
-              <div className="performance-change tone-positive">
+              <div className="performance-change">
                 <span>Aggregate demo volume over the last 30 days</span>
               </div>
             </div>
           </div>
-          {trend === null ? <ChartSkeleton /> : <PerformanceChart data={trend} positive volumeMode />}
+          {trend === null ? <ChartSkeleton /> : <PerformanceChart data={trend} volumeMode />}
         </div>
 
         <div className="card">

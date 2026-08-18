@@ -67,8 +67,8 @@ export default function PositionsSection({ positions, loading, limit }) {
               <thead>
                 <tr>
                   <th>Market</th>
-                  <th>Position</th>
-                  <th>Average</th>
+                  <th>Side</th>
+                  <th>Entry</th>
                   <th>Current</th>
                   <th>Value</th>
                   <th>PnL</th>

@@ -1,11 +1,18 @@
 import { useMemo, useRef, useState } from "react";
-import { formatCurrency, formatSignedCurrency, formatDate } from "../utils/formatters";
+import { formatCurrency, formatSignedCurrency, formatPercentage, formatDate } from "../utils/formatters";
+import { getValueState } from "../utils/states";
 
 const WIDTH = 640;
 const HEIGHT = 220;
 const PAD_TOP = 14;
 const PAD_BOTTOM = 24;
 const PAD_X = 4;
+
+const PALETTE = {
+  positive: { line: "#2FB57E", soft: "#34C98E" },
+  negative: { line: "#E5484D", soft: "#E5484D" },
+  neutral: { line: "#6E8BFF", soft: "#7C9CFF" },
+};
 
 function buildSmoothPath(points) {
   if (points.length < 2) return "";
@@ -24,13 +31,19 @@ function buildSmoothPath(points) {
   return d;
 }
 
-export default function PerformanceChart({ data, positive = true, volumeMode = false }) {
+/**
+ * Analytics line chart. In PnL mode the line/area follows the net change
+ * (positive green, negative red, zero neutral). In volume mode it uses a
+ * restrained neutral accent - volume is not a financial state, so it never
+ * borrows the positive/negative colors.
+ */
+export default function PerformanceChart({ data, volumeMode = false }) {
   const [hoverIndex, setHoverIndex] = useState(null);
   const svgRef = useRef(null);
 
-  const { points, gridLines } = useMemo(() => {
+  const { points, gridLines, tone } = useMemo(() => {
     if (!data || data.length === 0) {
-      return { points: [], gridLines: [] };
+      return { points: [], gridLines: [], tone: "neutral" };
     }
     const values = data.map((d) => d.value);
     const min = Math.min(...values);
@@ -52,8 +65,11 @@ export default function PerformanceChart({ data, positive = true, volumeMode = f
 
     const lines = [0, 0.25, 0.5, 0.75, 1].map((t) => PAD_TOP + t * usableHeight);
 
-    return { points: pts, gridLines: lines };
-  }, [data]);
+    const change = data[data.length - 1].value - data[0].value;
+    const state = volumeMode ? "neutral" : getValueState(change);
+
+    return { points: pts, gridLines: lines, tone: state };
+  }, [data, volumeMode]);
 
   const linePath = useMemo(() => buildSmoothPath(points), [points]);
   const areaPath = useMemo(() => {
@@ -62,6 +78,10 @@ export default function PerformanceChart({ data, positive = true, volumeMode = f
     const first = points[0];
     return `${linePath} L ${last.x} ${HEIGHT - PAD_BOTTOM} L ${first.x} ${HEIGHT - PAD_BOTTOM} Z`;
   }, [linePath, points]);
+
+  const palette = PALETTE[tone] || PALETTE.neutral;
+  const gradientId = "performance-line-gradient";
+  const areaGradientId = "performance-area-gradient";
 
   function handlePointerMove(e) {
     if (!svgRef.current || points.length === 0) return;
@@ -81,17 +101,15 @@ export default function PerformanceChart({ data, positive = true, volumeMode = f
     setHoverIndex(nearest);
   }
 
-  const activePoint = hoverIndex !== null ? points[hoverIndex] : null;
-  const firstValue = points[0]?.value ?? 0;
-  const hoverPnl = activePoint ? activePoint.value - firstValue : 0;
-
-  const tone = positive ? "positive" : "negative";
-  const gradientId = "performance-line-gradient";
-  const areaGradientId = "performance-area-gradient";
-
   if (!data || data.length === 0) {
     return <div className="chart-empty">No trading activity in this period</div>;
   }
+
+  const activePoint = hoverIndex !== null ? points[hoverIndex] : null;
+  const firstValue = points[0]?.value ?? 0;
+  const hoverChange = activePoint ? activePoint.value - firstValue : 0;
+  const hoverChangePct = firstValue !== 0 ? hoverChange / firstValue : null;
+  const hoverTone = volumeMode ? "neutral" : getValueState(hoverChange);
 
   return (
     <div className="chart-wrap">
@@ -103,26 +121,16 @@ export default function PerformanceChart({ data, positive = true, volumeMode = f
         onPointerMove={handlePointerMove}
         onPointerLeave={() => setHoverIndex(null)}
         role="img"
-        aria-label={volumeMode ? "Cumulative trading volume chart" : "Portfolio performance chart"}
+        aria-label={volumeMode ? "Cumulative trading volume chart" : "Performance chart"}
       >
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="0">
-            {positive ? (
-              <>
-                <stop offset="0" stopColor="#FF8A18" />
-                <stop offset="0.55" stopColor="#FF5C45" />
-                <stop offset="1" stopColor="#ED1976" />
-              </>
-            ) : (
-              <>
-                <stop offset="0" stopColor="#E5484D" />
-                <stop offset="1" stopColor="#E5484D" />
-              </>
-            )}
+            <stop offset="0" stopColor={palette.line} />
+            <stop offset="1" stopColor={palette.soft} />
           </linearGradient>
           <linearGradient id={areaGradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor={positive ? "#FF5C45" : "#E5484D"} stopOpacity="0.22" />
-            <stop offset="1" stopColor={positive ? "#FF5C45" : "#E5484D"} stopOpacity="0" />
+            <stop offset="0" stopColor={palette.soft} stopOpacity="0.2" />
+            <stop offset="1" stopColor={palette.soft} stopOpacity="0" />
           </linearGradient>
         </defs>
 
@@ -142,7 +150,7 @@ export default function PerformanceChart({ data, positive = true, volumeMode = f
               y2={HEIGHT - PAD_BOTTOM}
               className="chart-crosshair"
             />
-            <circle cx={activePoint.x} cy={activePoint.y} r="4" className={`chart-dot tone-${tone}`} />
+            <circle cx={activePoint.x} cy={activePoint.y} r="4" className={`chart-dot tone-${hoverTone}`} />
           </>
         )}
       </svg>
@@ -157,11 +165,10 @@ export default function PerformanceChart({ data, positive = true, volumeMode = f
         >
           <div className="chart-tooltip-date">{formatDate(activePoint.date)}</div>
           <div className="chart-tooltip-value">{formatCurrency(activePoint.value)}</div>
-          {!volumeMode && (
-            <div className={`chart-tooltip-pnl tone-${hoverPnl >= 0 ? "positive" : "negative"}`}>
-              {formatSignedCurrency(hoverPnl)}
-            </div>
-          )}
+          <div className={`chart-tooltip-pnl ${volumeMode ? "tone-neutral" : `tone-${hoverTone}`}`}>
+            {formatSignedCurrency(hoverChange)}
+            {hoverChangePct != null ? ` (${formatPercentage(hoverChangePct, { signed: true })})` : ""}
+          </div>
         </div>
       )}
     </div>

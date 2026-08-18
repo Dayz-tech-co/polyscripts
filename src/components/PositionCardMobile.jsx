@@ -1,8 +1,9 @@
 import MarketIcon from "./MarketIcon";
 import { formatCurrency, formatDate, formatPrice, formatSignedCurrency } from "../utils/formatters";
+import { getToneClass } from "../utils/states";
 
 export default function PositionCardMobile({ position, variant = "open" }) {
-  const pnlTone = position.pnl >= 0 ? "positive" : "negative";
+  const pnlTone = getToneClass(position.pnl);
 
   return (
     <div className="position-card-mobile">
@@ -33,7 +34,7 @@ export default function PositionCardMobile({ position, variant = "open" }) {
             </div>
             <div className="position-card-stat">
               <span className="position-card-stat-label">PnL</span>
-              <span className={`position-card-stat-value tone-${pnlTone}`}>{formatSignedCurrency(position.pnl)}</span>
+              <span className={`position-card-stat-value ${pnlTone}`}>{formatSignedCurrency(position.pnl)}</span>
             </div>
           </>
         ) : (
@@ -48,7 +49,7 @@ export default function PositionCardMobile({ position, variant = "open" }) {
             </div>
             <div className="position-card-stat">
               <span className="position-card-stat-label">PnL</span>
-              <span className={`position-card-stat-value tone-${pnlTone}`}>{formatSignedCurrency(position.pnl)}</span>
+              <span className={`position-card-stat-value ${pnlTone}`}>{formatSignedCurrency(position.pnl)}</span>
             </div>
           </>
         )}

@@ -1,4 +1,5 @@
 import { formatCurrency, formatNumber, formatSignedCurrency } from "../utils/formatters";
+import { getValueState } from "../utils/states";
 
 export default function PortfolioSummary({ stats, loading }) {
   if (loading || !stats) {
@@ -12,20 +13,21 @@ export default function PortfolioSummary({ stats, loading }) {
 
   const rows = [
     { label: "Open Position Value", value: stats.openPositionValue != null ? formatCurrency(stats.openPositionValue) : "--" },
-    { label: "Resolved Positions", value: stats.resolvedPositionsCount != null ? formatNumber(stats.resolvedPositionsCount) : "--" },
+    { label: "Open Positions", value: stats.openPositionsCount != null ? formatNumber(stats.openPositionsCount) : "--" },
     { divider: true },
     {
       label: "Realized PnL",
       value: stats.realizedPnl != null ? formatSignedCurrency(stats.realizedPnl) : "--",
-      tone: stats.realizedPnl != null ? (stats.realizedPnl >= 0 ? "positive" : "negative") : undefined,
+      tone: getValueState(stats.realizedPnl),
     },
     {
       label: "Unrealized PnL",
       value: stats.unrealizedPnl != null ? formatSignedCurrency(stats.unrealizedPnl) : "--",
-      tone: stats.unrealizedPnl != null ? (stats.unrealizedPnl >= 0 ? "positive" : "negative") : undefined,
+      tone: getValueState(stats.unrealizedPnl),
     },
     { divider: true },
     { label: "Activity Count", value: stats.activityCount != null ? formatNumber(stats.activityCount) : "--" },
+    { label: "Markets", value: stats.marketsTraded != null ? formatNumber(stats.marketsTraded) : "--" },
     { label: "Leaderboard Rank", value: stats.rank != null ? `#${formatNumber(stats.rank)}` : "Unranked" },
   ];
 

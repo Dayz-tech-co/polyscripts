@@ -11,6 +11,7 @@ import { TableSkeleton } from "../components/Skeleton";
 import { getLeaderboard } from "../services/ecosystemService";
 import { shortenAddress } from "../utils/address";
 import { formatCompactCurrency, formatNumber, formatPercentage, formatSignedCurrency } from "../utils/formatters";
+import { getToneClass } from "../utils/states";
 
 const METRICS = [
   { label: "PnL", value: "pnl" },
@@ -101,7 +102,7 @@ export default function LeaderboardPage() {
               </thead>
               <tbody>
                 {visible.map((row) => {
-                  const pnlTone = row.pnl >= 0 ? "positive" : "negative";
+                  const pnlTone = getToneClass(row.pnl);
                   return (
                     <tr key={row.address} className={`leaderboard-row ${row.rank <= 3 ? "is-top" : ""}`}>
                       <td>
@@ -116,7 +117,7 @@ export default function LeaderboardPage() {
                           </span>
                         </button>
                       </td>
-                      <td className={`num-cell tone-${pnlTone}`}>{formatSignedCurrency(row.pnl, { decimals: 0 })}</td>
+                      <td className={`num-cell ${pnlTone}`}>{formatSignedCurrency(row.pnl, { decimals: 0 })}</td>
                       <td className="num-cell">{formatCompactCurrency(row.volume)}</td>
                       <td className="num-cell">{formatPercentage(row.winRate)}</td>
                       <td className="num-cell">{formatNumber(row.markets)}</td>
@@ -134,7 +135,7 @@ export default function LeaderboardPage() {
 
           <div className="leaderboard-mobile-list">
             {visible.map((row) => {
-              const pnlTone = row.pnl >= 0 ? "positive" : "negative";
+              const pnlTone = getToneClass(row.pnl);
               return (
                 <button type="button" key={row.address} className="leaderboard-card-mobile" onClick={() => open(row)}>
                   <div className="leaderboard-card-mobile-top">
@@ -149,7 +150,7 @@ export default function LeaderboardPage() {
                   <div className="leaderboard-card-mobile-grid">
                     <div className="position-card-stat">
                       <span className="position-card-stat-label">PnL</span>
-                      <span className={`position-card-stat-value tone-${pnlTone}`}>{formatSignedCurrency(row.pnl, { decimals: 0 })}</span>
+                      <span className={`position-card-stat-value ${pnlTone}`}>{formatSignedCurrency(row.pnl, { decimals: 0 })}</span>
                     </div>
                     <div className="position-card-stat">
                       <span className="position-card-stat-label">Volume</span>

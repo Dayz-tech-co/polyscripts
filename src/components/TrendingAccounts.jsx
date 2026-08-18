@@ -7,6 +7,7 @@ import { TableSkeleton } from "./Skeleton";
 import { getTrendingAccounts } from "../services/ecosystemService";
 import { shortenAddress } from "../utils/address";
 import { formatCompactCurrency } from "../utils/formatters";
+import { getToneClass } from "../utils/states";
 
 export default function TrendingAccounts({ limit = 5 }) {
   const [accounts, setAccounts] = useState(null);
@@ -56,7 +57,7 @@ export default function TrendingAccounts({ limit = 5 }) {
                   <span className="top-account-address">{shortenAddress(account.address)}</span>
                 </span>
                 <span className="top-account-volume text-muted">{formatCompactCurrency(account.volume)}</span>
-                <span className="top-account-pnl tone-positive">{formatCompactCurrency(account.pnl)}</span>
+                <span className={`top-account-pnl ${getToneClass(account.pnl)}`}>{formatCompactCurrency(account.pnl)}</span>
                 <ChevronRight size={15} className="top-account-arrow" aria-hidden="true" />
               </button>
             </li>

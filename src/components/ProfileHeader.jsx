@@ -56,16 +56,15 @@ export default function ProfileHeader({ account, loading }) {
 
   return (
     <section className="profile-header" aria-label="Profile">
-      <div className="profile-header-glow" aria-hidden="true" />
       <div className="container profile-header-inner">
         <div className="profile-identity">
-          <Avatar account={account} size={68} radius={14} />
+          <Avatar account={account} size={56} radius={12} />
           <div className="profile-identity-text">
             <div className="profile-name-row">
               <h1 className="profile-name">{primary}</h1>
               {account.verified && (
                 <Tooltip label="Verified profile">
-                  <BadgeCheck size={16} className="verified-badge" aria-label="Verified profile" />
+                  <BadgeCheck size={15} className="verified-badge" aria-label="Verified profile" />
                 </Tooltip>
               )}
             </div>
@@ -75,6 +74,11 @@ export default function ProfileHeader({ account, loading }) {
               <Tooltip label={copied ? "Copied" : "Copy address"}>
                 <button type="button" className="icon-btn icon-btn-sm" aria-label="Copy wallet address" onClick={handleCopy}>
                   {copied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
+                </button>
+              </Tooltip>
+              <Tooltip label="Share profile">
+                <button type="button" className="icon-btn icon-btn-sm" aria-label="Share profile" onClick={handleShare}>
+                  <Share2 size={14} aria-hidden="true" />
                 </button>
               </Tooltip>
               <Tooltip label="View on explorer">
@@ -90,26 +94,14 @@ export default function ProfileHeader({ account, loading }) {
               </Tooltip>
             </div>
 
-            {account.bio && <p className="profile-description">{account.bio}</p>}
-            {account.tierName && <p className="profile-description-secondary">{account.tierName} tier trader</p>}
+            {(account.bio || account.tierName) && (
+              <p className="profile-description-secondary">
+                {account.bio}
+                {account.bio && account.tierName ? " · " : ""}
+                {account.tierName ? `${account.tierName} tier trader` : ""}
+              </p>
+            )}
           </div>
-        </div>
-
-        <div className="profile-actions">
-          <Tooltip label={copied ? "Copied" : "Copy address"}>
-            <button type="button" className="btn btn-ghost btn-icon-only" onClick={handleCopy} aria-label="Copy wallet address">
-              {copied ? <Check size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />}
-            </button>
-          </Tooltip>
-          <Tooltip label="Share profile">
-            <button type="button" className="btn btn-ghost btn-icon-only" onClick={handleShare} aria-label="Share profile">
-              <Share2 size={15} aria-hidden="true" />
-            </button>
-          </Tooltip>
-          <a className="btn btn-secondary" href={explorerUrl} target="_blank" rel="noreferrer noopener">
-            <ExternalLink size={14} aria-hidden="true" />
-            <span>Explorer</span>
-          </a>
         </div>
       </div>
     </section>

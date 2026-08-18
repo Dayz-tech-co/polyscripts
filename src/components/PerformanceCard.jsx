@@ -24,7 +24,7 @@ export default function PerformanceCard({ performance, loading }) {
           <div className="performance-value-row">
             <span className="performance-value">{formatCompactCurrency(total)}</span>
           </div>
-          <div className="performance-change tone-positive">
+          <div className="performance-change">
             <span>Cumulative volume traded</span>
           </div>
         </div>
@@ -44,7 +44,7 @@ export default function PerformanceCard({ performance, loading }) {
         </div>
       </div>
 
-      {loading || !performance ? <ChartSkeleton /> : <PerformanceChart data={data} positive volumeMode />}
+      {loading || !performance ? <ChartSkeleton /> : <PerformanceChart data={data} volumeMode />}
     </div>
   );
 }

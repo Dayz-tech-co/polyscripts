@@ -9,6 +9,7 @@ import { TableSkeleton } from "../components/Skeleton";
 import { getCompare } from "../services/ecosystemService";
 import { shortenAddress } from "../utils/address";
 import { formatCompactCurrency, formatCurrency, formatNumber, formatPercentage, formatSignedCurrency } from "../utils/formatters";
+import { getValueState } from "../utils/states";
 
 const METRIC_ROWS = [
   { key: "pnl", label: "P&L" },
@@ -40,7 +41,7 @@ function formatMetric(key, value) {
 }
 
 function metricTone(key, value) {
-  if (key === "pnl") return value >= 0 ? "positive" : "negative";
+  if (key === "pnl") return getValueState(value);
   return undefined;
 }
 
@@ -129,23 +130,23 @@ export default function ComparePage() {
               <div className="performance-header">
                 <div>
                   <span className="card-label">{result.a.account.username || result.a.account.displayName || shortenAddress(result.a.account.address)}</span>
-                  <div className="performance-change tone-positive">
+                  <div className="performance-change">
                     <span>Cumulative demo volume</span>
                   </div>
                 </div>
               </div>
-              <PerformanceChart data={result.a.performance} positive volumeMode />
+              <PerformanceChart data={result.a.performance} volumeMode />
             </div>
             <div className="card performance-card">
               <div className="performance-header">
                 <div>
                   <span className="card-label">{result.b.account.username || result.b.account.displayName || shortenAddress(result.b.account.address)}</span>
-                  <div className="performance-change tone-positive">
+                  <div className="performance-change">
                     <span>Cumulative demo volume</span>
                   </div>
                 </div>
               </div>
-              <PerformanceChart data={result.b.performance} positive volumeMode />
+              <PerformanceChart data={result.b.performance} volumeMode />
             </div>
           </div>
         </>

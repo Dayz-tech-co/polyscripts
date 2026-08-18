@@ -6,12 +6,12 @@ import ActivityCardMobile from "./ActivityCardMobile";
 import EmptyState from "./EmptyState";
 import { TableSkeleton } from "./Skeleton";
 
-const TYPE_FILTERS = ["All", "Buys", "Sells", "Other"];
+const TYPE_FILTERS = ["All", "Buy", "Sell", "Other"];
 
 function matchesFilter(activity, filter) {
   if (filter === "All") return true;
-  if (filter === "Buys") return activity.type === "Bought";
-  if (filter === "Sells") return activity.type === "Sold";
+  if (filter === "Buy") return activity.type === "Bought";
+  if (filter === "Sell") return activity.type === "Sold";
   if (filter === "Other") return activity.type !== "Bought" && activity.type !== "Sold";
   return true;
 }
@@ -47,7 +47,7 @@ export default function ActivitySection({ activity, loading, limit }) {
                 <tr>
                   <th>Type</th>
                   <th>Market</th>
-                  <th>Position</th>
+                  <th>Side</th>
                   <th>Amount</th>
                   <th>Price</th>
                   <th>Time</th>

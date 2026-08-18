@@ -2,11 +2,10 @@ import { BarChart3, CircleDollarSign, Layers3, Percent, TrendingUp, Wallet } fro
 import StatCard from "./StatCard";
 import { StatsSkeleton } from "./Skeleton";
 import { formatCompactCurrency, formatCurrency, formatNumber, formatPercentage, formatSignedCurrency } from "../utils/formatters";
+import { getValueState } from "../utils/states";
 
 export default function ProfileStats({ stats, loading }) {
   if (loading || !stats) return <StatsSkeleton />;
-
-  const pnlPositive = (stats.pnl ?? 0) >= 0;
 
   return (
     <div className="stats-grid stats-grid-six">
@@ -15,7 +14,7 @@ export default function ProfileStats({ stats, loading }) {
         label="Profit / Loss"
         value={stats.pnl != null ? formatSignedCurrency(stats.pnl) : "--"}
         sub={stats.pnlPercent != null ? formatPercentage(stats.pnlPercent, { signed: true }) : undefined}
-        subTone={pnlPositive ? "positive" : "negative"}
+        subTone={getValueState(stats.pnlPercent)}
       />
       <StatCard
         icon={BarChart3}

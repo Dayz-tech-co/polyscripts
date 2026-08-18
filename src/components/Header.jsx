@@ -25,7 +25,7 @@ export default function Header() {
       <div className="container header-inner">
         <div className="header-left">
           <Link to="/" className="brand" aria-label="PolyScripts home">
-            <LogoMark size={26} />
+            <LogoMark size={30} />
             <span className="brand-word">PolyScripts</span>
           </Link>
           <nav className="nav" aria-label="Primary">
