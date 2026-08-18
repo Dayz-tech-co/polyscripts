@@ -1,6 +1,8 @@
 // Centralized formatting helpers so number/date/text formatting logic
 // is not duplicated across components.
 
+export { shortenAddress } from "./address";
+
 /**
  * 84291.42 -> "$84,291.42"
  */
@@ -57,15 +59,6 @@ export function formatPrice(value) {
   if (value === null || value === undefined || Number.isNaN(value)) return "--";
   if (value >= 1) return `$${value.toFixed(2)}`;
   return `${Math.round(value * 100)}¢`;
-}
-
-/**
- * 0x3048d65321be3497164cdfc2996f94f98a2e7537 -> "0x3048...e7537"
- */
-export function shortenAddress(address, startLen = 6, endLen = 5) {
-  if (!address) return "";
-  if (address.length <= startLen + endLen + 3) return address;
-  return `${address.slice(0, startLen)}...${address.slice(-endLen)}`;
 }
 
 const MINUTE = 60 * 1000;

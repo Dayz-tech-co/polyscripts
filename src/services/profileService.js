@@ -1,73 +1,94 @@
-// Thin service layer over local demo data.
-//
-// Every export returns a Promise so the rest of the app already talks to an
-// async data boundary. If a verified public read-only Polymarket endpoint is
-// wired in later, only this file needs to change.
+// Builds the complete public profile bundle for one resolved account:
+// overview stats, positions, resolved history, activity, and a performance
+// series derived from real activity data. Everything is fetched once per
+// profile load and cached, so switching tabs or chart ranges never refetches.
 
+import { provider } from "./providers";
+import { cacheGet, cacheSet } from "./cache";
+import { resolveIdentifier, getAccountByAddress, getLeaderboardEntryForAddress } from "./polymarketService";
+import { mergeAccounts } from "../adapters/accountAdapter";
 import {
-  profile,
-  stats,
-  portfolioSummary,
-  performanceHistory,
-  openPositions,
-  resolvedPositions,
-  recentActivity,
-} from "../data/profileData";
+  normalizePosition,
+  normalizeClosedPosition,
+  normalizeActivity,
+  deriveStats,
+  buildVolumeSeries,
+} from "../adapters/profileAdapter";
 
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+const BUNDLE_TTL = 45_000;
+
+const RANGE_MS = {
+  "1D": 24 * 60 * 60 * 1000,
+  "1W": 7 * 24 * 60 * 60 * 1000,
+  "1M": 30 * 24 * 60 * 60 * 1000,
+  "3M": 90 * 24 * 60 * 60 * 1000,
+  ALL: null,
+};
+
+async function settle(promise) {
+  try {
+    return await promise;
+  } catch {
+    return null;
+  }
 }
 
-export async function getProfile() {
-  await delay(350);
-  return profile;
-}
+/**
+ * Resolves an identifier (username or address) and fetches everything
+ * needed to render its public profile. Every section derives from this one
+ * bundle, so no part of the page can end up mixing data from two accounts.
+ */
+export async function getAccountProfile(identifier, { signal } = {}) {
+  const account = await resolveIdentifier(identifier, { signal });
+  const address = account.address;
 
-export async function getStats() {
-  await delay(400);
-  return stats;
-}
+  const cacheKey = `profile:${address}`;
+  const cached = cacheGet(cacheKey);
+  if (cached) return cached;
 
-export async function getPortfolioSummary() {
-  await delay(400);
-  return portfolioSummary;
-}
-
-export async function getPerformance(range = "1M") {
-  await delay(150);
-  return performanceHistory[range] ?? performanceHistory["1M"];
-}
-
-export async function getOpenPositions() {
-  await delay(450);
-  return openPositions;
-}
-
-export async function getResolvedPositions() {
-  await delay(450);
-  return resolvedPositions;
-}
-
-export async function getRecentActivity() {
-  await delay(400);
-  return recentActivity;
-}
-
-export async function getProfileBundle() {
-  const [profileData, statsData, summaryData, openPos, resolvedPos, activity] = await Promise.all([
-    getProfile(),
-    getStats(),
-    getPortfolioSummary(),
-    getOpenPositions(),
-    getResolvedPositions(),
-    getRecentActivity(),
+  const [rawPositions, rawClosed, rawActivity, value, traded, rankEntry, publicProfileAccount] = await Promise.all([
+    settle(provider.getPositions(address, { limit: 100, signal })),
+    settle(provider.getClosedPositions(address, { limit: 50, signal })),
+    settle(provider.getActivity(address, { limit: 500, signal })),
+    settle(provider.getValue(address, { signal })),
+    settle(provider.getTraded(address, { signal })),
+    getLeaderboardEntryForAddress(address, { timePeriod: "ALL", signal }),
+    // resolveIdentifier may have come from search/leaderboard, neither of
+    // which carries bio/volume/tier - fetch the gamma profile directly too
+    // so the account record is as complete as it can be either way.
+    settle(getAccountByAddress(address, { signal })),
   ]);
-  return {
-    profile: profileData,
-    stats: statsData,
-    portfolioSummary: summaryData,
-    openPositions: openPos,
-    resolvedPositions: resolvedPos,
-    recentActivity: activity,
+
+  const enrichedAccount = mergeAccounts(mergeAccounts(account, publicProfileAccount), rankEntry);
+
+  const positions = (rawPositions || []).map(normalizePosition);
+  const resolvedPositions = (rawClosed || []).map(normalizeClosedPosition);
+  const activity = (rawActivity || [])
+    .map(normalizeActivity)
+    .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
+
+  const stats = deriveStats({
+    positions,
+    closedPositions: resolvedPositions,
+    value,
+    traded,
+    rankEntry,
+    publicProfile: enrichedAccount,
+  });
+
+  const performance = Object.fromEntries(
+    Object.entries(RANGE_MS).map(([range, ms]) => [range, buildVolumeSeries(activity, ms)])
+  );
+
+  const bundle = {
+    account: enrichedAccount,
+    stats,
+    positions,
+    resolvedPositions,
+    activity,
+    performance,
   };
+
+  cacheSet(cacheKey, bundle, BUNDLE_TTL);
+  return bundle;
 }
