@@ -3,10 +3,8 @@
 // two surfaces, impossible win rates, counts that disagree with the actual
 // arrays). In production they do nothing.
 //
-// Note: with live data the API responses are truncated (100 open / 50 closed
-// positions, 500-2000 activity events), so realized+unrealized PnL derived
-// from the fetched slices can legitimately differ from the leaderboard's
-// authoritative total. That is reported as informational, not as a bug.
+// Total PnL is defined as Realized + Unrealized from the same fetched
+// positions data, so the summary card is always internally consistent.
 
 const PNL_TOLERANCE = 0.01;
 

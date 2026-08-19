@@ -141,7 +141,11 @@ export function deriveStats({ positions, closedPositions, value, traded, rankEnt
 
   const unrealizedPnl = canonical?.unrealizedPnl ?? derivedUnrealizedPnl;
   const realizedPnl = canonical?.realizedPnl ?? derivedRealizedPnl;
-  const pnl = canonical?.pnl ?? (unrealizedPnl != null || realizedPnl != null ? (unrealizedPnl ?? 0) + (realizedPnl ?? 0) : null);
+  // Total PnL is always the net of the same realized + unrealized windows so
+  // the summary is internally consistent (Total = Realized + Unrealized) and
+  // traces to the exact account's positions data. The leaderboard's all-time
+  // PnL is intentionally not used here - it reflects a different scope.
+  const pnl = unrealizedPnl != null || realizedPnl != null ? (unrealizedPnl ?? 0) + (realizedPnl ?? 0) : null;
 
   // Invested basis only counts records that carry a real cost, so pnlPercent
   // is never skewed by positions with missing numbers.

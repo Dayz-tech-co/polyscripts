@@ -1,6 +1,6 @@
 # Data Integrity Report
 
-Commit: `e2345ca` (pushed to `master`)
+Commit: `e2345ca` (baseline) + `4616e61` (pushed) — this session's Total PnL definition, profile external link, chart range scoping
 Date: 2026-08-19
 Scope: Performance/Volume analytics, position/activity tables, profile stats
 Method: live QA against Polymarket public APIs on profiles gmanas, kch123, swisstony; cross-checked every displayed number against raw API responses.
@@ -30,20 +30,28 @@ Every number shown on the profile surfaces is derived from real Polymarket publi
 14. **Win/loss analytics are real distributions.** gmanas Avg Win +$23,738.32, Avg Loss −$13,618.32, Largest Win +$153,009.23, Largest Loss −$35,500.11 — all recomputed from the raw 50 realized PnL values.
 15. **Chart headline === summary Realized PnL.** gmanas +$813,349.65 (chart and Portfolio Summary identical); kch123 −$65,880.06 identical; swisstony −$5,259.49 identical. No surface contradicts another.
 16. **Volume precedence is correct.** Gamma's `weightedVolume` was 0 for gmanas and silently shadowed the leaderboard's real $537.38M. The leaderboard row now merges first and `deriveStats` prefers `rankEntry.volume`, fixing the display to $537.38M (was $0.00). Same for kch123 $298.64M and swisstony $1.82B.
-17. **Leaderboard-first merge for PnL/rank too.** swisstony Total PnL +$23,600,489.67 and rank #1 come from the leaderboard; the gamma profile only fills fields the leaderboard lacks (bio, tier, avatar).
-18. **Known, documented scope differences (not errors).** (a) Stat-card PnL/Volume are all-time leaderboard figures (kch123 +$11.39M / $298.64M); the chart's realized PnL ($65.9K) and volume ($1.19M) are the API-capped windows (50 positions / 2000 events). Both are labeled explicitly ("Cumulative … realized PnL / notional traded", "· All time"). (b) swisstony's four strip cells are identical because all 50 closed positions resolved today (ticks all "Aug 19") — verified against the API, not a computation error.
+17. **Leaderboard-first merge for rank/volume.** swisstony rank #1 and volume $1.82B come from the leaderboard; the gamma profile only fills fields the leaderboard lacks (bio, tier, avatar). Total PnL is intentionally not the leaderboard all-time figure — see #25.
+18. **Known, documented scope differences (not errors).** (a) The stat-card Volume is the all-time leaderboard figure (kch123 $298.64M); the chart's volume ($1.19M) is the API-capped activity window (2000 events). Both are labeled explicitly ("Cumulative … notional traded", "· All time"). PnL is fully consistent everywhere (#15, #25). (b) swisstony's four strip cells are identical because all 50 closed positions resolved today (ticks all "Aug 19") — verified against the API, not a computation error.
 
 ### Code/data quality
 19. **No duplicate React keys.** Fixed the YES/NO same-`conditionId` collision (`${conditionId}-${asset}-open` / `-closed-${timestamp}`) and duplicate activity rows returned identically by the API (index-suffixed keys at the render site). swisstony's 150-row Positions tab and 500-row Activity tab render with zero console key errors.
-20. **Volume-fallback masking bug fixed.** When the volume series failed, the card reused the previous (performance) dataset and labelled it "volume" — a false display. `lastData` is now retained only when it matches the current metric AND range.
+20. **No stale dataset reuse.** The card previously reused the previous dataset on a failed fetch (volume shown as performance and vice versa). The `lastData` fallback is removed entirely; the chart only ever renders the dataset fetched for the currently selected range × metric (#27).
 21. **Market imagery is real.** Every position/activity row uses the market's real icon with a fallback; QA counted 6 real images / 0 fallbacks on the overview and no broken links.
-22. **Dev-only integrity validation.** `validateProfileData` / `logDataIntegrity` run under `import.meta.env.DEV` on every profile load, checking header-PnL vs realized+unrealized tolerance, truncation-aware derivations, and contract consistency; findings are logged with level info vs error by severity.
+22. **Dev-only integrity validation.** `validateProfileData` / `logDataIntegrity` run under `import.meta.env.DEV` on every profile load, checking Total-PnL == realized+unrealized, win-rate bounds, and wins+losses vs resolved counts; findings are logged with level info vs error by severity.
 23. **Mock/demo paths are opt-in only.** The live provider is the default; the mock provider mirrors the same metric semantics (seeded from real `account.volume` / `account.realizedPnl`) and is only active in offline/opt-in scenarios.
-24. **Build, lint, live QA clean.** `npm run build` passes (347 kB JS), `npm run lint` reports only the pre-existing ToastContext fast-refresh warning, and live CDP QA across gmanas, kch123, swisstony, and the Compare page produced zero console errors after the fixes.
+24. **Build, lint, live QA clean.** `npm run build` passes (346 kB JS), `npm run lint` reports only the pre-existing ToastContext fast-refresh warning, and live CDP QA across gmanas, kch123, swisstony, and the Compare page produced zero console errors after the fixes.
+
+### This session's follow-up fixes
+25. **Total PnL is internally consistent.** Total PnL = Realized + Unrealized from the same positions data, so the summary always reconciles (gmanas −$782,414.85 = +$813,349.65 + −$1,595,764.50; verified in `getAccountProfile` stats and the rendered summary card / stat card). The leaderboard's all-time PnL is no longer shown as the summary total, since it measures a different scope and made the card read as contradictory.
+26. **Every metric traces to the exact selected account.** Same-instant audit (app's `getAccountProfile` stats vs raw-source recomputation using identical API params) for gmanas, kch123 and swisstony: PnL, volume, portfolio value, open positions, markets traded, realized/unrealized and win/loss analytics all match the source exactly. No cross-account leakage, no wrong-source metric, no miscalculation.
+27. **Chart ranges never reuse a dataset.** `usePerformanceRange` scopes its state by a request key (`identifier|range|metric`) and returns a loading state until the dataset for the current request is ready; provider results carry `range`/`metric`; the card renders only the current dataset's own chart or its own empty state ("No resolved positions in this period" / "No trading activity in this period"). Verified one-by-one for 1D/1W/1M/3M/ALL on kch123 (1D/1W/1M own empty states, 3M/ALL own charts) and swisstony (own chart on all five), including 60 ms post-switch captures proving the previous range's SVG is never rendered under a new label.
+28. **Profile external link opens the public Polymarket profile.** The header's external-link action now opens `https://polymarket.com/profile/<username-or-address>` instead of Polygon Explorer.
 
 ## Bugs found and fixed during this session
 - LTTB average-bucket bounds overrun (crash on large series) → clamped `avgEnd`.
 - Volume request silently returning the cached performance series (service threading verified, provider bug in series build isolated and fixed) → volume now $6.19M vs PnL $813K.
-- Card displaying stale wrong-metric data on failure → metric+range-keyed `lastData`.
+- Card displaying stale dataset on metric/range switch → `lastData` fallback removed; hook state scoped by request key (#27).
 - Gamma `weightedVolume: 0` shadowing leaderboard volume → leaderboard-first merge + explicit precedence in `deriveStats`.
 - Duplicate React keys from shared `conditionId` (YES/NO) and identical activity rows → unique ids + index suffix.
+- Summary Total PnL contradicted Realized + Unrealized (leaderboard all-time vs API windows) → Total PnL redefined as Realized + Unrealized (#25).
+- Profile external link opened Polygon Explorer instead of the account's Polymarket profile → now opens the public Polymarket profile (#28).

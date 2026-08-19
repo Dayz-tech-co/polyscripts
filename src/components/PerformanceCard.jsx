@@ -71,26 +71,15 @@ export default function PerformanceCard({ identifier }) {
   const [range, setRange] = useState("ALL");
   const [metric, setMetric] = useState("performance");
   const { status, data } = usePerformanceRange(identifier, range, metric);
-  const [lastData, setLastData] = useState(null);
   const { loading: summaryLoading, data: summary } = useRangeSummary(identifier, metric);
-
-  useEffect(() => {
-    if (status === "ready" && data) setLastData({ metric, range, data });
-  }, [status, data, metric, range]);
 
   const hasIdentifier = Boolean(identifier);
   const loading = status === "loading" || !hasIdentifier;
-  // Only ever reuse the previous dataset when it matches the currently
-  // selected metric AND range, so a transient failure can never show, say,
-  // the PnL series labelled as trading volume.
-  const perf =
-    status === "ready" && data && data.metric === metric
-      ? data
-      : lastData && lastData.metric === metric && lastData.range === range
-        ? lastData.data
-        : null;
-  const readyForRange = status === "ready" && data && data.points && data.points.length > 0;
-  const hasChart = perf && perf.points && perf.points.length > 0;
+  // The dataset is only ever the one fetched for the currently selected
+  // metric AND range - the hook never exposes a previous dataset, and the
+  // result itself carries its range/metric so mismatches are impossible.
+  const perf = status === "ready" && data && data.metric === metric && data.range === range ? data : null;
+  const hasChart = Boolean(perf && perf.points && perf.points.length > 0);
   const isVolume = metric === "volume";
   const headlineTone = isVolume || !perf ? "" : getToneClass(perf.change);
 
@@ -176,7 +165,7 @@ export default function PerformanceCard({ identifier }) {
           <ChartSkeleton />
         ) : hasChart ? (
           <>
-            <PerformanceChart data={readyForRange ? data.points : perf.points} metric={metric} range={range} startValue={perf.startValue ?? 0} />
+            <PerformanceChart data={perf.points} metric={metric} range={range} startValue={perf.startValue ?? 0} />
             {loading && (
               <div className="chart-loading-badge" role="status">
                 <LoaderCircle size={13} className="spin" aria-hidden="true" />

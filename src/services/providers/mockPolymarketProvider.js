@@ -294,6 +294,7 @@ export async function getPerformanceRange(address, { range = "ALL", metric = "pe
   if (!account) return null;
 
   const cfg = PERFORMANCE_RANGES[range] || PERFORMANCE_RANGES.ALL;
+  const rangeKey = PERFORMANCE_RANGES[range] ? range : "ALL";
   const rnd = mulberry32(hashString(address + "perf:" + range + ":" + metric));
   const lifetime = metric === "volume" ? account.volume : account.realizedPnl;
 
@@ -322,7 +323,7 @@ export async function getPerformanceRange(address, { range = "ALL", metric = "pe
   const endValue = points[points.length - 1].value;
   const change = round2(endValue - startValue);
   const changePct = startValue !== 0 ? change / Math.abs(startValue) : null;
-  return { points, total: endValue, change, changePct, startValue, endValue, metric };
+  return { points, total: endValue, change, changePct, startValue, endValue, metric, range: rangeKey };
 }
 
 const DEMO_MARKETS = [

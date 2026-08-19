@@ -251,5 +251,5 @@ export async function getPerformanceRange(address, { range = "ALL", metric = "pe
   const change = round2(endValue - startValue);
   const changePct = startValue !== 0 ? change / Math.abs(startValue) : null;
 
-  return { points, total, change, changePct, startValue, endValue, metric: metricKey };
+  return { points, total, change, changePct, startValue, endValue, metric: metricKey, range: rangeKey };
 }
