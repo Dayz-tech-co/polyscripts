@@ -10,11 +10,6 @@ const PAD_X = 4;
 const USABLE_WIDTH = WIDTH - PAD_X * 2;
 const USABLE_HEIGHT = HEIGHT - PAD_TOP - PAD_BOTTOM;
 
-// Morph resolution: both series are resampled to this many points so curves
-// with different point counts can be interpolated against each other.
-const MORPH_SAMPLES = 72;
-const MORPH_MS = 420;
-
 const PALETTE = {
   positive: { line: "#2FB57E", soft: "#34C98E" },
   negative: { line: "#E5484D", soft: "#E5484D" },
@@ -34,24 +29,6 @@ function buildSmoothPath(points) {
     d += ` L ${points[i].x} ${points[i].y}`;
   }
   return d;
-}
-
-function sampleAt(pts, t) {
-  if (pts.length === 0) return { y: 0, value: 0, date: null };
-  if (pts.length === 1) return pts[0];
-  const pos = t * (pts.length - 1);
-  const i0 = Math.floor(pos);
-  const i1 = Math.min(pts.length - 1, i0 + 1);
-  const frac = pos - i0;
-  return {
-    y: pts[i0].y + (pts[i1].y - pts[i0].y) * frac,
-    value: pts[i0].value + (pts[i1].value - pts[i0].value) * frac,
-    date: pts[i1].date,
-  };
-}
-
-function easeInOutCubic(t) {
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
 /**
@@ -88,15 +65,12 @@ function formatAxisTick(ms, range, spanMs) {
  * hover colors follow the net direction - positive green, negative red, zero
  * neutral. In volume mode it uses a restrained neutral accent: volume is not
  * a financial state, so it never borrows the positive/negative colors.
- * When the dataset changes (new range or metric) the previous curve morphs
- * smoothly into the new one instead of swapping instantly.
+ * Each range/metric dataset is rendered directly from its raw records.
  */
 export default function PerformanceChart({ data, metric = "performance", range = "1M", startValue = 0 }) {
   const [hoverIndex, setHoverIndex] = useState(null);
   const [displayPoints, setDisplayPoints] = useState(null);
   const svgRef = useRef(null);
-  const rafRef = useRef(null);
-  const committedRef = useRef(null);
 
   const target = useMemo(() => {
     if (!data || data.length === 0) {
@@ -110,12 +84,20 @@ export default function PerformanceChart({ data, metric = "performance", range =
     const paddedMax = max + rangeWidth * 0.12;
     const paddedRange = paddedMax - paddedMin || 1;
 
-    const pts = data.map((d, i) => ({
-      x: PAD_X + (i / (data.length - 1 || 1)) * USABLE_WIDTH,
-      y: PAD_TOP + USABLE_HEIGHT - ((d.value - paddedMin) / paddedRange) * USABLE_HEIGHT,
-      value: d.value,
-      date: d.date,
-    }));
+    const startMs = new Date(data[0].date).getTime();
+    const endMs = new Date(data[data.length - 1].date).getTime();
+    const spanMs = endMs - startMs || 1;
+
+    const pts = data.map((d) => {
+      const tMs = new Date(d.date).getTime();
+      const frac = Number.isFinite(tMs) ? Math.max(0, Math.min(1, (tMs - startMs) / spanMs)) : 0;
+      return {
+        x: PAD_X + frac * USABLE_WIDTH,
+        y: PAD_TOP + USABLE_HEIGHT - ((d.value - paddedMin) / paddedRange) * USABLE_HEIGHT,
+        value: d.value,
+        date: d.date,
+      };
+    });
 
     const gridLines = [0, 0.25, 0.5, 0.75, 1].map((t) => ({
       y: PAD_TOP + t * USABLE_HEIGHT,
@@ -129,51 +111,9 @@ export default function PerformanceChart({ data, metric = "performance", range =
   }, [data, metric]);
 
   useEffect(() => {
-    const from = committedRef.current;
-    const to = target.points;
-
-    if (!from || from.length < 2 || to.length < 2) {
-      setDisplayPoints(to);
-      committedRef.current = to;
-      return undefined;
-    }
-
-    cancelAnimationFrame(rafRef.current);
     setHoverIndex(null);
-
-    const start = performance.now();
-    const frame = (now) => {
-      const progress = Math.min(1, (now - start) / MORPH_MS);
-      const eased = easeInOutCubic(progress);
-      const next = [];
-      for (let i = 0; i < MORPH_SAMPLES; i++) {
-        const t = i / (MORPH_SAMPLES - 1);
-        const a = sampleAt(from, t);
-        const b = sampleAt(to, t);
-        next.push({
-          x: PAD_X + t * USABLE_WIDTH,
-          y: a.y + (b.y - a.y) * eased,
-          value: a.value + (b.value - a.value) * eased,
-          date: b.date,
-        });
-      }
-      setDisplayPoints(next);
-      if (progress < 1) {
-        rafRef.current = requestAnimationFrame(frame);
-      } else {
-        // Snap to the exact real data points once the transition finishes so
-        // the final line keeps every genuine peak/dip/jump instead of the
-        // interpolated morph frame.
-        setDisplayPoints(to);
-        committedRef.current = to;
-      }
-    };
-    rafRef.current = requestAnimationFrame(frame);
-
-    return () => cancelAnimationFrame(rafRef.current);
+    setDisplayPoints(target.points);
   }, [target.points]);
-
-  useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
 
   const points = displayPoints ?? target.points;
   const { gridLines, tone } = target;
