@@ -23,24 +23,15 @@ const PALETTE = {
 
 const X_TICK_COUNT = 4;
 
-// Faithful Catmull-Rom interpolation: the curve passes exactly through every
-// real data point. Tension is kept modest so increases, decreases, plateaus,
-// drawdowns and recoveries are preserved without inventing smoother shape
-// between them. With the provider feeding real event-level points this stays
-// crisp and never looks artificially polished.
+// Straight-edged polyline: the line connects each real data point with a
+// straight segment, so peaks, dips, jumps and plateaus render as sharp,
+// defined turns instead of being rounded off. Every vertex is a real point
+// from the provider - no invented smoothing between them.
 function buildSmoothPath(points) {
   if (points.length < 2) return "";
   let d = `M ${points[0].x} ${points[0].y}`;
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[i === 0 ? i : i - 1];
-    const p1 = points[i];
-    const p2 = points[i + 1];
-    const p3 = points[i + 2 < points.length ? i + 2 : i + 1];
-    const cp1x = p1.x + (p2.x - p0.x) / 6;
-    const cp1y = p1.y + (p2.y - p0.y) / 6;
-    const cp2x = p2.x - (p3.x - p1.x) / 6;
-    const cp2y = p2.y - (p3.y - p1.y) / 6;
-    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+  for (let i = 1; i < points.length; i++) {
+    d += ` L ${points[i].x} ${points[i].y}`;
   }
   return d;
 }
@@ -168,6 +159,10 @@ export default function PerformanceChart({ data, metric = "performance", range =
       if (progress < 1) {
         rafRef.current = requestAnimationFrame(frame);
       } else {
+        // Snap to the exact real data points once the transition finishes so
+        // the final line keeps every genuine peak/dip/jump instead of the
+        // interpolated morph frame.
+        setDisplayPoints(to);
         committedRef.current = to;
       }
     };
@@ -253,7 +248,7 @@ export default function PerformanceChart({ data, metric = "performance", range =
         ))}
 
         <path d={areaPath} fill={`url(#${areaGradientId})`} stroke="none" />
-        <path d={linePath} fill="none" stroke={`url(#${gradientId})`} strokeWidth="2" strokeLinecap="round" />
+        <path d={linePath} fill="none" stroke={`url(#${gradientId})`} strokeWidth="2" strokeLinecap="butt" strokeLinejoin="miter" />
 
         {activePoint && (
           <>
