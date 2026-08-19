@@ -1,4 +1,5 @@
 import { ActivityTypeBadge } from "./ActivityRow";
+import MarketImage from "./MarketImage";
 import { formatCurrency, formatPrice, formatTimeAgo } from "../utils/formatters";
 
 export default function ActivityCardMobile({ activity }) {
@@ -8,7 +9,10 @@ export default function ActivityCardMobile({ activity }) {
         <ActivityTypeBadge type={activity.type} />
         <span className="activity-card-time">{formatTimeAgo(activity.timestamp)}</span>
       </div>
-      <span className="market-title">{activity.market}</span>
+      <div className="activity-card-mobile-market">
+        <MarketImage icon={activity.icon} category={activity.category} tag={activity.tag} size={36} />
+        <span className="market-title">{activity.market}</span>
+      </div>
       <div className="activity-card-mobile-meta">
         <span className={`side-badge side-${activity.side.toLowerCase()}`}>{activity.side}</span>
         <span className="text-muted">{formatCurrency(activity.amount)}</span>

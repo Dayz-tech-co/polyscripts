@@ -15,6 +15,7 @@
 // app's internal model happens in src/adapters.
 
 import { ProviderError } from "../errors";
+import { lttbDownsample } from "../../utils/downsample";
 
 const GAMMA_BASE = "https://gamma-api.polymarket.com";
 const DATA_BASE = "https://data-api.polymarket.com";
@@ -116,13 +117,25 @@ const PERF_RANGE_MS = {
   ALL: null,
 };
 
-const PERF_BUCKETS = { "1D": 24, "1W": 14, "1M": 24, "3M": 26, ALL: 36 };
+// Target point counts per range. The chart never fabricates extra points -
+// if a window contains fewer real events than the target, only those events
+// are plotted. LTTB keeps the first/last points and the peaks/troughs.
+const PERF_POINTS = { "1D": 48, "1W": 42, "1M": 48, "3M": 48, ALL: 60 };
 
-// The activity endpoint returns at most 500 events per page. Paginate a
-// bounded number of pages so the performance chart can genuinely span weeks
-// or months for accounts that trade less often than every few minutes.
+const VALID_PERF_METRICS = new Set(["performance", "volume"]);
+
+// The activity endpoint returns at most 500 events per page and the
+// closed-positions endpoint returns at most 50 (it ignores larger limits).
+// Paginate the bounded activity feed so volume can genuinely span weeks or
+// months for accounts that trade less often than every few minutes.
 const ACTIVITY_PAGE_SIZE = 500;
 const MAX_PERF_EVENTS = 2000;
+const ACTIVITY_CACHE_TTL = 60_000;
+
+// All ranges/metrics for one account share the same fetched feeds, so
+// switching timeframes or metrics never triggers another network call.
+const activityCache = new Map();
+const closedCache = new Map();
 
 function round2(value) {
   return Math.round(value * 100) / 100;
@@ -142,20 +155,68 @@ async function fetchActivityHistory(address, { maxEvents = MAX_PERF_EVENTS, sign
   return out.slice(0, maxEvents);
 }
 
-/**
- * Builds an independent cumulative-volume series for one timeframe from the
- * account's real activity feed. Each range filters a different window, uses
- * a different bucket count, and reports its own total/change/percentage, so
- * no two ranges ever share the same array.
- */
-export async function getPerformanceRange(address, { range = "ALL", signal } = {}) {
-  const windowMs = PERF_RANGE_MS[range];
-  const buckets = PERF_BUCKETS[range] || PERF_BUCKETS.ALL;
+async function getCachedActivity(address, { signal } = {}) {
+  const hit = activityCache.get(address);
+  if (hit && Date.now() - hit.fetchedAt < ACTIVITY_CACHE_TTL && hit.events.length > 0) {
+    return hit.events;
+  }
+  const events = await fetchActivityHistory(address, { signal });
+  if (events.length > 0) activityCache.set(address, { events, fetchedAt: Date.now() });
+  return events;
+}
 
-  const activity = await fetchActivityHistory(address, { signal });
-  const entries = (activity || [])
-    .map((a) => ({ t: (a.timestamp ?? 0) * 1000, amount: a.usdcSize ?? 0 }))
-    .filter((e) => e.t > 0 && e.amount > 0)
+async function getCachedClosed(address, { signal } = {}) {
+  const hit = closedCache.get(address);
+  if (hit && Date.now() - hit.fetchedAt < ACTIVITY_CACHE_TTL && hit.events.length > 0) {
+    return hit.events;
+  }
+  const url = `${DATA_BASE}/closed-positions?user=${encodeURIComponent(address)}&limit=50&sortBy=TIMESTAMP&sortDirection=DESC`;
+  const data = await getJson(url, { signal });
+  const events = Array.isArray(data) ? data : [];
+  if (events.length > 0) closedCache.set(address, { events, fetchedAt: Date.now() });
+  return events;
+}
+
+/**
+ * Per-event contribution to the volume series: notional traded on outright
+ * buys/sells only (REDEEM/MERGE/etc. are not trades). A cumulative sum of
+ * volume is monotonic (up/flat), which is the expected shape for volume.
+ */
+function volumeContribution(event) {
+  if (event.type !== "TRADE") return 0;
+  return event.usdcSize ?? 0;
+}
+
+/**
+ * Builds an independent series for one timeframe and one metric:
+ *
+ *   performance (realized PnL) - Polymarket's authoritative closed-position
+ *     realized PnL (GET /closed-positions). Each resolved position adds its
+ *     realizedPnl at its resolution time, so the cumulative curve rises with
+ *     wins and falls with losses and never includes still-open positions.
+ *     The endpoint returns the most recent 50 resolved positions; the chart
+ *     reflects exactly that window and never invents history.
+ *
+ *   volume (trading volume) - cumulative notional traded from the activity
+ *     feed (GET /activity), monotonic up/flat by construction.
+ *
+ * Each range filters a different window, uses a different target point
+ * count, and reports its own start/end value, change and percentage - so no
+ * two ranges ever share the same dataset.
+ */
+export async function getPerformanceRange(address, { range = "ALL", metric = "performance", signal } = {}) {
+  const rangeKey = PERF_RANGE_MS[range] !== undefined ? range : "ALL";
+  const metricKey = VALID_PERF_METRICS.has(metric) ? metric : "performance";
+  const windowMs = PERF_RANGE_MS[rangeKey];
+  const pointsTarget = PERF_POINTS[rangeKey] || PERF_POINTS.ALL;
+
+  const raw = metricKey === "volume" ? await getCachedActivity(address, { signal }) : await getCachedClosed(address, { signal });
+  const entries = (raw || [])
+    .map((a) => ({
+      t: (a.timestamp ?? 0) * 1000,
+      v: metricKey === "volume" ? volumeContribution(a) : (a.realizedPnl ?? 0),
+    }))
+    .filter((e) => e.t > 0 && Number.isFinite(e.v) && e.v !== 0)
     .sort((a, b) => a.t - b.t);
 
   if (entries.length === 0) return null;
@@ -163,27 +224,34 @@ export async function getPerformanceRange(address, { range = "ALL", signal } = {
   const now = Date.now();
   const cutoff = windowMs ? now - windowMs : entries[0].t;
   const inWindow = entries.filter((e) => e.t >= cutoff);
-  const baseline = entries.reduce((sum, e) => sum + (e.t < cutoff ? e.amount : 0), 0);
 
   if (inWindow.length === 0) return null;
 
-  const spanMs = Math.max(now - cutoff, buckets);
-  const bucketMs = spanMs / buckets;
-  const bucketSums = new Array(buckets).fill(0);
+  const baseline = entries.reduce((sum, e) => sum + (e.t < cutoff ? e.v : 0), 0);
+
+  // Cumulative series: the value at the window start, then one point per
+  // real event, then a flat continuation to "now" so the curve reaches the
+  // right edge without inventing events.
+  const series = [{ t: cutoff, value: round2(baseline) }];
+  let acc = baseline;
   for (const e of inWindow) {
-    const idx = Math.min(buckets - 1, Math.floor((e.t - cutoff) / bucketMs));
-    bucketSums[idx] += e.amount;
+    acc += e.v;
+    series.push({ t: e.t, value: round2(acc) });
+  }
+  const endValue = round2(acc);
+  if (series[series.length - 1].t < now) {
+    series.push({ t: now, value: endValue });
   }
 
-  let acc = round2(baseline);
-  const points = bucketSums.map((sum, i) => {
-    acc = round2(acc + sum);
-    return { date: new Date(cutoff + (i + 1) * bucketMs).toISOString(), value: acc };
-  });
+  const points = lttbDownsample(series, pointsTarget).map((p) => ({
+    date: new Date(p.t).toISOString(),
+    value: p.value,
+  }));
 
-  const total = acc;
-  const first = points[0].value;
-  const change = round2(total - first);
-  const changePct = first !== 0 ? change / first : null;
-  return { points, total, change, changePct };
+  const startValue = series[0].value;
+  const total = endValue;
+  const change = round2(endValue - startValue);
+  const changePct = startValue !== 0 ? change / Math.abs(startValue) : null;
+
+  return { points, total, change, changePct, startValue, endValue, metric: metricKey };
 }

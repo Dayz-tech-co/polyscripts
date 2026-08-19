@@ -1,4 +1,4 @@
-import MarketIcon from "./MarketIcon";
+import MarketImage from "./MarketImage";
 import { formatCurrency, formatDate, formatPrice, formatSignedCurrency } from "../utils/formatters";
 import { getToneClass } from "../utils/states";
 
@@ -8,7 +8,7 @@ export default function PositionCardMobile({ position, variant = "open" }) {
   return (
     <div className="position-card-mobile">
       <div className="position-card-mobile-head">
-        <MarketIcon category={position.category} tag={position.tag} />
+        <MarketImage icon={position.icon} category={position.category} tag={position.tag} size={40} />
         <div className="market-cell-text">
           <span className="market-title">{position.market}</span>
           <span className="market-meta">

@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
-import { Layers3 } from "lucide-react";
+import { ChevronDown, Layers3 } from "lucide-react";
 import SearchInput from "./SearchInput";
 import Filters from "./Filters";
 import SortDropdown from "./SortDropdown";
-import MarketIcon from "./MarketIcon";
+import MarketImage from "./MarketImage";
 import EmptyState from "./EmptyState";
 import { TableSkeleton } from "./Skeleton";
-import { formatCurrency, formatDate, formatPrice, formatSignedCurrency } from "../utils/formatters";
+import { formatCurrency, formatDate, formatNumber, formatPercentage, formatPrice, formatSignedCurrency } from "../utils/formatters";
 import { getToneClass } from "../utils/states";
 
 const STATUS_FILTERS = ["Active", "Closed"];
@@ -28,49 +28,106 @@ function sortPositions(positions, sort) {
   }
 }
 
-function UnifiedRow({ position }) {
+function UnifiedRow({ position, expanded, onToggle }) {
   const pnlTone = getToneClass(position.pnl);
   const isOpen = position.status === "open";
+  const closedPrice = !isOpen && position.shares > 0 ? position.returned / position.shares : null;
+
+  const detail = [
+    { label: "Cost basis", value: formatCurrency(position.invested) },
+    { label: "Current value", value: formatCurrency(position.currentValue) },
+    {
+      label: "Unrealized PnL",
+      value: isOpen ? formatSignedCurrency(position.pnl) : "N/A",
+      tone: isOpen ? pnlTone : undefined,
+    },
+    {
+      label: "Realized PnL",
+      value:
+        isOpen
+          ? position.realizedPnl != null
+            ? formatSignedCurrency(position.realizedPnl)
+            : "N/A"
+          : formatSignedCurrency(position.pnl),
+      tone: isOpen && position.realizedPnl != null ? getToneClass(position.realizedPnl) : pnlTone,
+    },
+    { label: "Shares", value: position.shares != null ? formatNumber(position.shares) : "N/A" },
+    { label: "Outcome", value: position.side },
+    { label: isOpen ? "Closes" : "Resolved", value: formatDate(position.closeDate) },
+  ];
 
   return (
-    <tr className="position-row">
-      <td className="market-cell">
-        <MarketIcon category={position.category} tag={position.tag} />
-        <div className="market-cell-text">
-          <span className="market-title" title={position.market}>
-            {position.market}
+    <>
+      <tr
+        className={`position-row ${expanded ? "is-expanded" : ""}`}
+        onClick={onToggle}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
+        aria-expanded={expanded}
+      >
+        <td className="market-cell">
+          <MarketImage icon={position.icon} category={position.category} tag={position.tag} size={40} />
+          <div className="market-cell-text">
+            <span className="market-title" title={position.market}>
+              {position.market}
+            </span>
+            <span className="market-meta">
+              {position.category}
+              {" · "}
+              {isOpen ? `Closes ${formatDate(position.closeDate)}` : `Resolved ${formatDate(position.closeDate)}`}
+            </span>
+          </div>
+        </td>
+        <td>
+          <span className={`side-badge side-${position.side.toLowerCase()}`}>{position.side}</span>
+        </td>
+        <td className="num-cell">{formatPrice(position.averagePrice)}</td>
+        <td className="num-cell">{isOpen ? formatPrice(position.currentPrice) : formatPrice(closedPrice)}</td>
+        <td className="num-cell">{formatCurrency(position.currentValue)}</td>
+        <td className={`num-cell ${pnlTone}`}>{formatSignedCurrency(position.pnl)}</td>
+        <td className={`num-cell ${pnlTone}`}>{formatPercentage(position.pnlPercent, { signed: true })}</td>
+        <td>
+          <span className={`status-pill ${isOpen ? "status-open" : "status-resolved"}`}>
+            {isOpen ? "Active" : "Closed"}
           </span>
-          <span className="market-meta">
-            {position.category}
-            {" · "}
-            {isOpen ? `Closes ${formatDate(position.closeDate)}` : `Resolved ${formatDate(position.closeDate)}`}
+        </td>
+        <td className="action-cell">
+          <span className={`expand-chevron ${expanded ? "is-open" : ""}`} aria-hidden="true">
+            <ChevronDown size={14} />
           </span>
-        </div>
-      </td>
-      <td>
-        <span className={`side-badge side-${position.side.toLowerCase()}`}>{position.side}</span>
-      </td>
-      <td className="num-cell">{formatPrice(position.averagePrice)}</td>
-      <td className="num-cell">{isOpen ? formatPrice(position.currentPrice) : "--"}</td>
-      <td className="num-cell">{formatCurrency(position.currentValue)}</td>
-      <td className={`num-cell ${pnlTone}`}>{formatSignedCurrency(position.pnl)}</td>
-      <td>
-        <span className={`status-pill ${isOpen ? "status-open" : "status-resolved"}`}>
-          {isOpen ? "Active" : "Closed"}
-        </span>
-      </td>
-    </tr>
+        </td>
+      </tr>
+      {expanded && (
+        <tr className="position-detail-row">
+          <td colSpan={9}>
+            <div className="position-detail-grid">
+              {detail.map((item) => (
+                <div className="position-detail-item" key={item.label}>
+                  <span className="position-detail-label">{item.label}</span>
+                  <span className={`position-detail-value ${item.tone ? `tone-${item.tone}` : ""}`}>{item.value}</span>
+                </div>
+              ))}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 
-function UnifiedCardMobile({ position }) {
+function UnifiedCardMobile({ position, expanded, onToggle }) {
   const pnlTone = getToneClass(position.pnl);
   const isOpen = position.status === "open";
 
   return (
     <div className="position-card-mobile">
-      <div className="position-card-mobile-head">
-        <MarketIcon category={position.category} tag={position.tag} />
+      <button type="button" className="position-card-mobile-main" onClick={onToggle} aria-expanded={expanded}>
+        <MarketImage icon={position.icon} category={position.category} tag={position.tag} size={40} />
         <div className="market-cell-text">
           <span className="market-title">{position.market}</span>
           <span className="market-meta">
@@ -79,8 +136,10 @@ function UnifiedCardMobile({ position }) {
             {isOpen ? `Closes ${formatDate(position.closeDate)}` : `Resolved ${formatDate(position.closeDate)}`}
           </span>
         </div>
-        <span className={`side-badge side-${position.side.toLowerCase()}`}>{position.side}</span>
-      </div>
+        <span className={`expand-chevron ${expanded ? "is-open" : ""}`} aria-hidden="true">
+          <ChevronDown size={14} />
+        </span>
+      </button>
       <div className="position-card-mobile-grid">
         <div className="position-card-stat">
           <span className="position-card-stat-label">Value</span>
@@ -97,6 +156,22 @@ function UnifiedCardMobile({ position }) {
           </span>
         </div>
       </div>
+      {expanded && (
+        <div className="position-card-mobile-detail">
+          {[
+            ["Entry", formatPrice(position.averagePrice)],
+            ["Current", isOpen ? formatPrice(position.currentPrice) : formatPrice(position.invested ? position.returned / position.shares : null)],
+            ["PnL %", formatPercentage(position.pnlPercent, { signed: true })],
+            ["Shares", position.shares != null ? formatNumber(position.shares) : "N/A"],
+            ["Realized PnL", isOpen ? (position.realizedPnl != null ? formatSignedCurrency(position.realizedPnl) : "N/A") : formatSignedCurrency(position.pnl)],
+          ].map(([label, value]) => (
+            <div className="position-card-detail-row" key={label}>
+              <span className="position-card-stat-label">{label}</span>
+              <span className="position-card-stat-value">{value}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -104,6 +179,7 @@ function UnifiedCardMobile({ position }) {
 export default function PositionsTab({ openPositions, resolvedPositions, loading, query, onQueryChange }) {
   const [status, setStatus] = useState("All");
   const [sort, setSort] = useState("Highest Value");
+  const [expandedId, setExpandedId] = useState(null);
 
   const combined = useMemo(() => {
     const open = (openPositions || []).map((p) => ({ ...p, currentValue: p.currentValue }));
@@ -121,6 +197,10 @@ export default function PositionsTab({ openPositions, resolvedPositions, loading
     }
     return sortPositions(list, sort);
   }, [combined, status, query, sort]);
+
+  function toggleExpanded(id) {
+    setExpandedId((current) => (current === id ? null : id));
+  }
 
   return (
     <section className="section" aria-label="All positions">
@@ -155,19 +235,31 @@ export default function PositionsTab({ openPositions, resolvedPositions, loading
                   <th>Current</th>
                   <th>Value</th>
                   <th>PnL</th>
+                  <th>PnL%</th>
                   <th>Status</th>
+                  <th aria-label="Details" />
                 </tr>
               </thead>
               <tbody>
                 {visible.map((position) => (
-                  <UnifiedRow key={position.id} position={position} />
+                  <UnifiedRow
+                    key={position.id}
+                    position={position}
+                    expanded={expandedId === position.id}
+                    onToggle={() => toggleExpanded(position.id)}
+                  />
                 ))}
               </tbody>
             </table>
           </div>
           <div className="positions-mobile-list">
             {visible.map((position) => (
-              <UnifiedCardMobile key={position.id} position={position} />
+              <UnifiedCardMobile
+                key={position.id}
+                position={position}
+                expanded={expandedId === position.id}
+                onToggle={() => toggleExpanded(position.id)}
+              />
             ))}
           </div>
         </>

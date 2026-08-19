@@ -278,8 +278,9 @@ export async function getTraded(address) {
 
 // Each timeframe is its own independent series: a different time window,
 // a different number of points and a different seeded trajectory, ending at
-// a per-range share of the account's lifetime volume. Ranges are never
-// sliced from one shared array, so 1D/1W/1M/3M/ALL always differ.
+// a per-range share of the account's lifetime volume (or realized PnL for
+// the performance metric). Ranges are never sliced from one shared array,
+// so 1D/1W/1M/3M/ALL always differ.
 const PERFORMANCE_RANGES = {
   "1D": { days: 1, points: 24, total: 0.35, inRange: [0.03, 0.08] },
   "1W": { days: 7, points: 14, total: 0.5, inRange: [0.12, 0.2] },
@@ -288,20 +289,20 @@ const PERFORMANCE_RANGES = {
   ALL: { days: 180, points: 32, total: 1, inRange: [1, 1] },
 };
 
-export async function getPerformanceRange(address, { range = "ALL" } = {}) {
+export async function getPerformanceRange(address, { range = "ALL", metric = "performance" } = {}) {
   const account = demoProvider.getAccountByAddress(address);
   if (!account) return null;
 
   const cfg = PERFORMANCE_RANGES[range] || PERFORMANCE_RANGES.ALL;
-  const rnd = mulberry32(hashString(address + "perf:" + range));
-  const volume = account.volume;
+  const rnd = mulberry32(hashString(address + "perf:" + range + ":" + metric));
+  const lifetime = metric === "volume" ? account.volume : account.realizedPnl;
 
   // Fixed cumulative total per range keeps the headline monotonic
-  // (1D < 1W < 1M < 3M < ALL); the amount traded within the window and the
-  // trajectory are seeded independently per range so no two curves match.
-  const total = round2(volume * cfg.total);
+  // (1D < 1W < 1M < 3M < ALL); the amount realized within the window and
+  // the trajectory are seeded independently per range so no two curves match.
+  const total = round2(lifetime * cfg.total);
   const inRangeFactor = range === "ALL" ? 1 : cfg.inRange[0] + rnd() * (cfg.inRange[1] - cfg.inRange[0]);
-  const inRange = round2(volume * inRangeFactor);
+  const inRange = round2(Math.abs(total) * inRangeFactor);
   const baseline = round2(total - inRange);
 
   const now = Date.now();
@@ -317,9 +318,11 @@ export async function getPerformanceRange(address, { range = "ALL" } = {}) {
     points.push({ date: new Date(startTime + (i + 1) * stepMs).toISOString(), value: acc });
   }
 
-  const change = round2(points[points.length - 1].value - points[0].value);
-  const changePct = points[0].value !== 0 ? change / points[0].value : null;
-  return { points, total, change, changePct };
+  const startValue = points[0].value;
+  const endValue = points[points.length - 1].value;
+  const change = round2(endValue - startValue);
+  const changePct = startValue !== 0 ? change / Math.abs(startValue) : null;
+  return { points, total: endValue, change, changePct, startValue, endValue, metric };
 }
 
 const DEMO_MARKETS = [

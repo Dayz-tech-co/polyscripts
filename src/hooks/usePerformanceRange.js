@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import { getPerformanceRange } from "../services/profileService";
 
-export function usePerformanceRange(identifier, range) {
+export function usePerformanceRange(identifier, range, metric = "performance") {
   const [state, setState] = useState({ status: "loading", data: null });
 
   useEffect(() => {
@@ -20,7 +20,7 @@ export function usePerformanceRange(identifier, range) {
       };
     }
 
-    getPerformanceRange(identifier, { range, signal: controller.signal })
+    getPerformanceRange(identifier, { range, metric, signal: controller.signal })
       .then((data) => {
         if (!cancelled) setState({ status: "ready", data });
       })
@@ -33,7 +33,7 @@ export function usePerformanceRange(identifier, range) {
       cancelled = true;
       controller.abort();
     };
-  }, [identifier, range]);
+  }, [identifier, range, metric]);
 
   return state;
 }

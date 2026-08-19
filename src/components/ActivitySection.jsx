@@ -54,16 +54,16 @@ export default function ActivitySection({ activity, loading, limit }) {
                 </tr>
               </thead>
               <tbody>
-                {visible.map((item) => (
-                  <ActivityRow key={item.id} activity={item} />
+                {visible.map((item, index) => (
+                  <ActivityRow key={`${item.id}-${index}`} activity={item} />
                 ))}
               </tbody>
             </table>
           </div>
 
           <div className="activity-mobile-list">
-            {visible.map((item) => (
-              <ActivityCardMobile key={item.id} activity={item} />
+            {visible.map((item, index) => (
+              <ActivityCardMobile key={`${item.id}-${index}`} activity={item} />
             ))}
           </div>
         </>

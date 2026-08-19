@@ -34,10 +34,12 @@ export default function HistoryTab({ resolvedPositions, loading }) {
                 <tr>
                   <th>Market</th>
                   <th>Position</th>
+                  <th>Shares</th>
                   <th>Invested</th>
                   <th>Returned</th>
                   <th>PnL</th>
-                  <th>Resolved</th>
+                  <th>PnL%</th>
+                  <th>Result</th>
                 </tr>
               </thead>
               <tbody>

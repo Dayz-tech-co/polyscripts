@@ -70,8 +70,10 @@ export default function PositionsSection({ positions, loading, limit }) {
                   <th>Side</th>
                   <th>Entry</th>
                   <th>Current</th>
+                  <th>Shares</th>
                   <th>Value</th>
                   <th>PnL</th>
+                  <th>PnL%</th>
                   <th aria-label="Actions" />
                 </tr>
               </thead>

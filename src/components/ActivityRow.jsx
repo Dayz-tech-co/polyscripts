@@ -1,4 +1,5 @@
 import { ArrowDownRight, ArrowUpRight, CircleDollarSign } from "lucide-react";
+import MarketImage from "./MarketImage";
 import { formatCurrency, formatPrice, formatTimeAgo } from "../utils/formatters";
 
 const TYPE_ICON = {
@@ -24,6 +25,7 @@ export default function ActivityRow({ activity }) {
         <ActivityTypeBadge type={activity.type} />
       </td>
       <td className="market-cell">
+        <MarketImage icon={activity.icon} category={activity.category} tag={activity.tag} size={36} />
         <span className="market-title" title={activity.market}>
           {activity.market}
         </span>

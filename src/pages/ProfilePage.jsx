@@ -14,6 +14,7 @@ import ErrorState from "../components/ErrorState";
 import AccountSearch from "../components/AccountSearch";
 import { useProfile } from "../hooks/useProfile";
 import { shortenAddress } from "../utils/address";
+import { validateProfileData, logDataIntegrity } from "../utils/dataIntegrity";
 
 export default function ProfilePage() {
   const { identifier } = useParams();
@@ -25,6 +26,18 @@ export default function ProfilePage() {
     setActiveTab("Overview");
     setPositionsQuery("");
   }, [identifier]);
+
+  useEffect(() => {
+    if (import.meta.env.DEV && status === "success" && data) {
+      logDataIntegrity(
+        validateProfileData({
+          stats: data.stats,
+          positions: data.positions,
+          resolvedPositions: data.resolvedPositions,
+        }),
+      );
+    }
+  }, [status, data]);
 
   useEffect(() => {
     if (status === "success" && data?.account) {

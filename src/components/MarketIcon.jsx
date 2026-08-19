@@ -8,7 +8,7 @@ const CATEGORY_COLORS = {
   Tech: ["#FF5C45", "#ED1976"],
 };
 
-export default function MarketIcon({ category, tag, size = 28 }) {
+export default function MarketIcon({ category, tag, size = 28, radius = 8 }) {
   const [from, to] = CATEGORY_COLORS[category] || ["#697586", "#4B5563"];
   return (
     <span
@@ -16,6 +16,7 @@ export default function MarketIcon({ category, tag, size = 28 }) {
       style={{
         width: size,
         height: size,
+        borderRadius: radius,
         background: `linear-gradient(135deg, ${from}, ${to})`,
       }}
       aria-hidden="true"

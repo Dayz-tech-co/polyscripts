@@ -12,22 +12,51 @@ export default function PortfolioSummary({ stats, loading }) {
   }
 
   const rows = [
-    { label: "Open Position Value", value: stats.openPositionValue != null ? formatCurrency(stats.openPositionValue) : "--" },
-    { label: "Open Positions", value: stats.openPositionsCount != null ? formatNumber(stats.openPositionsCount) : "--" },
+    {
+      label: "Total PnL",
+      value: stats.pnl != null ? formatSignedCurrency(stats.pnl) : "N/A",
+      tone: getValueState(stats.pnl),
+    },
+    { label: "Open Position Value", value: stats.openPositionValue != null ? formatCurrency(stats.openPositionValue) : "N/A" },
+    { label: "Open Positions", value: stats.openPositionsCount != null ? formatNumber(stats.openPositionsCount) : "N/A" },
     { divider: true },
     {
       label: "Realized PnL",
-      value: stats.realizedPnl != null ? formatSignedCurrency(stats.realizedPnl) : "--",
+      value: stats.realizedPnl != null ? formatSignedCurrency(stats.realizedPnl) : "N/A",
       tone: getValueState(stats.realizedPnl),
     },
     {
       label: "Unrealized PnL",
-      value: stats.unrealizedPnl != null ? formatSignedCurrency(stats.unrealizedPnl) : "--",
+      value: stats.unrealizedPnl != null ? formatSignedCurrency(stats.unrealizedPnl) : "N/A",
       tone: getValueState(stats.unrealizedPnl),
     },
     { divider: true },
-    { label: "Activity Count", value: stats.activityCount != null ? formatNumber(stats.activityCount) : "--" },
-    { label: "Markets", value: stats.marketsTraded != null ? formatNumber(stats.marketsTraded) : "--" },
+    { label: "Winning Positions", value: stats.wins != null ? formatNumber(stats.wins) : "N/A" },
+    { label: "Losing Positions", value: stats.losses != null ? formatNumber(stats.losses) : "N/A" },
+    {
+      label: "Avg Win",
+      value: stats.avgWin != null ? formatSignedCurrency(stats.avgWin) : "N/A",
+      tone: getValueState(stats.avgWin),
+    },
+    {
+      label: "Avg Loss",
+      value: stats.avgLoss != null ? formatSignedCurrency(stats.avgLoss) : "N/A",
+      tone: getValueState(stats.avgLoss),
+    },
+    {
+      label: "Largest Win",
+      value: stats.largestWin != null ? formatSignedCurrency(stats.largestWin) : "N/A",
+      tone: getValueState(stats.largestWin),
+    },
+    {
+      label: "Largest Loss",
+      value: stats.largestLoss != null ? formatSignedCurrency(stats.largestLoss) : "N/A",
+      tone: getValueState(stats.largestLoss),
+    },
+    { label: "Avg Position Size", value: stats.avgPositionSize != null ? formatCurrency(stats.avgPositionSize) : "N/A" },
+    { divider: true },
+    { label: "Activity Count", value: stats.activityCount != null ? formatNumber(stats.activityCount) : "N/A" },
+    { label: "Markets", value: stats.marketsTraded != null ? formatNumber(stats.marketsTraded) : "N/A" },
     { label: "Leaderboard Rank", value: stats.rank != null ? `#${formatNumber(stats.rank)}` : "Unranked" },
   ];
 
@@ -43,7 +72,7 @@ export default function PortfolioSummary({ stats, loading }) {
               <span className="summary-label">{row.label}</span>
               <span className={`summary-value ${row.tone ? `tone-${row.tone}` : ""}`}>{row.value}</span>
             </div>
-          )
+          ),
         )}
       </div>
     </div>

@@ -8,7 +8,7 @@ export { shortenAddress } from "./address";
  */
 export function formatCurrency(value, options = {}) {
   const { decimals = 2 } = options;
-  if (value === null || value === undefined || Number.isNaN(value)) return "--";
+  if (value === null || value === undefined || Number.isNaN(value)) return "N/A";
   const sign = value < 0 ? "-" : "";
   const abs = Math.abs(value);
   return `${sign}$${abs.toLocaleString("en-US", {
@@ -21,7 +21,7 @@ export function formatCurrency(value, options = {}) {
  * 84291.42 -> "+$84,291.42" / -12.5 -> "-$12.50"
  */
 export function formatSignedCurrency(value, options = {}) {
-  if (value === null || value === undefined || Number.isNaN(value)) return "--";
+  if (value === null || value === undefined || Number.isNaN(value)) return "N/A";
   const prefix = value > 0 ? "+" : value < 0 ? "-" : "";
   return `${prefix}${formatCurrency(Math.abs(value), options)}`;
 }
@@ -31,7 +31,7 @@ export function formatSignedCurrency(value, options = {}) {
  * 1850000 -> "$1.85M"
  */
 export function formatCompactCurrency(value) {
-  if (value === null || value === undefined || Number.isNaN(value)) return "--";
+  if (value === null || value === undefined || Number.isNaN(value)) return "N/A";
   const sign = value < 0 ? "-" : "";
   const abs = Math.abs(value);
   if (abs >= 1_000_000_000) return `${sign}$${(abs / 1_000_000_000).toFixed(2)}B`;
@@ -45,7 +45,7 @@ export function formatCompactCurrency(value) {
  */
 export function formatPercentage(value, options = {}) {
   const { decimals = 1, signed = false } = options;
-  if (value === null || value === undefined || Number.isNaN(value)) return "--";
+  if (value === null || value === undefined || Number.isNaN(value)) return "N/A";
   const pct = value * 100;
   const prefix = signed && pct > 0 ? "+" : "";
   return `${prefix}${pct.toFixed(decimals)}%`;
@@ -56,7 +56,7 @@ export function formatPercentage(value, options = {}) {
  * 1 -> "$1.00"
  */
 export function formatPrice(value) {
-  if (value === null || value === undefined || Number.isNaN(value)) return "--";
+  if (value === null || value === undefined || Number.isNaN(value)) return "N/A";
   if (value >= 1) return `$${value.toFixed(2)}`;
   return `${Math.round(value * 100)}¢`;
 }
@@ -92,7 +92,19 @@ export function formatDateShort(timestamp) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+/** Date + time for chart tooltips: "Aug 19, 2026, 3:20 PM" */
+export function formatDateTime(timestamp) {
+  const d = timestamp instanceof Date ? timestamp : new Date(timestamp);
+  return d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export function formatNumber(value) {
-  if (value === null || value === undefined || Number.isNaN(value)) return "--";
+  if (value === null || value === undefined || Number.isNaN(value)) return "N/A";
   return value.toLocaleString("en-US");
 }

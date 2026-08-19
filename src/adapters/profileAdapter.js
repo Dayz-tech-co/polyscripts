@@ -26,7 +26,7 @@ function sideFromOutcome(outcome) {
 export function normalizePosition(raw) {
   const invested = raw.initialValue ?? (raw.avgPrice != null && raw.size != null ? raw.avgPrice * raw.size : null);
   return {
-    id: `${raw.conditionId || raw.asset}-open`,
+    id: `${raw.conditionId || raw.asset}-${raw.asset || "open"}-open`,
     market: raw.title || "Unknown market",
     category: raw.category ?? null,
     tag: shortTag(raw.slug, raw.title),
@@ -39,6 +39,7 @@ export function normalizePosition(raw) {
     currentValue: raw.currentValue ?? null,
     pnl: raw.cashPnl ?? null,
     pnlPercent: raw.percentPnl != null ? raw.percentPnl / 100 : null,
+    realizedPnl: raw.realizedPnl ?? null,
     status: "open",
     closeDate: raw.endDate ?? null,
     slug: raw.slug ?? null,
@@ -52,7 +53,7 @@ export function normalizeClosedPosition(raw) {
   const realizedPnl = raw.realizedPnl ?? null;
   const returned = invested != null && realizedPnl != null ? round2(invested + realizedPnl) : null;
   return {
-    id: `${raw.conditionId || raw.asset}-closed-${raw.timestamp ?? ""}`,
+    id: `${raw.conditionId || raw.asset}-${raw.asset || "closed"}-closed-${raw.timestamp ?? ""}`,
     market: raw.title || "Unknown market",
     category: raw.category ?? null,
     tag: shortTag(raw.slug, raw.title),
@@ -93,7 +94,9 @@ function activityTypeLabel(type, side) {
 /** One entry from GET /activity */
 export function normalizeActivity(raw) {
   return {
-    id: raw.transactionHash ? `${raw.transactionHash}-${raw.asset || ""}` : `${raw.conditionId}-${raw.timestamp}`,
+    id: raw.transactionHash
+      ? `${raw.transactionHash}-${raw.asset || raw.conditionId || "event"}-${raw.side || "x"}-${raw.timestamp ?? ""}`
+      : `${raw.conditionId || "event"}-${raw.timestamp}-${raw.side || "x"}`,
     type: activityTypeLabel(raw.type, raw.side),
     rawType: raw.type,
     market: raw.title || "Unknown market",
@@ -109,47 +112,95 @@ export function normalizeActivity(raw) {
 }
 
 /**
+ * Sums only the values that genuinely exist; returns null when nothing does.
+ * This keeps a strict "0 vs N/A" discipline: an account with zero winning
+ * positions reports 0, while an account whose PnL fields are missing reports
+ * N/A instead of a fabricated zero.
+ */
+function sumNotNull(values) {
+  const nums = values.filter((v) => v != null && Number.isFinite(v));
+  return nums.length > 0 ? nums.reduce((a, b) => a + b, 0) : null;
+}
+
+/**
  * Derives whatever overview statistics can genuinely be computed from the
  * fetched data. Any input list/value that is missing simply leaves the
  * corresponding stat as null instead of being estimated.
  *
  * When a canonical account record carries authoritative stats (e.g. gamma
- * profile fields), those are preferred so the profile never contradicts the
- * leaderboard or comparison surfaces.
+ * profile fields or the leaderboard entry), those are preferred so the
+ * profile never contradicts the leaderboard or comparison surfaces.
  */
 export function deriveStats({ positions, closedPositions, value, traded, rankEntry, publicProfile, account }) {
   const canonical = account || publicProfile || null;
   const hasPositions = Array.isArray(positions);
   const hasClosed = Array.isArray(closedPositions);
 
-  const derivedUnrealizedPnl = hasPositions ? positions.reduce((sum, p) => sum + (p.pnl ?? 0), 0) : null;
-  const derivedRealizedPnl = hasClosed ? closedPositions.reduce((sum, p) => sum + (p.pnl ?? 0), 0) : null;
+  const derivedUnrealizedPnl = hasPositions ? sumNotNull(positions.map((p) => p.pnl)) : null;
+  const derivedRealizedPnl = hasClosed ? sumNotNull(closedPositions.map((p) => p.pnl)) : null;
 
   const unrealizedPnl = canonical?.unrealizedPnl ?? derivedUnrealizedPnl;
   const realizedPnl = canonical?.realizedPnl ?? derivedRealizedPnl;
   const pnl = canonical?.pnl ?? (unrealizedPnl != null || realizedPnl != null ? (unrealizedPnl ?? 0) + (realizedPnl ?? 0) : null);
 
-  const investedBasis =
-    (hasPositions ? positions.reduce((sum, p) => sum + (p.invested ?? 0), 0) : 0) +
-    (hasClosed ? closedPositions.reduce((sum, p) => sum + (p.invested ?? 0), 0) : 0);
+  // Invested basis only counts records that carry a real cost, so pnlPercent
+  // is never skewed by positions with missing numbers.
+  const investedRecords = [];
+  if (hasPositions) investedRecords.push(...positions.filter((p) => p.invested != null));
+  if (hasClosed) investedRecords.push(...closedPositions.filter((p) => p.invested != null));
+  const investedBasis = sumNotNull(investedRecords.map((p) => p.invested)) ?? 0;
   const pnlPercent = pnl != null && investedBasis > 0 ? pnl / investedBasis : null;
 
-  const openPositionValue = hasPositions ? positions.reduce((sum, p) => sum + (p.currentValue ?? 0), 0) : null;
+  const openPositionValue = hasPositions ? sumNotNull(positions.map((p) => p.currentValue)) : null;
   const portfolioValue = canonical?.portfolioValue ?? value ?? openPositionValue;
 
-  const derivedWins = hasClosed ? closedPositions.filter((p) => (p.pnl ?? 0) >= 0).length : null;
-  const derivedWinRate = hasClosed && closedPositions.length > 0 ? derivedWins / closedPositions.length : null;
+  // Win/loss analytics over resolved positions with a known PnL. Zero wins or
+  // zero losses are legitimate numbers; missing PnL fields leave them as N/A.
+  let wins = null;
+  let losses = null;
+  let avgWin = null;
+  let avgLoss = null;
+  let largestWin = null;
+  let largestLoss = null;
+  if (hasClosed) {
+    const known = closedPositions.filter((p) => p.pnl != null && Number.isFinite(p.pnl));
+    if (known.length > 0) {
+      const winPnl = known.filter((p) => p.pnl >= 0).map((p) => p.pnl);
+      const lossPnl = known.filter((p) => p.pnl < 0).map((p) => p.pnl);
+      wins = winPnl.length;
+      losses = lossPnl.length;
+      const winSum = sumNotNull(winPnl);
+      const lossSum = sumNotNull(lossPnl);
+      avgWin = wins > 0 && winSum != null ? winSum / wins : null;
+      avgLoss = losses > 0 && lossSum != null ? lossSum / losses : null;
+      largestWin = wins > 0 ? Math.max(...winPnl) : null;
+      largestLoss = losses > 0 ? Math.min(...lossPnl) : null;
+    }
+  }
+  const derivedWinRate = wins != null || losses != null ? wins / (wins + losses) : null;
   const winRate = canonical?.winRate ?? derivedWinRate;
 
-  const volume = canonical?.volume ?? publicProfile?.volume ?? rankEntry?.volume ?? null;
+  const avgPositionSize = investedRecords.length > 0 && investedBasis != null ? investedBasis / investedRecords.length : null;
+
+  // Volume prefers the leaderboard's raw trading volume over gamma's
+  // weightedVolume, which can read 0 (or far smaller) for active accounts.
+  const volume = rankEntry?.volume ?? canonical?.volume ?? publicProfile?.volume ?? null;
 
   return {
     portfolioValue,
     pnl,
+    totalPnl: pnl,
     pnlPercent,
     volume,
     marketsTraded: canonical?.markets ?? traded ?? null,
     winRate,
+    wins,
+    losses,
+    avgWin,
+    avgLoss,
+    largestWin,
+    largestLoss,
+    avgPositionSize,
     openPositionsCount: canonical?.openPositions ?? (hasPositions ? positions.length : null),
     activityCount: canonical?.activityCount ?? null,
     resolvedPositionsCount: hasClosed ? closedPositions.length : null,

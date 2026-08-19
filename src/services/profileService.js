@@ -16,6 +16,7 @@ const BUNDLE_TTL = 45_000;
 const PERF_TTL = 60_000;
 
 const VALID_RANGES = new Set(["1D", "1W", "1M", "3M", "ALL"]);
+const VALID_METRICS = new Set(["performance", "volume"]);
 
 async function settle(promise) {
   try {
@@ -51,7 +52,13 @@ export async function getAccountProfile(identifier, { signal } = {}) {
     settle(getAccountByAddress(address, { signal })),
   ]);
 
-  const enrichedAccount = mergeAccounts(mergeAccounts(account, publicProfileAccount), rankEntry);
+  // Merge precedence: the leaderboard row is authoritative for volume, PnL
+  // and rank (gamma's weightedVolume can be 0 - or far smaller - for
+  // accounts that are active on the leaderboard), then the identity/search
+  // account, then the gamma profile to fill in fields the leaderboard lacks
+  // (bio, tier, avatar). mergeAccounts keeps the first non-null value, so the
+  // leaderboard must be merged first.
+  const enrichedAccount = mergeAccounts(mergeAccounts(rankEntry, account), publicProfileAccount);
 
   const positions = (rawPositions || []).map(normalizePosition);
   const resolvedPositions = (rawClosed || []).map(normalizeClosedPosition);
@@ -101,19 +108,21 @@ export async function getAccountProfile(identifier, { signal } = {}) {
 
 /**
  * Fetches one timeframe's performance series for an account, on demand, and
- * caches it independently. Each range resolves through the active provider,
- * so every timeframe can supply its own historical dataset.
+ * caches it independently per range AND metric. Each combination resolves
+ * through the active provider, so every timeframe can supply its own
+ * historical dataset.
  */
-export async function getPerformanceRange(identifier, { range = "1M", signal } = {}) {
+export async function getPerformanceRange(identifier, { range = "1M", metric = "performance", signal } = {}) {
   const rangeKey = VALID_RANGES.has(range) ? range : "1M";
+  const metricKey = VALID_METRICS.has(metric) ? metric : "performance";
   const account = await resolveIdentifier(identifier, { signal });
   const address = account.address;
 
-  const cacheKey = `profile:${address}:perf:${rangeKey}`;
+  const cacheKey = `profile:${address}:perf:${rangeKey}:${metricKey}`;
   const cached = cacheGet(cacheKey);
   if (cached) return cached;
 
-  const data = await provider.getPerformanceRange(address, { range: rangeKey, signal });
+  const data = await provider.getPerformanceRange(address, { range: rangeKey, metric: metricKey, signal });
   cacheSet(cacheKey, data, PERF_TTL);
   return data;
 }
