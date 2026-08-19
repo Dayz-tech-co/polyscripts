@@ -281,49 +281,103 @@ export async function getTraded(address) {
 // a per-range share of the account's lifetime volume (or realized PnL for
 // the performance metric). Ranges are never sliced from one shared array,
 // so 1D/1W/1M/3M/ALL always differ.
-const PERFORMANCE_RANGES = {
-  "1D": { days: 1, points: 24, total: 0.35, inRange: [0.03, 0.08] },
-  "1W": { days: 7, points: 14, total: 0.5, inRange: [0.12, 0.2] },
-  "1M": { days: 30, points: 24, total: 0.7, inRange: [0.3, 0.45] },
-  "3M": { days: 90, points: 26, total: 0.9, inRange: [0.6, 0.75] },
-  ALL: { days: 180, points: 32, total: 1, inRange: [1, 1] },
+const PERF_RANGE_MS = {
+  "1D": 24 * 60 * 60 * 1000,
+  "1W": 7 * 24 * 60 * 60 * 1000,
+  "1M": 30 * 24 * 60 * 60 * 1000,
+  "3M": 90 * 24 * 60 * 60 * 1000,
+  ALL: null,
 };
 
 export async function getPerformanceRange(address, { range = "ALL", metric = "performance" } = {}) {
-  const account = demoProvider.getAccountByAddress(address);
-  if (!account) return null;
+  const rangeKey = PERF_RANGE_MS[range] !== undefined ? range : "ALL";
+  const metricKey = metric === "volume" ? "volume" : "performance";
+  const windowMs = PERF_RANGE_MS[rangeKey];
 
-  const cfg = PERFORMANCE_RANGES[range] || PERFORMANCE_RANGES.ALL;
-  const rangeKey = PERFORMANCE_RANGES[range] ? range : "ALL";
-  const rnd = mulberry32(hashString(address + "perf:" + range + ":" + metric));
-  const lifetime = metric === "volume" ? account.volume : account.realizedPnl;
+  const raw = metricKey === "volume" ? await getActivity(address) : await getClosedPositions(address);
+  const entries = (raw || [])
+    .map((a) => ({
+      t: (a.timestamp ?? 0) * 1000,
+      v: metricKey === "volume" ? (a.usdcSize ?? 0) : (a.realizedPnl ?? 0),
+    }))
+    .filter((e) => e.t > 0 && Number.isFinite(e.v) && e.v !== 0)
+    .sort((a, b) => a.t - b.t);
 
-  // Fixed cumulative total per range keeps the headline monotonic
-  // (1D < 1W < 1M < 3M < ALL); the amount realized within the window and
-  // the trajectory are seeded independently per range so no two curves match.
-  const total = round2(lifetime * cfg.total);
-  const inRangeFactor = range === "ALL" ? 1 : cfg.inRange[0] + rnd() * (cfg.inRange[1] - cfg.inRange[0]);
-  const inRange = round2(Math.abs(total) * inRangeFactor);
-  const baseline = round2(total - inRange);
-
-  const now = Date.now();
-  const windowMs = cfg.days * DAY;
-  const stepMs = windowMs / cfg.points;
-  const startTime = now - windowMs;
-
-  let acc = baseline;
-  const points = [];
-  for (let i = 0; i < cfg.points; i++) {
-    const step = i === cfg.points - 1 ? inRange - (acc - baseline) : inRange * (0.02 + rnd() * 0.16);
-    acc = round2(acc + step);
-    points.push({ date: new Date(startTime + (i + 1) * stepMs).toISOString(), value: acc });
+  if (entries.length === 0) {
+    if (import.meta.env.DEV) {
+      console.log(`[Timeframe Analytics] range: ${rangeKey}, metric: ${metricKey}`, {
+        selectedRange: rangeKey,
+        earliestTimestamp: null,
+        latestTimestamp: null,
+        rawRecordCount: (raw || []).length,
+        resolvedPositionCount: 0,
+        startValue: null,
+        endValue: null,
+        calculatedPnL: null,
+      });
+    }
+    return null;
   }
 
-  const startValue = points[0].value;
-  const endValue = points[points.length - 1].value;
+  const now = Date.now();
+  const cutoff = windowMs ? now - windowMs : entries[0].t;
+  const inWindow = entries.filter((e) => e.t >= cutoff);
+
+  if (inWindow.length === 0) {
+    if (import.meta.env.DEV) {
+      console.log(`[Timeframe Analytics] range: ${rangeKey}, metric: ${metricKey}`, {
+        selectedRange: rangeKey,
+        earliestTimestamp: null,
+        latestTimestamp: null,
+        rawRecordCount: (raw || []).length,
+        resolvedPositionCount: 0,
+        startValue: null,
+        endValue: null,
+        calculatedPnL: null,
+      });
+    }
+    return null;
+  }
+
+  const baseline = entries.reduce((sum, e) => sum + (e.t < cutoff ? e.v : 0), 0);
+
+  const series = [{ t: cutoff, value: round2(baseline) }];
+  let acc = baseline;
+  for (const e of inWindow) {
+    acc += e.v;
+    series.push({ t: e.t, value: round2(acc) });
+  }
+  const endValue = round2(acc);
+  if (series[series.length - 1].t < now) {
+    series.push({ t: now, value: endValue });
+  }
+
+  const points = series.map((p) => ({
+    date: new Date(p.t).toISOString(),
+    value: p.value,
+  }));
+
+  const startValue = series[0].value;
+  const total = endValue;
   const change = round2(endValue - startValue);
   const changePct = startValue !== 0 ? change / Math.abs(startValue) : null;
-  return { points, total: endValue, change, changePct, startValue, endValue, metric, range: rangeKey };
+
+  if (import.meta.env.DEV) {
+    const earliestTs = inWindow.length > 0 ? new Date(inWindow[0].t).toISOString() : null;
+    const latestTs = inWindow.length > 0 ? new Date(inWindow[inWindow.length - 1].t).toISOString() : null;
+    console.log(`[Timeframe Analytics] range: ${rangeKey}, metric: ${metricKey}`, {
+      selectedRange: rangeKey,
+      earliestTimestamp: earliestTs,
+      latestTimestamp: latestTs,
+      rawRecordCount: (raw || []).length,
+      resolvedPositionCount: inWindow.length,
+      startValue,
+      endValue,
+      calculatedPnL: change,
+    });
+  }
+
+  return { points, total, change, changePct, startValue, endValue, metric: metricKey, range: rangeKey };
 }
 
 const DEMO_MARKETS = [

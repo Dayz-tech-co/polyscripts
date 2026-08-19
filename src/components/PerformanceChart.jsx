@@ -73,11 +73,13 @@ function buildXTicks(points) {
   return ticks;
 }
 
-function formatAxisTick(ms, range) {
+function formatAxisTick(ms, range, spanMs) {
   const d = new Date(ms);
-  if (range === "1D") return d.toLocaleTimeString("en-US", { hour: "numeric" });
-  if (range === "1W") return d.toLocaleDateString("en-US", { weekday: "short" });
-  if (range === "1M" || range === "3M") return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const isIntraday = (spanMs != null && spanMs > 0 && spanMs < 24 * 60 * 60 * 1000) || range === "1D";
+  if (isIntraday) return d.toLocaleTimeString("en-US", { hour: "numeric" });
+  if (range === "1W" && spanMs != null && spanMs <= 7 * 24 * 60 * 60 * 1000) {
+    return d.toLocaleDateString("en-US", { weekday: "short" });
+  }
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
@@ -207,6 +209,13 @@ export default function PerformanceChart({ data, metric = "performance", range =
     setHoverIndex(nearest);
   }
 
+  const spanMs = useMemo(() => {
+    if (!points || points.length < 2) return 0;
+    const start = new Date(points[0].date).getTime();
+    const end = new Date(points[points.length - 1].date).getTime();
+    return Number.isFinite(start) && Number.isFinite(end) ? end - start : 0;
+  }, [points]);
+
   if (!data || data.length === 0) {
     return (
       <div className="chart-empty">
@@ -299,7 +308,7 @@ export default function PerformanceChart({ data, metric = "performance", range =
             className={`chart-axis-tick ${tick.first ? "is-first" : ""} ${tick.last ? "is-last" : ""}`}
             style={{ left: `${tick.x}%` }}
           >
-            {formatAxisTick(tick.t, range)}
+            {formatAxisTick(tick.t, range, spanMs)}
           </span>
         ))}
       </div>

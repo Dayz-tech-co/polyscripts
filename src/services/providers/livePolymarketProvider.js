@@ -164,14 +164,28 @@ async function getCachedActivity(address, { signal } = {}) {
   return events;
 }
 
+const CLOSED_PAGE_SIZE = 50;
+
+async function fetchClosedHistory(address, { maxEvents = MAX_PERF_EVENTS, signal } = {}) {
+  const out = [];
+  let offset = 0;
+  while (out.length < maxEvents) {
+    const url = `${DATA_BASE}/closed-positions?user=${encodeURIComponent(address)}&limit=${CLOSED_PAGE_SIZE}&offset=${offset}&sortBy=TIMESTAMP&sortDirection=DESC`;
+    const data = await getJson(url, { signal });
+    if (!Array.isArray(data) || data.length === 0) break;
+    out.push(...data);
+    if (data.length < CLOSED_PAGE_SIZE) break;
+    offset += CLOSED_PAGE_SIZE;
+  }
+  return out.slice(0, maxEvents);
+}
+
 async function getCachedClosed(address, { signal } = {}) {
   const hit = closedCache.get(address);
   if (hit && Date.now() - hit.fetchedAt < ACTIVITY_CACHE_TTL && hit.events.length > 0) {
     return hit.events;
   }
-  const url = `${DATA_BASE}/closed-positions?user=${encodeURIComponent(address)}&limit=50&sortBy=TIMESTAMP&sortDirection=DESC`;
-  const data = await getJson(url, { signal });
-  const events = Array.isArray(data) ? data : [];
+  const events = await fetchClosedHistory(address, { signal });
   if (events.length > 0) closedCache.set(address, { events, fetchedAt: Date.now() });
   return events;
 }
@@ -193,7 +207,7 @@ function volumeContribution(event) {
  *     realized PnL (GET /closed-positions). Each resolved position adds its
  *     realizedPnl at its resolution time, so the cumulative curve rises with
  *     wins and falls with losses and never includes still-open positions.
- *     The endpoint returns the most recent 50 resolved positions; the chart
+ *     The endpoint returns bounded resolved positions; the chart
  *     reflects exactly that window and never invents history.
  *
  *   volume (trading volume) - cumulative notional traded from the activity
@@ -216,13 +230,41 @@ export async function getPerformanceRange(address, { range = "ALL", metric = "pe
     .filter((e) => e.t > 0 && Number.isFinite(e.v) && e.v !== 0)
     .sort((a, b) => a.t - b.t);
 
-  if (entries.length === 0) return null;
+  if (entries.length === 0) {
+    if (import.meta.env.DEV) {
+      console.log(`[Timeframe Analytics] range: ${rangeKey}, metric: ${metricKey}`, {
+        selectedRange: rangeKey,
+        earliestTimestamp: null,
+        latestTimestamp: null,
+        rawRecordCount: (raw || []).length,
+        resolvedPositionCount: 0,
+        startValue: null,
+        endValue: null,
+        calculatedPnL: null,
+      });
+    }
+    return null;
+  }
 
   const now = Date.now();
   const cutoff = windowMs ? now - windowMs : entries[0].t;
   const inWindow = entries.filter((e) => e.t >= cutoff);
 
-  if (inWindow.length === 0) return null;
+  if (inWindow.length === 0) {
+    if (import.meta.env.DEV) {
+      console.log(`[Timeframe Analytics] range: ${rangeKey}, metric: ${metricKey}`, {
+        selectedRange: rangeKey,
+        earliestTimestamp: null,
+        latestTimestamp: null,
+        rawRecordCount: (raw || []).length,
+        resolvedPositionCount: 0,
+        startValue: null,
+        endValue: null,
+        calculatedPnL: null,
+      });
+    }
+    return null;
+  }
 
   const baseline = entries.reduce((sum, e) => sum + (e.t < cutoff ? e.v : 0), 0);
 
@@ -250,6 +292,21 @@ export async function getPerformanceRange(address, { range = "ALL", metric = "pe
   const total = endValue;
   const change = round2(endValue - startValue);
   const changePct = startValue !== 0 ? change / Math.abs(startValue) : null;
+
+  if (import.meta.env.DEV) {
+    const earliestTs = inWindow.length > 0 ? new Date(inWindow[0].t).toISOString() : null;
+    const latestTs = inWindow.length > 0 ? new Date(inWindow[inWindow.length - 1].t).toISOString() : null;
+    console.log(`[Timeframe Analytics] range: ${rangeKey}, metric: ${metricKey}`, {
+      selectedRange: rangeKey,
+      earliestTimestamp: earliestTs,
+      latestTimestamp: latestTs,
+      rawRecordCount: (raw || []).length,
+      resolvedPositionCount: inWindow.length,
+      startValue,
+      endValue,
+      calculatedPnL: change,
+    });
+  }
 
   return { points, total, change, changePct, startValue, endValue, metric: metricKey, range: rangeKey };
 }
