@@ -943,6 +943,33 @@ h3 {
   gap: var(--space-6);
 }
 
+.performance-card.is-loading .chart-wrap {
+  opacity: 0.45;
+  transition: opacity var(--t-slow) var(--ease);
+}
+
+.chart-area {
+  position: relative;
+}
+
+.chart-loading-badge {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--bg-card-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-pop);
+  z-index: 6;
+}
+
 .performance-header {
   display: flex;
   align-items: flex-start;

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { LoaderCircle } from "lucide-react";
 import PerformanceChart from "./PerformanceChart";
 import { ChartSkeleton } from "./Skeleton";
 import { usePerformanceRange } from "../hooks/usePerformanceRange";
@@ -10,18 +11,27 @@ const RANGES = ["1D", "1W", "1M", "3M", "ALL"];
  * Cumulative trading volume for the selected timeframe. Each range is
  * fetched on demand through the active provider, so the headline value,
  * change, percentage and plotted series all come from that range's own
- * dataset. While a range is loading the previous series is withheld and a
- * subtle skeleton is shown in its place.
+ * dataset. While a new range is loading the previous chart stays visible
+ * (subtly dimmed) and the curve morphs smoothly into the new dataset once
+ * it arrives.
  */
 export default function PerformanceCard({ identifier }) {
   const [range, setRange] = useState("1M");
   const { status, data } = usePerformanceRange(identifier, range);
+  const [lastData, setLastData] = useState(null);
 
-  const loading = status === "loading" || !identifier;
-  const perf = status === "ready" && data ? data : null;
+  useEffect(() => {
+    if (status === "ready" && data) setLastData(data);
+  }, [status, data]);
+
+  const hasIdentifier = Boolean(identifier);
+  const loading = status === "loading" || !hasIdentifier;
+  const perf = status === "ready" && data ? data : lastData;
+  const readyForRange = status === "ready" && data && data.points && data.points.length > 0;
+  const hasChart = perf && perf.points && perf.points.length > 0;
 
   return (
-    <div className="card performance-card">
+    <div className={`card performance-card ${loading ? "is-loading" : ""}`}>
       <div className="performance-header">
         <div>
           <span className="card-label">Trading Activity</span>
@@ -59,13 +69,25 @@ export default function PerformanceCard({ identifier }) {
         </div>
       </div>
 
-      {loading ? (
-        <ChartSkeleton />
-      ) : perf && perf.points && perf.points.length > 0 ? (
-        <PerformanceChart data={perf.points} volumeMode />
-      ) : (
-        <div className="chart-empty">No trading activity in this period</div>
-      )}
+      <div className="chart-area">
+        {!hasIdentifier ? (
+          <ChartSkeleton />
+        ) : hasChart ? (
+          <>
+            <PerformanceChart data={readyForRange ? data.points : perf.points} volumeMode />
+            {loading && (
+              <div className="chart-loading-badge" role="status">
+                <LoaderCircle size={13} className="spin" aria-hidden="true" />
+                <span>Loading {range}…</span>
+              </div>
+            )}
+          </>
+        ) : loading ? (
+          <ChartSkeleton />
+        ) : (
+          <div className="chart-empty">No trading activity in this period</div>
+        )}
+      </div>
     </div>
   );
 }

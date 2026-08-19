@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatCurrency, formatSignedCurrency, formatPercentage, formatDate, formatDateShort } from "../utils/formatters";
 import { getValueState } from "../utils/states";
 
@@ -7,6 +7,13 @@ const HEIGHT = 220;
 const PAD_TOP = 14;
 const PAD_BOTTOM = 24;
 const PAD_X = 4;
+const USABLE_WIDTH = WIDTH - PAD_X * 2;
+const USABLE_HEIGHT = HEIGHT - PAD_TOP - PAD_BOTTOM;
+
+// Morph resolution: both series are resampled to this many points so curves
+// with different point counts can be interpolated against each other.
+const MORPH_SAMPLES = 72;
+const MORPH_MS = 420;
 
 const PALETTE = {
   positive: { line: "#2FB57E", soft: "#34C98E" },
@@ -31,17 +38,40 @@ function buildSmoothPath(points) {
   return d;
 }
 
+function sampleAt(pts, t) {
+  if (pts.length === 0) return { y: 0, value: 0, date: null };
+  if (pts.length === 1) return pts[0];
+  const pos = t * (pts.length - 1);
+  const i0 = Math.floor(pos);
+  const i1 = Math.min(pts.length - 1, i0 + 1);
+  const frac = pos - i0;
+  return {
+    y: pts[i0].y + (pts[i1].y - pts[i0].y) * frac,
+    value: pts[i0].value + (pts[i1].value - pts[i0].value) * frac,
+    date: pts[i1].date,
+  };
+}
+
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
 /**
  * Analytics line chart. In PnL mode the line/area follows the net change
  * (positive green, negative red, zero neutral). In volume mode it uses a
  * restrained neutral accent - volume is not a financial state, so it never
- * borrows the positive/negative colors.
+ * borrows the positive/negative colors. When the dataset changes (e.g. a
+ * new timeframe is selected) the previous curve morphs smoothly into the
+ * new one instead of swapping instantly.
  */
 export default function PerformanceChart({ data, volumeMode = false }) {
   const [hoverIndex, setHoverIndex] = useState(null);
+  const [displayPoints, setDisplayPoints] = useState(null);
   const svgRef = useRef(null);
+  const rafRef = useRef(null);
+  const committedRef = useRef(null);
 
-  const { points, gridLines, tone } = useMemo(() => {
+  const target = useMemo(() => {
     if (!data || data.length === 0) {
       return { points: [], gridLines: [], tone: "neutral" };
     }
@@ -53,23 +83,66 @@ export default function PerformanceChart({ data, volumeMode = false }) {
     const paddedMax = max + range * 0.12;
     const paddedRange = paddedMax - paddedMin || 1;
 
-    const usableWidth = WIDTH - PAD_X * 2;
-    const usableHeight = HEIGHT - PAD_TOP - PAD_BOTTOM;
-
     const pts = data.map((d, i) => ({
-      x: PAD_X + (i / (data.length - 1 || 1)) * usableWidth,
-      y: PAD_TOP + usableHeight - ((d.value - paddedMin) / paddedRange) * usableHeight,
+      x: PAD_X + (i / (data.length - 1 || 1)) * USABLE_WIDTH,
+      y: PAD_TOP + USABLE_HEIGHT - ((d.value - paddedMin) / paddedRange) * USABLE_HEIGHT,
       value: d.value,
       date: d.date,
     }));
 
-    const lines = [0, 0.25, 0.5, 0.75, 1].map((t) => PAD_TOP + t * usableHeight);
+    const lines = [0, 0.25, 0.5, 0.75, 1].map((t) => PAD_TOP + t * USABLE_HEIGHT);
 
     const change = data[data.length - 1].value - data[0].value;
     const state = volumeMode ? "neutral" : getValueState(change);
 
     return { points: pts, gridLines: lines, tone: state };
   }, [data, volumeMode]);
+
+  useEffect(() => {
+    const from = committedRef.current;
+    const to = target.points;
+
+    if (!from || from.length < 2 || to.length < 2) {
+      setDisplayPoints(to);
+      committedRef.current = to;
+      return undefined;
+    }
+
+    cancelAnimationFrame(rafRef.current);
+    setHoverIndex(null);
+
+    const start = performance.now();
+    const frame = (now) => {
+      const progress = Math.min(1, (now - start) / MORPH_MS);
+      const eased = easeInOutCubic(progress);
+      const next = [];
+      for (let i = 0; i < MORPH_SAMPLES; i++) {
+        const t = i / (MORPH_SAMPLES - 1);
+        const a = sampleAt(from, t);
+        const b = sampleAt(to, t);
+        next.push({
+          x: PAD_X + t * USABLE_WIDTH,
+          y: a.y + (b.y - a.y) * eased,
+          value: a.value + (b.value - a.value) * eased,
+          date: b.date,
+        });
+      }
+      setDisplayPoints(next);
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(frame);
+      } else {
+        committedRef.current = to;
+      }
+    };
+    rafRef.current = requestAnimationFrame(frame);
+
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [target.points]);
+
+  useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
+
+  const points = displayPoints ?? target.points;
+  const { gridLines, tone } = target;
 
   const linePath = useMemo(() => buildSmoothPath(points), [points]);
   const areaPath = useMemo(() => {
@@ -105,7 +178,7 @@ export default function PerformanceChart({ data, volumeMode = false }) {
     return <div className="chart-empty">No trading activity in this period</div>;
   }
 
-  const activePoint = hoverIndex !== null ? points[hoverIndex] : null;
+  const activePoint = hoverIndex !== null && points.length > 0 ? points[hoverIndex] : null;
   const firstValue = points[0]?.value ?? 0;
   const hoverChange = activePoint ? activePoint.value - firstValue : 0;
   const hoverChangePct = firstValue !== 0 ? hoverChange / firstValue : null;
