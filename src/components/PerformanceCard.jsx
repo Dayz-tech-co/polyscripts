@@ -4,7 +4,7 @@ import PerformanceChart from "./PerformanceChart";
 import { ChartSkeleton } from "./Skeleton";
 import { usePerformanceRange } from "../hooks/usePerformanceRange";
 import { getPerformanceRange } from "../services/profileService";
-import { formatCompactCurrency, formatCurrency, formatPercentage, formatSignedCurrency } from "../utils/formatters";
+import { formatCompactCurrency, formatCurrency, formatSignedCurrency } from "../utils/formatters";
 import { getToneClass } from "../utils/states";
 
 const RANGES = ["1D", "1W", "1M", "3M", "ALL"];
@@ -131,8 +131,6 @@ export default function PerformanceCard({ identifier }) {
               </span>
             ) : isVolume ? (
               <span className="performance-change-pct">Cumulative volume traded</span>
-            ) : perf.changePct != null ? (
-              <span className="performance-change-pct">{formatPercentage(perf.changePct, { signed: true })} this period</span>
             ) : (
               <span className="performance-change-pct">Realized PnL this period</span>
             )}

@@ -360,7 +360,7 @@ export async function getPerformanceRange(address, { range = "ALL", metric = "pe
   const startValue = series[0].value;
   const total = endValue;
   const change = round2(endValue - startValue);
-  const changePct = startValue !== 0 ? change / Math.abs(startValue) : null;
+  const changePct = null;
 
   if (import.meta.env.DEV) {
     const earliestTs = inWindow.length > 0 ? new Date(inWindow[0].t).toISOString() : null;
