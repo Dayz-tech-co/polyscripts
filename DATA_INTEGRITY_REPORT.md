@@ -19,7 +19,7 @@ Every number shown on the profile surfaces is derived from real Polymarket publi
 5. **Summary strip = same source as chart.** 1D/7D/30D/90D call the identical provider function with the same ranges/metric, so every number in the strip is consistent with the plotted curve. kch123 90D = −$57,596.25 matches the 3M window computation.
 6. **Headline = range change (end − start), not a total.** For `ALL` this equals the cumulative curve value; for 1D/1W/1M/3M it is the delta within that window, so it never presents a truncated window's total as all-time.
 7. **`changePct` is null when the baseline is zero** (`startValue !== 0` guard) — no division by zero, no invented percentage. The UI then shows "Realized PnL this period" instead of a fabricated number.
-8. **LTTB downsampling keeps real points.** Every plotted point is a real event point; nothing is averaged or interpolated into the output. A bounds bug (average-bucket end not clamped → reading `undefined.t`) crashed large volume series and was fixed (`src/utils/downsample.js`).
+8. **Full-density series, no downsampling.** The chart plots every real event point in the window (≤50 closed positions, ≤2000 activity events) and never aggregates, so all genuine small movements, peaks, dips, jumps and short-term volatility are preserved. (The LTTB routine used earlier, and its bounds-overrun fix, are no longer on the chart path.)
 9. **The chart never fabricates history beyond the API window.** Closed-positions returns at most 50 (it ignores larger `limit`, no pagination); the chart reflects exactly those 50. Activity paginates 500/page up to 2000 events; the chart reflects exactly the fetched window. No extrapolation.
 
 ### Honesty of displayed values

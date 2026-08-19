@@ -15,7 +15,6 @@
 // app's internal model happens in src/adapters.
 
 import { ProviderError } from "../errors";
-import { lttbDownsample } from "../../utils/downsample";
 
 const GAMMA_BASE = "https://gamma-api.polymarket.com";
 const DATA_BASE = "https://data-api.polymarket.com";
@@ -117,11 +116,11 @@ const PERF_RANGE_MS = {
   ALL: null,
 };
 
-// Target point counts per range. The chart never fabricates extra points -
-// if a window contains fewer real events than the target, only those events
-// are plotted. LTTB keeps the first/last points and the peaks/troughs.
-const PERF_POINTS = { "1D": 48, "1W": 42, "1M": 48, "3M": 48, ALL: 60 };
-
+// Every real event in the window is returned as its own point so the chart
+// preserves genuine small movements, peaks, dips and short-term volatility
+// instead of aggregating them. The activity feed is capped at MAX_PERF_EVENTS
+// (2000) and closed positions at 50, so even the densest window stays a
+// manageable polyline.
 const VALID_PERF_METRICS = new Set(["performance", "volume"]);
 
 // The activity endpoint returns at most 500 events per page and the
@@ -200,15 +199,13 @@ function volumeContribution(event) {
  *   volume (trading volume) - cumulative notional traded from the activity
  *     feed (GET /activity), monotonic up/flat by construction.
  *
- * Each range filters a different window, uses a different target point
- * count, and reports its own start/end value, change and percentage - so no
- * two ranges ever share the same dataset.
+ * Each range filters a different window and reports its own start/end value,
+ * change and percentage - so no two ranges ever share the same dataset.
  */
 export async function getPerformanceRange(address, { range = "ALL", metric = "performance", signal } = {}) {
   const rangeKey = PERF_RANGE_MS[range] !== undefined ? range : "ALL";
   const metricKey = VALID_PERF_METRICS.has(metric) ? metric : "performance";
   const windowMs = PERF_RANGE_MS[rangeKey];
-  const pointsTarget = PERF_POINTS[rangeKey] || PERF_POINTS.ALL;
 
   const raw = metricKey === "volume" ? await getCachedActivity(address, { signal }) : await getCachedClosed(address, { signal });
   const entries = (raw || [])
@@ -229,9 +226,10 @@ export async function getPerformanceRange(address, { range = "ALL", metric = "pe
 
   const baseline = entries.reduce((sum, e) => sum + (e.t < cutoff ? e.v : 0), 0);
 
-  // Cumulative series: the value at the window start, then one point per
-  // real event, then a flat continuation to "now" so the curve reaches the
-  // right edge without inventing events.
+  // Full-density cumulative series: the value at the window start, then one
+  // real point per event (so every genuine movement is preserved), then a
+  // flat continuation to "now" so the curve reaches the right edge without
+  // inventing events.
   const series = [{ t: cutoff, value: round2(baseline) }];
   let acc = baseline;
   for (const e of inWindow) {
@@ -243,7 +241,7 @@ export async function getPerformanceRange(address, { range = "ALL", metric = "pe
     series.push({ t: now, value: endValue });
   }
 
-  const points = lttbDownsample(series, pointsTarget).map((p) => ({
+  const points = series.map((p) => ({
     date: new Date(p.t).toISOString(),
     value: p.value,
   }));
