@@ -113,9 +113,9 @@ export function normalizeActivity(raw) {
  * fetched data. Any input list/value that is missing simply leaves the
  * corresponding stat as null instead of being estimated.
  *
- * When a canonical account record carries authoritative stats (demo data,
- * or a future provider that exposes them directly), those are preferred so
- * the profile never contradicts the leaderboard or comparison surfaces.
+ * When a canonical account record carries authoritative stats (e.g. gamma
+ * profile fields), those are preferred so the profile never contradicts the
+ * leaderboard or comparison surfaces.
  */
 export function deriveStats({ positions, closedPositions, value, traded, rankEntry, publicProfile, account }) {
   const canonical = account || publicProfile || null;

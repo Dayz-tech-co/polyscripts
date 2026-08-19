@@ -118,8 +118,28 @@ const PERF_RANGE_MS = {
 
 const PERF_BUCKETS = { "1D": 24, "1W": 14, "1M": 24, "3M": 26, ALL: 36 };
 
+// The activity endpoint returns at most 500 events per page. Paginate a
+// bounded number of pages so the performance chart can genuinely span weeks
+// or months for accounts that trade less often than every few minutes.
+const ACTIVITY_PAGE_SIZE = 500;
+const MAX_PERF_EVENTS = 2000;
+
 function round2(value) {
   return Math.round(value * 100) / 100;
+}
+
+async function fetchActivityHistory(address, { maxEvents = MAX_PERF_EVENTS, signal } = {}) {
+  const out = [];
+  let offset = 0;
+  while (out.length < maxEvents) {
+    const url = `${DATA_BASE}/activity?user=${encodeURIComponent(address)}&limit=${ACTIVITY_PAGE_SIZE}&offset=${offset}&sortBy=TIMESTAMP&sortDirection=DESC`;
+    const data = await getJson(url, { signal });
+    if (!Array.isArray(data) || data.length === 0) break;
+    out.push(...data);
+    if (data.length < ACTIVITY_PAGE_SIZE) break;
+    offset += ACTIVITY_PAGE_SIZE;
+  }
+  return out.slice(0, maxEvents);
 }
 
 /**
@@ -132,7 +152,7 @@ export async function getPerformanceRange(address, { range = "ALL", signal } = {
   const windowMs = PERF_RANGE_MS[range];
   const buckets = PERF_BUCKETS[range] || PERF_BUCKETS.ALL;
 
-  const activity = await getActivity(address, { limit: 500, signal });
+  const activity = await fetchActivityHistory(address, { signal });
   const entries = (activity || [])
     .map((a) => ({ t: (a.timestamp ?? 0) * 1000, amount: a.usdcSize ?? 0 }))
     .filter((e) => e.t > 0 && e.amount > 0)

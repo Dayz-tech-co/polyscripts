@@ -1,21 +1,22 @@
 // Ecosystem-level analytics service: leaderboard, dashboard aggregates,
-// trending/top lists, comparison and curated resources. All of it is backed
-// by the normalized demo dataset in src/providers/demoProvider.js so every
-// surface stays internally consistent, and cached here so repeated requests
-// within a session don't recompute anything. UI components consume these
-// functions instead of importing provider data directly. Functions resolve
-// asynchronously to match the rest of the service layer.
+// trending/top lists, comparison and curated resources. Every analytics
+// function here is backed by the ACTIVE data provider (the live Polymarket
+// endpoints by default) so no surface displays invented numbers.
+//
+// Anything the public API does not expose - aggregate dashboard totals,
+// activity trends, win-rate distributions, category counts, a global
+// activity feed - resolves to null, and the pages render an explicit
+// "unavailable" state instead of fabricating a value.
+//
+// Compare is built from real profile bundles (positions, activity, value)
+// resolved through profileService for the two chosen addresses.
 
-import * as demoProvider from "../providers/demoProvider";
+import { provider } from "./providers";
+import { getAccountProfile, getPerformanceRange } from "./profileService";
+import { normalizeLeaderboardEntry } from "../adapters/accountAdapter";
 import { cacheGet, cacheSet } from "./cache";
 
 const TTL = 45_000;
-
-function clean(account) {
-  if (!account) return null;
-  const { _seed, unrealizedPnl: _unrealizedPnl, realizedPnl: _realizedPnl, resolvedPositions: _resolvedPositions, ...rest } = account;
-  return rest;
-}
 
 function cacheWrap(key, producer) {
   const cached = cacheGet(key);
@@ -25,71 +26,123 @@ function cacheWrap(key, producer) {
   return value;
 }
 
-function resolve(value) {
-  return Promise.resolve(value);
+const PERIOD_MAP = { DAY: "DAY", WEEK: "WEEK", MONTH: "MONTH", ALL: "ALL" };
+
+/** orderBy values the public leaderboard endpoint actually supports. */
+const METRIC_ORDER = { pnl: "PNL", volume: "VOL" };
+
+/**
+ * Fetches real leaderboard rows for one metric/period through the active
+ * provider. Returns null when the requested metric has no genuine source
+ * (e.g. win rate - the public API only orders by PNL or VOL).
+ */
+export async function getLeaderboard({ metric = "pnl", period = "ALL", limit = 25, signal } = {}) {
+  const orderBy = METRIC_ORDER[metric];
+  if (!orderBy) return null;
+  const timePeriod = PERIOD_MAP[period] || "ALL";
+  const raw = await provider.getLeaderboard({ category: "OVERALL", timePeriod, orderBy, limit, signal });
+  return raw.map(normalizeLeaderboardEntry).filter((a) => a.address).slice(0, limit);
 }
 
-export function getLeaderboard({ metric = "pnl", period = "ALL", limit = 25 } = {}) {
-  return resolve(
-    cacheWrap(`ecosystem:leaderboard:${metric}:${period}:${limit}`, () =>
-      demoProvider.getLeaderboard({ metric, period, limit }).map((row) => ({ ...clean(row), rank: row.rank }))
-    )
-  );
+export async function getTopAccounts({ limit = 8, metric = "pnl", period = "ALL", signal } = {}) {
+  return getLeaderboard({ metric, period, limit, signal });
 }
 
-export function getTopAccounts({ limit = 8, metric = "pnl", period = "ALL" } = {}) {
-  return resolve(
-    cacheWrap(`ecosystem:top:${metric}:${period}:${limit}`, () =>
-      demoProvider.getTopAccounts({ limit, metric, period }).map((row) => ({ ...clean(row), rank: row.rank }))
-    )
-  );
+/** Real leaderboard rows ordered by volume over the last week. */
+export async function getTrendingAccounts({ limit = 5, signal } = {}) {
+  return getLeaderboard({ metric: "volume", period: "WEEK", limit, signal });
 }
 
-export function getTrendingAccounts({ limit = 5 } = {}) {
-  return resolve(
-    cacheWrap(`ecosystem:trending:${limit}`, () =>
-      demoProvider.getTrendingAccounts({ limit }).map((row) => ({ ...clean(row), rank: row.rank }))
-    )
-  );
+/** Real leaderboard rows ordered by PnL over the last month. */
+export async function getRecentAccounts({ limit = 5, signal } = {}) {
+  return getLeaderboard({ metric: "pnl", period: "MONTH", limit, signal });
 }
 
-export function getRecentAccounts({ limit = 5 } = {}) {
-  return resolve(
-    cacheWrap(`ecosystem:recent:${limit}`, () =>
-      demoProvider.getRecentAccounts({ limit }).map((row) => ({ ...clean(row), rank: row.rank }))
-    )
-  );
+/**
+ * Aggregate dashboard totals have no genuine public source, so this is
+ * null rather than an estimated number. The dashboard marks it unavailable.
+ */
+export async function getDashboardStats() {
+  return null;
 }
 
-export function getDashboardStats() {
-  return resolve(cacheWrap("ecosystem:dashboard:stats", () => demoProvider.getDashboardStats()));
+/** No public aggregate activity-trend endpoint exists - returns null. */
+export async function getActivityTrend() {
+  return null;
 }
 
-export function getActivityTrend() {
-  return resolve(cacheWrap("ecosystem:dashboard:trend", () => demoProvider.getActivityTrend()));
+/** No public performance-distribution endpoint exists - returns null. */
+export async function getPerformanceDistribution() {
+  return null;
 }
 
-export function getPerformanceDistribution() {
-  return resolve(cacheWrap("ecosystem:dashboard:distribution", () => demoProvider.getPerformanceDistribution()));
+/** No public category-market-count endpoint exists - returns null. */
+export async function getCategoryBreakdown() {
+  return null;
 }
 
-export function getCategoryBreakdown() {
-  return resolve(cacheWrap("ecosystem:dashboard:categories", () => demoProvider.getCategoryBreakdown()));
+/** No public global activity feed exists - returns null. */
+export async function getRecentActivityFeed() {
+  return null;
 }
 
-export function getRecentActivityFeed({ limit = 8 } = {}) {
-  return resolve(cacheWrap(`ecosystem:dashboard:feed:${limit}`, () => demoProvider.getRecentActivityFeed({ limit })));
+function metricsFromBundle(bundle) {
+  const s = bundle?.stats;
+  if (!s) return null;
+  return {
+    pnl: s.pnl,
+    volume: s.volume,
+    winRate: s.winRate,
+    markets: s.marketsTraded,
+    portfolioValue: s.portfolioValue,
+    activityCount: s.activityCount,
+    openPositions: s.openPositionsCount,
+  };
 }
 
-export function getCompare(a, b) {
-  const result = demoProvider.compareAccounts(a, b);
-  if (!result) return resolve(null);
-  return resolve({
-    a: { ...result.a, account: clean(result.a.account) },
-    b: { ...result.b, account: clean(result.b.account) },
-  });
+/**
+ * Compares two real accounts by resolving each one's public profile bundle
+ * (positions, resolved positions, activity, portfolio value) through the
+ * active provider and deriving every metric from that data.
+ */
+export async function getCompare(a, b, { signal } = {}) {
+  const build = async (identifier) => {
+    try {
+      const bundle = await getAccountProfile(identifier, { signal });
+      const metrics = metricsFromBundle(bundle);
+      if (!metrics) return null;
+      const perf = await getPerformanceRange(identifier, { range: "ALL", signal });
+      return {
+        account: bundle.account,
+        metrics,
+        performance: (perf && perf.points) || [],
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  const [left, right] = await Promise.all([build(a), build(b)]);
+  if (!left || !right) return null;
+  return { a: left, b: right };
 }
 
+/**
+ * Curated, editorially maintained directory of public resources - not a
+ * computed analytics dataset. No values are fabricated; entries are static
+ * references to existing tools/APIs.
+ */
 export function getEcosystemResources() {
-  return resolve(cacheWrap("ecosystem:resources", () => demoProvider.getEcosystemResources()));
+  return cacheWrap("ecosystem:resources", () => [
+    { name: "Gamma API", category: "Data", description: "Event, market and profile lookups for the whole Polymarket universe.", icon: "Database", status: "Public" },
+    { name: "Data API", category: "Data", description: "Positions, activity, value and traded market endpoints for public accounts.", icon: "Activity", status: "Public" },
+    { name: "Leaderboard API", category: "Analytics", description: "Ranked accounts by volume and profit across configurable time windows.", icon: "Trophy", status: "Public" },
+    { name: "Market Calendars", category: "Research", description: "Upcoming event calendars and resolution schedules for active markets.", icon: "Calendar", status: "Demo" },
+    { name: "Strategy Guides", category: "Education", description: "Walkthroughs of position building, spreads and market structure.", icon: "BookOpen", status: "Demo" },
+    { name: "Python SDK", category: "Developer Tools", description: "Client library for querying public market and account data programmatically.", icon: "Terminal", status: "Demo" },
+    { name: "Volume Screener", category: "Analytics", description: "Surfaces the most actively traded markets and recent volume shifts.", icon: "BarChart3", status: "Demo" },
+    { name: "Outcome Tracker", category: "Research", description: "Tracks resolution outcomes and historical win rates across categories.", icon: "TrendingUp", status: "Demo" },
+    { name: "CLI Explorer", category: "Developer Tools", description: "Terminal tool for fast account and position lookups.", icon: "Wrench", status: "Demo" },
+    { name: "Category Reports", category: "Analytics", description: "Aggregated performance breakdowns by market category.", icon: "PieChart", status: "Demo" },
+  ]);
 }

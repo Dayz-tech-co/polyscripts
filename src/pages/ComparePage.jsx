@@ -76,7 +76,7 @@ export default function ComparePage() {
 
   return (
     <main id="main-content" className="container main-content">
-      <PageHeader title="Compare Accounts" description="Compare analytics from two demo profiles side by side." />
+      <PageHeader title="Compare Accounts" description="Compare analytics from two public accounts side by side." />
 
       <div className="compare-selectors">
         <CompareSelect label="Account A" value={a} onSelect={setA} />
@@ -131,7 +131,7 @@ export default function ComparePage() {
                 <div>
                   <span className="card-label">{result.a.account.username || result.a.account.displayName || shortenAddress(result.a.account.address)}</span>
                   <div className="performance-change">
-                    <span>Cumulative demo volume</span>
+                    <span>Cumulative volume</span>
                   </div>
                 </div>
               </div>
@@ -142,7 +142,7 @@ export default function ComparePage() {
                 <div>
                   <span className="card-label">{result.b.account.username || result.b.account.displayName || shortenAddress(result.b.account.address)}</span>
                   <div className="performance-change">
-                    <span>Cumulative demo volume</span>
+                    <span>Cumulative volume</span>
                   </div>
                 </div>
               </div>

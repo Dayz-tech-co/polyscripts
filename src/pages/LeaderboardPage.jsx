@@ -31,6 +31,7 @@ export default function LeaderboardPage() {
   const [period, setPeriod] = useState("ALL");
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState(null);
+  const [unavailable, setUnavailable] = useState(false);
   const [error, setError] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
   const navigate = useNavigate();
@@ -42,9 +43,14 @@ export default function LeaderboardPage() {
   useEffect(() => {
     let active = true;
     setRows(null);
+    setUnavailable(false);
     setError(false);
     getLeaderboard({ metric, period, limit: 25 })
-      .then((list) => active && setRows(list))
+      .then((list) => {
+        if (!active) return;
+        setRows(list);
+        setUnavailable(list === null);
+      })
       .catch(() => active && setError(true));
     return () => {
       active = false;
@@ -81,8 +87,14 @@ export default function LeaderboardPage() {
 
       {error ? (
         <ErrorState title="Unable to load the leaderboard" description="Please try again." onRetry={() => setReloadToken((t) => t + 1)} />
-      ) : rows === null ? (
+      ) : rows === null && !unavailable ? (
         <TableSkeleton rows={10} />
+      ) : unavailable ? (
+        <EmptyState
+          icon={SearchX}
+          title="Win-rate rankings unavailable"
+          description="The public leaderboard API only ranks accounts by PnL or volume, so a win-rate ranking cannot be shown accurately."
+        />
       ) : visible.length === 0 ? (
         <EmptyState icon={SearchX} title="No leaderboard results" description="Try a different metric, period or search." />
       ) : (

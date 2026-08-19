@@ -18,7 +18,7 @@ export default function AccountCheckerPage() {
 
   return (
     <main id="main-content" className="container main-content">
-      <PageHeader title="Account Checker" description="Inspect the analytics profile of a public demo account." />
+      <PageHeader title="Account Checker" description="Inspect the analytics profile of any public account." />
 
       <section className="checker-panel" aria-label="Check an account">
         <span className="card-label">Enter a username or wallet address</span>
@@ -27,7 +27,7 @@ export default function AccountCheckerPage() {
         </div>
 
         <div className="checker-samples">
-          <span className="checker-samples-label">Try a demo account</span>
+          <span className="checker-samples-label">Try a sample account</span>
           <div className="checker-samples-list">
             {SAMPLE_ACCOUNTS.map(({ label, identifier }) => (
               <Link key={identifier} to={`/profile/${encodeURIComponent(identifier)}`} className="chip-link">

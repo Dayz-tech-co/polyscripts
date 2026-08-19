@@ -47,7 +47,7 @@ export default function EcosystemPage() {
 
   return (
     <main id="main-content" className="container main-content">
-      <PageHeader title="Ecosystem" description="Curated analytics and research resources for the demo ecosystem." />
+      <PageHeader title="Ecosystem" description="Curated analytics and research resources for the Polymarket ecosystem." />
 
       <div className="tab-controls-row">
         <Filters options={CATEGORIES} active={category} onChange={setCategory} ariaLabel="Filter resources by category" />

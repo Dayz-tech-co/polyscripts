@@ -8,21 +8,21 @@ const TOOLS = [
     to: "/checker",
     icon: Search,
     title: "Account Checker",
-    description: "Inspect the analytics profile of a public demo account.",
+    description: "Inspect the analytics profile of any public account.",
     cta: "Open Checker",
   },
   {
     to: "/compare",
     icon: GitCompareArrows,
     title: "Compare Accounts",
-    description: "Compare analytics from two demo profiles side by side.",
+    description: "Compare analytics from two public accounts side by side.",
     cta: "Compare",
   },
   {
     to: "/leaderboard",
     icon: LineChart,
     title: "Performance Explorer",
-    description: "Explore historical demo performance data and rankings.",
+    description: "Explore historical performance data and rankings.",
     cta: "Explore",
   },
   {
@@ -41,7 +41,7 @@ export default function ToolsPage() {
 
   return (
     <main id="main-content" className="container main-content">
-      <PageHeader title="Tools" description="Analytics utilities for the demo ecosystem." />
+      <PageHeader title="Tools" description="Analytics utilities for the Polymarket ecosystem." />
 
       <div className="tool-grid">
         {TOOLS.map(({ to, icon: Icon, title, description, cta }) => (

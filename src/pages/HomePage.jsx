@@ -19,7 +19,7 @@ const CAPABILITIES = [
   {
     icon: LayoutDashboard,
     title: "Ecosystem overview",
-    description: "Track aggregate volume, active accounts and category breakdowns on the dashboard.",
+    description: "Live leaderboard rankings, account comparisons and curated ecosystem resources.",
   },
   {
     icon: ShieldCheck,

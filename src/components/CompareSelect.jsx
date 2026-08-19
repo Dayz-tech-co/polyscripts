@@ -4,9 +4,10 @@ import Avatar from "./Avatar";
 import { getLeaderboard } from "../services/ecosystemService";
 import { shortenAddress } from "../utils/address";
 
-// Popover account selector used by the comparison page. Lists the full demo
-// roster, filterable by username or address, so two accounts can be picked
-// quickly. Keyboard and click-outside aware like the rest of the controls.
+// Popover account selector used by the comparison page. Lists leaderboard
+// accounts (real data through the active provider), filterable by username
+// or address, so two accounts can be picked quickly. Keyboard and
+// click-outside aware like the rest of the controls.
 
 export default function CompareSelect({ label, value, onSelect }) {
   const [open, setOpen] = useState(false);
