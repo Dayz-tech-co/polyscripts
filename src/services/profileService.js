@@ -1,30 +1,21 @@
 // Builds the complete public profile bundle for one resolved account:
-// overview stats, positions, resolved history, activity, and a performance
-// series derived from real activity data. Everything is fetched once per
-// profile load and cached, so switching tabs or chart ranges never refetches.
+// overview stats, positions, resolved history and activity. Everything is
+// fetched once per profile load and cached, so switching tabs never
+// refetches. The performance chart is NOT part of the bundle: each timeframe
+// is fetched on demand via getPerformanceRange so switching ranges loads a
+// genuinely different historical series instead of reusing one dataset.
 
 import { provider } from "./providers";
 import { cacheGet, cacheSet } from "./cache";
 import { NotFoundError } from "./errors";
 import { resolveIdentifier, getAccountByAddress, getLeaderboardEntryForAddress } from "./polymarketService";
 import { mergeAccounts } from "../adapters/accountAdapter";
-import {
-  normalizePosition,
-  normalizeClosedPosition,
-  normalizeActivity,
-  deriveStats,
-  buildVolumeSeries,
-} from "../adapters/profileAdapter";
+import { normalizePosition, normalizeClosedPosition, normalizeActivity, deriveStats } from "../adapters/profileAdapter";
 
 const BUNDLE_TTL = 45_000;
+const PERF_TTL = 60_000;
 
-const RANGE_MS = {
-  "1D": 24 * 60 * 60 * 1000,
-  "1W": 7 * 24 * 60 * 60 * 1000,
-  "1M": 30 * 24 * 60 * 60 * 1000,
-  "3M": 90 * 24 * 60 * 60 * 1000,
-  ALL: null,
-};
+const VALID_RANGES = new Set(["1D", "1W", "1M", "3M", "ALL"]);
 
 async function settle(promise) {
   try {
@@ -96,19 +87,33 @@ export async function getAccountProfile(identifier, { signal } = {}) {
     account: enrichedAccount,
   });
 
-  const performance = Object.fromEntries(
-    Object.entries(RANGE_MS).map(([range, ms]) => [range, buildVolumeSeries(activity, ms)])
-  );
-
   const bundle = {
     account: enrichedAccount,
     stats,
     positions,
     resolvedPositions,
     activity,
-    performance,
   };
 
   cacheSet(cacheKey, bundle, BUNDLE_TTL);
   return bundle;
+}
+
+/**
+ * Fetches one timeframe's performance series for an account, on demand, and
+ * caches it independently. Each range resolves through the active provider,
+ * so every timeframe can supply its own historical dataset.
+ */
+export async function getPerformanceRange(identifier, { range = "1M", signal } = {}) {
+  const rangeKey = VALID_RANGES.has(range) ? range : "1M";
+  const account = await resolveIdentifier(identifier, { signal });
+  const address = account.address;
+
+  const cacheKey = `profile:${address}:perf:${rangeKey}`;
+  const cached = cacheGet(cacheKey);
+  if (cached) return cached;
+
+  const data = await provider.getPerformanceRange(address, { range: rangeKey, signal });
+  cacheSet(cacheKey, data, PERF_TTL);
+  return data;
 }

@@ -1,20 +1,24 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import PerformanceChart from "./PerformanceChart";
 import { ChartSkeleton } from "./Skeleton";
-import { formatCompactCurrency } from "../utils/formatters";
+import { usePerformanceRange } from "../hooks/usePerformanceRange";
+import { formatCompactCurrency, formatPercentage, formatSignedCurrency } from "../utils/formatters";
 
 const RANGES = ["1D", "1W", "1M", "3M", "ALL"];
 
 /**
- * Shows cumulative trading volume over time, derived from the account's
- * real activity feed. Framed as volume (not portfolio value) since a public
- * historical balance isn't something the public data sources expose.
+ * Cumulative trading volume for the selected timeframe. Each range is
+ * fetched on demand through the active provider, so the headline value,
+ * change, percentage and plotted series all come from that range's own
+ * dataset. While a range is loading the previous series is withheld and a
+ * subtle skeleton is shown in its place.
  */
-export default function PerformanceCard({ performance, loading }) {
+export default function PerformanceCard({ identifier }) {
   const [range, setRange] = useState("1M");
-  const data = performance?.[range];
+  const { status, data } = usePerformanceRange(identifier, range);
 
-  const total = useMemo(() => (data && data.length > 0 ? data[data.length - 1].value : 0), [data]);
+  const loading = status === "loading" || !identifier;
+  const perf = status === "ready" && data ? data : null;
 
   return (
     <div className="card performance-card">
@@ -22,10 +26,21 @@ export default function PerformanceCard({ performance, loading }) {
         <div>
           <span className="card-label">Trading Activity</span>
           <div className="performance-value-row">
-            <span className="performance-value">{formatCompactCurrency(total)}</span>
+            <span className="performance-value">
+              {perf ? formatCompactCurrency(perf.total) : "--"}
+            </span>
           </div>
           <div className="performance-change">
-            <span>Cumulative volume traded</span>
+            {perf ? (
+              <>
+                <span className="performance-change-value">{formatSignedCurrency(perf.change)}</span>
+                {perf.changePct != null && (
+                  <span className="performance-change-pct">{formatPercentage(perf.changePct, { signed: true })}</span>
+                )}
+              </>
+            ) : (
+              <span>Cumulative volume traded</span>
+            )}
           </div>
         </div>
 
@@ -44,7 +59,13 @@ export default function PerformanceCard({ performance, loading }) {
         </div>
       </div>
 
-      {loading || !performance ? <ChartSkeleton /> : <PerformanceChart data={data} volumeMode />}
+      {loading ? (
+        <ChartSkeleton />
+      ) : perf && perf.points && perf.points.length > 0 ? (
+        <PerformanceChart data={perf.points} volumeMode />
+      ) : (
+        <div className="chart-empty">No trading activity in this period</div>
+      )}
     </div>
   );
 }

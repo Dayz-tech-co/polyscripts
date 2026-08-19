@@ -276,6 +276,52 @@ export async function getTraded(address) {
   return account ? account.markets : null;
 }
 
+// Each timeframe is its own independent series: a different time window,
+// a different number of points and a different seeded trajectory, ending at
+// a per-range share of the account's lifetime volume. Ranges are never
+// sliced from one shared array, so 1D/1W/1M/3M/ALL always differ.
+const PERFORMANCE_RANGES = {
+  "1D": { days: 1, points: 24, total: 0.35, inRange: [0.03, 0.08] },
+  "1W": { days: 7, points: 14, total: 0.5, inRange: [0.12, 0.2] },
+  "1M": { days: 30, points: 24, total: 0.7, inRange: [0.3, 0.45] },
+  "3M": { days: 90, points: 26, total: 0.9, inRange: [0.6, 0.75] },
+  ALL: { days: 180, points: 32, total: 1, inRange: [1, 1] },
+};
+
+export async function getPerformanceRange(address, { range = "ALL" } = {}) {
+  const account = demoProvider.getAccountByAddress(address);
+  if (!account) return null;
+
+  const cfg = PERFORMANCE_RANGES[range] || PERFORMANCE_RANGES.ALL;
+  const rnd = mulberry32(hashString(address + "perf:" + range));
+  const volume = account.volume;
+
+  // Fixed cumulative total per range keeps the headline monotonic
+  // (1D < 1W < 1M < 3M < ALL); the amount traded within the window and the
+  // trajectory are seeded independently per range so no two curves match.
+  const total = round2(volume * cfg.total);
+  const inRangeFactor = range === "ALL" ? 1 : cfg.inRange[0] + rnd() * (cfg.inRange[1] - cfg.inRange[0]);
+  const inRange = round2(volume * inRangeFactor);
+  const baseline = round2(total - inRange);
+
+  const now = Date.now();
+  const windowMs = cfg.days * DAY;
+  const stepMs = windowMs / cfg.points;
+  const startTime = now - windowMs;
+
+  let acc = baseline;
+  const points = [];
+  for (let i = 0; i < cfg.points; i++) {
+    const step = i === cfg.points - 1 ? inRange - (acc - baseline) : inRange * (0.02 + rnd() * 0.16);
+    acc = round2(acc + step);
+    points.push({ date: new Date(startTime + (i + 1) * stepMs).toISOString(), value: acc });
+  }
+
+  const change = round2(points[points.length - 1].value - points[0].value);
+  const changePct = points[0].value !== 0 ? change / points[0].value : null;
+  return { points, total, change, changePct };
+}
+
 const DEMO_MARKETS = [
   { title: "Will Bitcoin close above $100K this year?", slug: "btc-100k-eoy", category: "Crypto" },
   { title: "Fed cuts rates at the next meeting?", slug: "fed-rate-cut-next", category: "Economy" },

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { formatCurrency, formatSignedCurrency, formatPercentage, formatDate } from "../utils/formatters";
+import { formatCurrency, formatSignedCurrency, formatPercentage, formatDate, formatDateShort } from "../utils/formatters";
 import { getValueState } from "../utils/states";
 
 const WIDTH = 640;
@@ -171,6 +171,11 @@ export default function PerformanceChart({ data, volumeMode = false }) {
           </div>
         </div>
       )}
+
+      <div className="chart-axis" aria-hidden="true">
+        <span>{formatDateShort(points[0].date)}</span>
+        <span>{formatDateShort(points[points.length - 1].date)}</span>
+      </div>
     </div>
   );
 }

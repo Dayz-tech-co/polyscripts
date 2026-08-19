@@ -159,31 +159,3 @@ export function deriveStats({ positions, closedPositions, value, traded, rankEnt
     rank: rankEntry?.rank ?? null,
   };
 }
-
-/**
- * Builds a compact cumulative-volume series from real activity records so
- * the performance chart reflects genuinely traded amounts over time rather
- * than a fabricated portfolio history. Buckets the requested time window
- * and returns { date, value } points ready for the chart component.
- */
-export function buildVolumeSeries(activity, rangeMs) {
-  if (!Array.isArray(activity) || activity.length === 0) return [];
-  const now = Date.now();
-  const cutoff = rangeMs ? now - rangeMs : 0;
-
-  const relevant = activity
-    .filter((a) => a.timestamp != null && a.amount != null && a.timestamp >= cutoff)
-    .sort((a, b) => a.timestamp - b.timestamp);
-
-  if (relevant.length === 0) return [];
-
-  let running = 0;
-  const points = relevant.map((a) => {
-    running += a.amount;
-    return { date: new Date(a.timestamp).toISOString(), value: round2(running) };
-  });
-
-  // Anchor the series at zero so the chart reads as cumulative volume from
-  // the start of the selected window.
-  return [{ date: new Date(relevant[0].timestamp - 1).toISOString(), value: 0 }, ...points];
-}

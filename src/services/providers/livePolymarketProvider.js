@@ -107,3 +107,63 @@ export async function getTraded(address, { signal } = {}) {
   const data = await getJson(url, { signal });
   return typeof data?.traded === "number" ? data.traded : null;
 }
+
+const PERF_RANGE_MS = {
+  "1D": 24 * 60 * 60 * 1000,
+  "1W": 7 * 24 * 60 * 60 * 1000,
+  "1M": 30 * 24 * 60 * 60 * 1000,
+  "3M": 90 * 24 * 60 * 60 * 1000,
+  ALL: null,
+};
+
+const PERF_BUCKETS = { "1D": 24, "1W": 14, "1M": 24, "3M": 26, ALL: 36 };
+
+function round2(value) {
+  return Math.round(value * 100) / 100;
+}
+
+/**
+ * Builds an independent cumulative-volume series for one timeframe from the
+ * account's real activity feed. Each range filters a different window, uses
+ * a different bucket count, and reports its own total/change/percentage, so
+ * no two ranges ever share the same array.
+ */
+export async function getPerformanceRange(address, { range = "ALL", signal } = {}) {
+  const windowMs = PERF_RANGE_MS[range];
+  const buckets = PERF_BUCKETS[range] || PERF_BUCKETS.ALL;
+
+  const activity = await getActivity(address, { limit: 500, signal });
+  const entries = (activity || [])
+    .map((a) => ({ t: (a.timestamp ?? 0) * 1000, amount: a.usdcSize ?? 0 }))
+    .filter((e) => e.t > 0 && e.amount > 0)
+    .sort((a, b) => a.t - b.t);
+
+  if (entries.length === 0) return null;
+
+  const now = Date.now();
+  const cutoff = windowMs ? now - windowMs : entries[0].t;
+  const inWindow = entries.filter((e) => e.t >= cutoff);
+  const baseline = entries.reduce((sum, e) => sum + (e.t < cutoff ? e.amount : 0), 0);
+
+  if (inWindow.length === 0) return null;
+
+  const spanMs = Math.max(now - cutoff, buckets);
+  const bucketMs = spanMs / buckets;
+  const bucketSums = new Array(buckets).fill(0);
+  for (const e of inWindow) {
+    const idx = Math.min(buckets - 1, Math.floor((e.t - cutoff) / bucketMs));
+    bucketSums[idx] += e.amount;
+  }
+
+  let acc = round2(baseline);
+  const points = bucketSums.map((sum, i) => {
+    acc = round2(acc + sum);
+    return { date: new Date(cutoff + (i + 1) * bucketMs).toISOString(), value: acc };
+  });
+
+  const total = acc;
+  const first = points[0].value;
+  const change = round2(total - first);
+  const changePct = first !== 0 ? change / first : null;
+  return { points, total, change, changePct };
+}

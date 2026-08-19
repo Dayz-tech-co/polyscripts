@@ -86,6 +86,12 @@ export function formatDate(timestamp) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+/** Compact date without year, for chart axis labels: 2026-08-19 -> "Aug 19" */
+export function formatDateShort(timestamp) {
+  const d = timestamp instanceof Date ? timestamp : new Date(timestamp);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 export function formatNumber(value) {
   if (value === null || value === undefined || Number.isNaN(value)) return "--";
   return value.toLocaleString("en-US");
