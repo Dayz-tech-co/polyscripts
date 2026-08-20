@@ -387,6 +387,22 @@ export async function getPerformanceRange(address, { range = "ALL", metric = "pe
   return { points, total, change, changePct, startValue, endValue, metric: metricKey, range: rangeKey };
 }
 
+/** Mock cash: small fraction of portfolio value (Betmoar-shaped field). */
+export async function getCashBalance(address) {
+  const account = demoProvider.getAccountByAddress(address);
+  if (!account?.portfolioValue) return null;
+  return round2(account.portfolioValue * 0.08);
+}
+
+/** Mock period profit: reuse performance series change for the matching range. */
+const PROFIT_WINDOW_TO_RANGE = { "1d": "1D", "7d": "1W", "30d": "1M", all: "ALL" };
+
+export async function getUserProfit(address, window = "1d") {
+  const range = PROFIT_WINDOW_TO_RANGE[window] || "1D";
+  const series = await getPerformanceRange(address, { range, metric: "performance" });
+  return series?.change ?? null;
+}
+
 const DEMO_MARKETS = [
   { title: "Will Bitcoin close above $100K this year?", slug: "btc-100k-eoy", category: "Crypto" },
   { title: "Fed cuts rates at the next meeting?", slug: "fed-rate-cut-next", category: "Economy" },

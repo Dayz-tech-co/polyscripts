@@ -1,23 +1,15 @@
-// Live provider backed by Polymarket's documented public endpoints.
-// See https://docs.polymarket.com/api-reference for the source of truth.
+// Live provider backed by Polymarket public endpoints (Betmoar-accurate).
+// See POLYMARKET_DATA.md for the source of truth.
 //
-// - gamma-api.polymarket.com/public-search   search accounts (and markets/events)
-// - gamma-api.polymarket.com/public-profile  look up one account by address
-// - data-api.polymarket.com/v1/leaderboard   ranked accounts, filterable by user/username
-// - data-api.polymarket.com/positions        open positions for an address
-// - data-api.polymarket.com/closed-positions resolved positions for an address
-// - data-api.polymarket.com/activity         trade/redeem/etc activity for an address
-// - data-api.polymarket.com/value            current total position value
-// - data-api.polymarket.com/traded           count of markets traded
-//
-// All of the above are public, unauthenticated, CORS-open GET endpoints.
-// This file only does fetching + JSON parsing; shaping the data into the
-// app's internal model happens in src/adapters.
+// - gamma-api     profile / search
+// - data-api      positions, closed, activity, value, traded, leaderboard
+// - user-pnl-api  official PnL time series (Performance chart)
+// - lb-api        period profit windows (summary strip)
+// - Polygon RPC   cash balances (pUSD + USDC.e + USDC)
 
 import { ProviderError } from "../errors";
-
-const GAMMA_BASE = "https://gamma-api.polymarket.com";
-const DATA_BASE = "https://data-api.polymarket.com";
+import { GAMMA_BASE, DATA_BASE, USER_PNL_BASE, LB_BASE } from "./polymarketConfig";
+import { fetchCashBalance } from "./cashBalance";
 
 async function getJson(url, { signal } = {}) {
   let res;
@@ -49,8 +41,6 @@ export async function getPublicProfileByAddress(address, { signal } = {}) {
     return await getJson(url, { signal });
   } catch (err) {
     if (err?.name === "AbortError") throw err;
-    // A missing gamma profile is common (many wallets never set one up) -
-    // treat it as "no profile" rather than a hard failure.
     return null;
   }
 }
@@ -102,6 +92,31 @@ export async function getTraded(address, { signal } = {}) {
   return typeof data?.traded === "number" ? data.traded : null;
 }
 
+/** Polygon cash (pUSD + USDC.e + USDC). */
+export async function getCashBalance(address, { signal } = {}) {
+  return fetchCashBalance(address, { signal });
+}
+
+/**
+ * Period profit from lb-api.
+ * @param {string} address
+ * @param {"1d"|"7d"|"30d"|"all"} window
+ */
+export async function getUserProfit(address, window = "1d", { signal } = {}) {
+  const user = String(address).toLowerCase();
+  const url = `${LB_BASE}/profit?address=${encodeURIComponent(user)}&window=${encodeURIComponent(window)}&limit=1`;
+  try {
+    const data = await getJson(url, { signal });
+    if (Array.isArray(data) && data[0] && Number.isFinite(data[0].amount)) {
+      return data[0].amount;
+    }
+    return null;
+  } catch (err) {
+    if (err?.name === "AbortError") throw err;
+    return null;
+  }
+}
+
 const PERF_RANGE_MS = {
   "1D": 24 * 60 * 60 * 1000,
   "1W": 7 * 24 * 60 * 60 * 1000,
@@ -110,39 +125,47 @@ const PERF_RANGE_MS = {
   ALL: null,
 };
 
-// Every real event in the window is returned as its own point so the chart
-// preserves genuine small movements, peaks, dips and short-term volatility
-// instead of aggregating them. The activity feed is capped at MAX_PERF_EVENTS
-// (2000) and closed positions at 50, so even the densest window stays a
-// manageable polyline.
+/** UI range → user-pnl-api interval/fidelity (POLYMARKET_DATA.md §8). */
+const USER_PNL_PARAMS = {
+  "1D": { interval: "1d", fidelity: "1h" },
+  "1W": { interval: "1w", fidelity: "3h" },
+  "1M": { interval: "1m", fidelity: "12h" },
+  "3M": { interval: "max", fidelity: "1d", filterMs: PERF_RANGE_MS["3M"] },
+  ALL: { interval: "max", fidelity: "1d" },
+};
+
 const VALID_PERF_METRICS = new Set(["performance", "volume"]);
 
-// The activity endpoint returns at most 500 events per page and the
-// closed-positions endpoint returns at most 50 (it ignores larger limits).
-// Paginate the bounded activity feed so volume can genuinely span weeks or
-// months for accounts that trade less often than every few minutes.
-const ACTIVITY_PAGE_SIZE = 500;
-const MAX_PERF_EVENTS = 2000;
-const ACTIVITY_CACHE_TTL = 60_000;
+const POSITIONS_PAGE_SIZE = 100;
+const CLOSED_PAGE_SIZE = 50;
+const ACTIVITY_PAGE_SIZE = 100;
+const MAX_POSITIONS = 2000;
+const MAX_CLOSED = 5000;
+const MAX_ACTIVITY = 1500;
+const FEED_CACHE_TTL = 60_000;
 
-// All ranges/metrics for one account share the same fetched feeds, so
-// switching timeframes or metrics never triggers another network call.
 const activityCache = new Map();
 const closedCache = new Map();
 const positionsCache = new Map();
+const userPnlCache = new Map();
 
 function round2(value) {
   return Math.round(value * 100) / 100;
 }
 
-const POSITIONS_PAGE_SIZE = 50;
-
-async function fetchPositionsHistory(address, { maxEvents = MAX_PERF_EVENTS, signal } = {}) {
+async function fetchPositionsHistory(address, { maxEvents = MAX_POSITIONS, signal } = {}) {
   const out = [];
   let offset = 0;
   while (out.length < maxEvents) {
-    const url = `${DATA_BASE}/positions?user=${encodeURIComponent(address)}&limit=${POSITIONS_PAGE_SIZE}&offset=${offset}&sortBy=CURRENT&sortDirection=DESC`;
-    const data = await getJson(url, { signal });
+    const params = new URLSearchParams({
+      user: address,
+      sizeThreshold: "0.1",
+      limit: String(POSITIONS_PAGE_SIZE),
+      offset: String(offset),
+      sortBy: "CURRENT",
+      sortDirection: "DESC",
+    });
+    const data = await getJson(`${DATA_BASE}/positions?${params}`, { signal });
     if (!Array.isArray(data) || data.length === 0) break;
     out.push(...data);
     if (data.length < POSITIONS_PAGE_SIZE) break;
@@ -153,7 +176,7 @@ async function fetchPositionsHistory(address, { maxEvents = MAX_PERF_EVENTS, sig
 
 async function getCachedPositions(address, { signal } = {}) {
   const hit = positionsCache.get(address);
-  if (hit && Date.now() - hit.fetchedAt < ACTIVITY_CACHE_TTL && hit.events.length > 0) {
+  if (hit && Date.now() - hit.fetchedAt < FEED_CACHE_TTL && hit.events.length > 0) {
     return hit.events;
   }
   const events = await fetchPositionsHistory(address, { signal });
@@ -161,12 +184,19 @@ async function getCachedPositions(address, { signal } = {}) {
   return events;
 }
 
-async function fetchActivityHistory(address, { maxEvents = MAX_PERF_EVENTS, signal } = {}) {
+async function fetchActivityHistory(address, { maxEvents = MAX_ACTIVITY, signal } = {}) {
   const out = [];
   let offset = 0;
   while (out.length < maxEvents) {
-    const url = `${DATA_BASE}/activity?user=${encodeURIComponent(address)}&limit=${ACTIVITY_PAGE_SIZE}&offset=${offset}&sortBy=TIMESTAMP&sortDirection=DESC`;
-    const data = await getJson(url, { signal });
+    const params = new URLSearchParams({
+      user: address,
+      limit: String(ACTIVITY_PAGE_SIZE),
+      offset: String(offset),
+      sortBy: "TIMESTAMP",
+      sortDirection: "DESC",
+      excludeDepositsWithdrawals: "false",
+    });
+    const data = await getJson(`${DATA_BASE}/activity?${params}`, { signal });
     if (!Array.isArray(data) || data.length === 0) break;
     out.push(...data);
     if (data.length < ACTIVITY_PAGE_SIZE) break;
@@ -177,7 +207,7 @@ async function fetchActivityHistory(address, { maxEvents = MAX_PERF_EVENTS, sign
 
 async function getCachedActivity(address, { signal } = {}) {
   const hit = activityCache.get(address);
-  if (hit && Date.now() - hit.fetchedAt < ACTIVITY_CACHE_TTL && hit.events.length > 0) {
+  if (hit && Date.now() - hit.fetchedAt < FEED_CACHE_TTL && hit.events.length > 0) {
     return hit.events;
   }
   const events = await fetchActivityHistory(address, { signal });
@@ -185,14 +215,18 @@ async function getCachedActivity(address, { signal } = {}) {
   return events;
 }
 
-const CLOSED_PAGE_SIZE = 50;
-
-async function fetchClosedHistory(address, { maxEvents = MAX_PERF_EVENTS, signal } = {}) {
+async function fetchClosedHistory(address, { maxEvents = MAX_CLOSED, signal } = {}) {
   const out = [];
   let offset = 0;
   while (out.length < maxEvents) {
-    const url = `${DATA_BASE}/closed-positions?user=${encodeURIComponent(address)}&limit=${CLOSED_PAGE_SIZE}&offset=${offset}&sortBy=TIMESTAMP&sortDirection=DESC`;
-    const data = await getJson(url, { signal });
+    const params = new URLSearchParams({
+      user: address,
+      limit: String(CLOSED_PAGE_SIZE),
+      offset: String(offset),
+      sortBy: "TIMESTAMP",
+      sortDirection: "DESC",
+    });
+    const data = await getJson(`${DATA_BASE}/closed-positions?${params}`, { signal });
     if (!Array.isArray(data) || data.length === 0) break;
     out.push(...data);
     if (data.length < CLOSED_PAGE_SIZE) break;
@@ -203,7 +237,7 @@ async function fetchClosedHistory(address, { maxEvents = MAX_PERF_EVENTS, signal
 
 async function getCachedClosed(address, { signal } = {}) {
   const hit = closedCache.get(address);
-  if (hit && Date.now() - hit.fetchedAt < ACTIVITY_CACHE_TTL && hit.events.length > 0) {
+  if (hit && Date.now() - hit.fetchedAt < FEED_CACHE_TTL && hit.events.length > 0) {
     return hit.events;
   }
   const events = await fetchClosedHistory(address, { signal });
@@ -211,88 +245,133 @@ async function getCachedClosed(address, { signal } = {}) {
   return events;
 }
 
-/**
- * Per-event contribution to the volume series: notional traded on outright
- * buys/sells only (REDEEM/MERGE/etc. are not trades). A cumulative sum of
- * volume is monotonic (up/flat), which is the expected shape for volume.
- */
 function volumeContribution(event) {
   if (event.type !== "TRADE") return 0;
   return event.usdcSize ?? 0;
 }
 
 /**
- * Builds an independent series for one timeframe and one metric:
- *
- *   performance (realized PnL) - Polymarket's authoritative closed-position
- *     realized PnL (GET /closed-positions). Each resolved position adds its
- *     realizedPnl at its resolution time, so the cumulative curve rises with
- *     wins and falls with losses and never includes still-open positions.
- *     The endpoint returns bounded resolved positions; the chart
- *     reflects exactly that window and never invents history.
- *
- *   volume (trading volume) - cumulative notional traded from the activity
- *     feed (GET /activity), monotonic up/flat by construction.
- *
- * Each range filters a different window and reports its own start/end value,
- * change and percentage - so no two ranges ever share the same dataset.
+ * Fetch official user PnL series from user-pnl-api.
+ * Points: { t: unixSeconds, p: cumulativePnl }
  */
-export async function getPerformanceRange(address, { range = "ALL", metric = "performance", signal } = {}) {
-  const rangeKey = PERF_RANGE_MS[range] !== undefined ? range : "ALL";
-  const metricKey = VALID_PERF_METRICS.has(metric) ? metric : "performance";
-  const windowMs = PERF_RANGE_MS[rangeKey];
+async function fetchUserPnlSeries(address, { interval, fidelity, signal } = {}) {
+  const user = String(address).toLowerCase();
+  const cacheKey = `${user}:${interval}:${fidelity}`;
+  const hit = userPnlCache.get(cacheKey);
+  if (hit && Date.now() - hit.fetchedAt < FEED_CACHE_TTL) {
+    return hit.points;
+  }
 
-  const raw = metricKey === "volume" ? await getCachedActivity(address, { signal }) : await getCachedClosed(address, { signal });
+  const url = `${USER_PNL_BASE}/user-pnl?user_address=${encodeURIComponent(user)}&interval=${encodeURIComponent(interval)}&fidelity=${encodeURIComponent(fidelity)}`;
+  const data = await getJson(url, { signal });
+  const points = Array.isArray(data)
+    ? data
+        .filter((row) => row && Number.isFinite(row.t) && Number.isFinite(row.p))
+        .map((row) => ({ t: row.t, p: row.p }))
+        .sort((a, b) => a.t - b.t)
+    : [];
+
+  userPnlCache.set(cacheKey, { points, fetchedAt: Date.now() });
+  return points;
+}
+
+/**
+ * Betmoar-style rebase of user-pnl series into chart payload.
+ */
+function transformUserPnlSeries(rawPoints, rangeKey) {
+  if (!rawPoints || rawPoints.length === 0) return null;
+
+  const params = USER_PNL_PARAMS[rangeKey] || USER_PNL_PARAMS.ALL;
+  let series = rawPoints.map((row) => ({ tMs: row.t * 1000, p: row.p }));
+
+  if (params.filterMs) {
+    const cutoff = Date.now() - params.filterMs;
+    const before = series.filter((p) => p.tMs < cutoff);
+    const inWindow = series.filter((p) => p.tMs >= cutoff);
+    if (inWindow.length === 0) return null;
+    const baseline = before.length > 0 ? before[before.length - 1].p : inWindow[0].p;
+    const points = inWindow.map((p) => ({
+      date: new Date(p.tMs).toISOString(),
+      value: round2(p.p - baseline),
+    }));
+    const startValue = 0;
+    const endValue = points[points.length - 1].value;
+    const change = round2(endValue - startValue);
+    return {
+      points,
+      total: endValue,
+      change,
+      changePct: null,
+      startValue,
+      endValue,
+      metric: "performance",
+      range: rangeKey,
+      source: "user-pnl-api",
+    };
+  }
+
+  if (rangeKey === "ALL") {
+    const points = series.map((p) => ({
+      date: new Date(p.tMs).toISOString(),
+      value: round2(p.p),
+    }));
+    const endValue = points[points.length - 1].value;
+    const change = round2(endValue);
+    return {
+      points,
+      total: endValue,
+      change,
+      changePct: null,
+      startValue: 0,
+      endValue,
+      metric: "performance",
+      range: rangeKey,
+      source: "user-pnl-api",
+    };
+  }
+
+  // 1D / 1W / 1M: baseline = first point in the API window
+  const baseline = series[0].p;
+  const points = series.map((p) => ({
+    date: new Date(p.tMs).toISOString(),
+    value: round2(p.p - baseline),
+  }));
+  const startValue = 0;
+  const endValue = points[points.length - 1].value;
+  const change = round2(endValue - startValue);
+  return {
+    points,
+    total: endValue,
+    change,
+    changePct: null,
+    startValue,
+    endValue,
+    metric: "performance",
+    range: rangeKey,
+    source: "user-pnl-api",
+  };
+}
+
+/** Fallback: cumulative closed-positions realized PnL (legacy path). */
+async function getPerformanceFromClosed(address, { rangeKey, signal } = {}) {
+  const windowMs = PERF_RANGE_MS[rangeKey];
+  const raw = await getCachedClosed(address, { signal });
   const entries = (raw || [])
     .map((a) => ({
       t: (a.timestamp ?? 0) * 1000,
-      v: metricKey === "volume" ? volumeContribution(a) : (a.realizedPnl ?? 0),
+      v: a.realizedPnl ?? 0,
     }))
     .filter((e) => e.t > 0 && Number.isFinite(e.v) && e.v !== 0)
     .sort((a, b) => a.t - b.t);
 
-  if (entries.length === 0) {
-    if (import.meta.env.DEV) {
-      console.log(`[Timeframe Analytics] range: ${rangeKey}, metric: ${metricKey}`, {
-        selectedRange: rangeKey,
-        earliestTimestamp: null,
-        latestTimestamp: null,
-        rawRecordCount: (raw || []).length,
-        resolvedPositionCount: 0,
-        startValue: null,
-        endValue: null,
-        calculatedPnL: null,
-      });
-    }
-    return null;
-  }
+  if (entries.length === 0) return null;
 
   const now = Date.now();
   const cutoff = windowMs ? now - windowMs : entries[0].t;
   const inWindow = entries.filter((e) => e.t >= cutoff);
-
-  if (inWindow.length === 0) {
-    if (import.meta.env.DEV) {
-      console.log(`[Timeframe Analytics] range: ${rangeKey}, metric: ${metricKey}`, {
-        selectedRange: rangeKey,
-        earliestTimestamp: null,
-        latestTimestamp: null,
-        rawRecordCount: (raw || []).length,
-        resolvedPositionCount: 0,
-        startValue: null,
-        endValue: null,
-        calculatedPnL: null,
-      });
-    }
-    return null;
-  }
+  if (inWindow.length === 0) return null;
 
   const baseline = entries.reduce((sum, e) => sum + (e.t < cutoff ? e.v : 0), 0);
-
-  // Full-density cumulative series: the value at the window start, then one
-  // real point per event (so every genuine movement is preserved), then a
-  // flat continuation to "now" so the curve reaches the right edge without
-  // inventing events.
   const series = [{ t: cutoff, value: round2(baseline) }];
   let acc = baseline;
   for (const e of inWindow) {
@@ -308,33 +387,112 @@ export async function getPerformanceRange(address, { range = "ALL", metric = "pe
     date: new Date(p.t).toISOString(),
     value: p.value,
   }));
-
   const startValue = series[0].value;
-  const total = endValue;
   const change = round2(endValue - startValue);
-  const changePct = null;
 
-  if (import.meta.env.DEV) {
-    const earliestTs = inWindow.length > 0 ? new Date(inWindow[0].t).toISOString() : null;
-    const latestTs = inWindow.length > 0 ? new Date(inWindow[inWindow.length - 1].t).toISOString() : null;
-    const vals = inWindow.map((e) => e.v);
-    const minVal = vals.length > 0 ? Math.min(...vals) : null;
-    const maxVal = vals.length > 0 ? Math.max(...vals) : null;
-    console.debug(`[Timeframe Analytics]`, {
-      canonicalAddress: address,
-      metric: metricKey,
-      range: rangeKey,
-      rawRecordCount: (raw || []).length,
-      filteredRecordCount: inWindow.length,
-      firstTimestamp: earliestTs,
-      lastTimestamp: latestTs,
-      startValue,
-      endValue,
-      change,
-      minValue: minVal,
-      maxValue: maxVal,
-    });
+  return {
+    points,
+    total: endValue,
+    change,
+    changePct: null,
+    startValue,
+    endValue,
+    metric: "performance",
+    range: rangeKey,
+    source: "closed-positions",
+  };
+}
+
+async function getVolumeFromActivity(address, { rangeKey, signal } = {}) {
+  const windowMs = PERF_RANGE_MS[rangeKey];
+  const raw = await getCachedActivity(address, { signal });
+  const entries = (raw || [])
+    .map((a) => ({
+      t: (a.timestamp ?? 0) * 1000,
+      v: volumeContribution(a),
+    }))
+    .filter((e) => e.t > 0 && Number.isFinite(e.v) && e.v !== 0)
+    .sort((a, b) => a.t - b.t);
+
+  if (entries.length === 0) return null;
+
+  const now = Date.now();
+  const cutoff = windowMs ? now - windowMs : entries[0].t;
+  const inWindow = entries.filter((e) => e.t >= cutoff);
+  if (inWindow.length === 0) return null;
+
+  const baseline = entries.reduce((sum, e) => sum + (e.t < cutoff ? e.v : 0), 0);
+  const series = [{ t: cutoff, value: round2(baseline) }];
+  let acc = baseline;
+  for (const e of inWindow) {
+    acc += e.v;
+    series.push({ t: e.t, value: round2(acc) });
+  }
+  const endValue = round2(acc);
+  if (series[series.length - 1].t < now) {
+    series.push({ t: now, value: endValue });
   }
 
-  return { points, total, change, changePct, startValue, endValue, metric: metricKey, range: rangeKey };
+  const points = series.map((p) => ({
+    date: new Date(p.t).toISOString(),
+    value: p.value,
+  }));
+  const startValue = series[0].value;
+  const change = round2(endValue - startValue);
+
+  return {
+    points,
+    total: endValue,
+    change,
+    changePct: null,
+    startValue,
+    endValue,
+    metric: "volume",
+    range: rangeKey,
+    source: "activity",
+  };
+}
+
+/**
+ * Performance: user-pnl-api (Betmoar) with closed-positions fallback.
+ * Volume: activity TRADE usdcSize cumulative.
+ */
+export async function getPerformanceRange(address, { range = "ALL", metric = "performance", signal } = {}) {
+  const rangeKey = PERF_RANGE_MS[range] !== undefined ? range : "ALL";
+  const metricKey = VALID_PERF_METRICS.has(metric) ? metric : "performance";
+
+  if (metricKey === "volume") {
+    return getVolumeFromActivity(address, { rangeKey, signal });
+  }
+
+  const params = USER_PNL_PARAMS[rangeKey] || USER_PNL_PARAMS.ALL;
+  try {
+    const raw = await fetchUserPnlSeries(address, {
+      interval: params.interval,
+      fidelity: params.fidelity,
+      signal,
+    });
+    const transformed = transformUserPnlSeries(raw, rangeKey);
+    if (transformed && transformed.points.length > 0) {
+      if (import.meta.env.DEV) {
+        console.debug(`[Timeframe Analytics]`, {
+          canonicalAddress: address,
+          metric: metricKey,
+          range: rangeKey,
+          source: "user-pnl-api",
+          pointCount: transformed.points.length,
+          change: transformed.change,
+          endValue: transformed.endValue,
+        });
+      }
+      return transformed;
+    }
+  } catch (err) {
+    if (err?.name === "AbortError") throw err;
+    if (import.meta.env.DEV) {
+      console.warn(`[user-pnl-api] fallback to closed-positions for ${address}`, err?.message);
+    }
+  }
+
+  return getPerformanceFromClosed(address, { rangeKey, signal });
 }

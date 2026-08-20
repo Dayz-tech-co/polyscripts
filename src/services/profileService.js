@@ -4,6 +4,9 @@
 // refetches. The performance chart is NOT part of the bundle: each timeframe
 // is fetched on demand via getPerformanceRange so switching ranges loads a
 // genuinely different historical series instead of reusing one dataset.
+//
+// Profit summary strip prefers lb-api /profit (Betmoar) for performance;
+// volume still uses the volume series change.
 
 import { provider } from "./providers";
 import { cacheGet, cacheSet } from "./cache";
@@ -14,9 +17,28 @@ import { normalizePosition, normalizeClosedPosition, normalizeActivity, deriveSt
 
 const BUNDLE_TTL = 45_000;
 const PERF_TTL = 60_000;
+const SUMMARY_TTL = 60_000;
 
 const VALID_RANGES = new Set(["1D", "1W", "1M", "3M", "ALL"]);
 const VALID_METRICS = new Set(["performance", "volume"]);
+
+/** UI range → lb-api profit window (90D has no lb window). */
+const LB_PROFIT_WINDOW = {
+  "1D": "1d",
+  "1W": "7d",
+  "1M": "30d",
+  ALL: "all",
+};
+
+/** Fallback leaderboard timePeriod when lb-api misses. */
+const LB_TIME_PERIOD = {
+  "1D": "DAY",
+  "1W": "WEEK",
+  "1M": "MONTH",
+  ALL: "ALL",
+};
+
+const SUMMARY_RANGES = ["1D", "1W", "1M", "3M", "ALL"];
 
 async function settle(promise) {
   try {
@@ -39,18 +61,17 @@ export async function getAccountProfile(identifier, { signal } = {}) {
   const cached = cacheGet(cacheKey);
   if (cached) return cached;
 
-  const [rawPositions, rawClosed, rawActivity, value, traded, rankEntry, publicProfileAccount] = await Promise.all([
-    settle(provider.getPositions(address, { limit: 100, signal })),
-    settle(provider.getClosedPositions(address, { signal })),
-    settle(provider.getActivity(address, { signal })),
-    settle(provider.getValue(address, { signal })),
-    settle(provider.getTraded(address, { signal })),
-    getLeaderboardEntryForAddress(address, { timePeriod: "ALL", signal }),
-    // resolveIdentifier may have come from search/leaderboard, neither of
-    // which carries bio/volume/tier - fetch the gamma profile directly too
-    // so the account record is as complete as it can be either way.
-    settle(getAccountByAddress(address, { signal })),
-  ]);
+  const [rawPositions, rawClosed, rawActivity, value, traded, rankEntry, publicProfileAccount, cashBalance] =
+    await Promise.all([
+      settle(provider.getPositions(address, { signal })),
+      settle(provider.getClosedPositions(address, { signal })),
+      settle(provider.getActivity(address, { signal })),
+      settle(provider.getValue(address, { signal })),
+      settle(provider.getTraded(address, { signal })),
+      getLeaderboardEntryForAddress(address, { timePeriod: "ALL", signal }),
+      settle(getAccountByAddress(address, { signal })),
+      settle(provider.getCashBalance?.(address, { signal }) ?? Promise.resolve(null)),
+    ]);
 
   // Merge precedence: the leaderboard row is authoritative for volume, PnL
   // and rank (gamma's weightedVolume can be 0 - or far smaller - for
@@ -66,12 +87,6 @@ export async function getAccountProfile(identifier, { signal } = {}) {
     .map(normalizeActivity)
     .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
 
-  // "Account not found" only after the direct lookups have conclusively
-  // returned no usable public data: no identity metadata and no analytics.
-  // The demo roster, autocomplete and leaderboard never decide this - an
-  // address with activity but no profile still renders under its address.
-  // Zero counts/values are treated as "no data", since the public API
-  // returns exactly that for addresses it has never seen.
   const hasIdentity = Boolean(account.username || account.displayName || account.bio || account.avatar);
   const hasAnalytics =
     positions.length > 0 ||
@@ -79,7 +94,8 @@ export async function getAccountProfile(identifier, { signal } = {}) {
     activity.length > 0 ||
     (value != null && value > 0) ||
     (traded != null && traded > 0) ||
-    rankEntry != null;
+    rankEntry != null ||
+    (cashBalance != null && cashBalance > 0);
   if (!hasIdentity && !hasAnalytics) {
     throw new NotFoundError();
   }
@@ -92,6 +108,7 @@ export async function getAccountProfile(identifier, { signal } = {}) {
     rankEntry,
     publicProfile: enrichedAccount,
     account: enrichedAccount,
+    cashBalance,
   });
 
   const bundle = {
@@ -126,3 +143,93 @@ export async function getPerformanceRange(identifier, { range = "1M", metric = "
   cacheSet(cacheKey, data, PERF_TTL);
   return data;
 }
+
+function summaryPayload(change, source) {
+  if (change == null || !Number.isFinite(change)) return null;
+  return { change, total: change, startValue: 0, endValue: change, source };
+}
+
+/**
+ * Timeframe summary strip values.
+ * Performance: lb-api /profit (1D/7D/30D/ALL), user-pnl series for 90D,
+ * then leaderboard pnl, then series change.
+ * Volume: series change from activity.
+ */
+export async function getPerformanceSummary(identifier, { metric = "performance", signal } = {}) {
+  const metricKey = VALID_METRICS.has(metric) ? metric : "performance";
+  const account = await resolveIdentifier(identifier, { signal });
+  const address = account.address.toLowerCase();
+
+  const cacheKey = `profile:${address}:summary:${metricKey}`;
+  const cached = cacheGet(cacheKey);
+  if (cached) return cached;
+
+  if (metricKey === "volume") {
+    const entries = await Promise.all(
+      SUMMARY_RANGES.map(async (range) => {
+        const data = await settle(getPerformanceRange(identifier, { range, metric: "volume", signal }));
+        return [range, data ? summaryPayload(data.change, data.source || "activity") : null];
+      }),
+    );
+    const result = Object.fromEntries(entries);
+    cacheSet(cacheKey, result, SUMMARY_TTL);
+    return result;
+  }
+
+  // Performance: prefer lb-api profit windows in parallel
+  const [profit1d, profit7d, profit30d, profitAll, series3m, seriesAll, lbDay, lbWeek, lbMonth, lbAll] =
+    await Promise.all([
+      settle(provider.getUserProfit?.(address, "1d", { signal }) ?? Promise.resolve(null)),
+      settle(provider.getUserProfit?.(address, "7d", { signal }) ?? Promise.resolve(null)),
+      settle(provider.getUserProfit?.(address, "30d", { signal }) ?? Promise.resolve(null)),
+      settle(provider.getUserProfit?.(address, "all", { signal }) ?? Promise.resolve(null)),
+      settle(getPerformanceRange(identifier, { range: "3M", metric: "performance", signal })),
+      settle(getPerformanceRange(identifier, { range: "ALL", metric: "performance", signal })),
+      getLeaderboardEntryForAddress(address, { timePeriod: "DAY", signal }),
+      getLeaderboardEntryForAddress(address, { timePeriod: "WEEK", signal }),
+      getLeaderboardEntryForAddress(address, { timePeriod: "MONTH", signal }),
+      getLeaderboardEntryForAddress(address, { timePeriod: "ALL", signal }),
+    ]);
+
+  function pick(range, profitAmount, lbEntry, series) {
+    if (profitAmount != null && Number.isFinite(profitAmount)) {
+      return summaryPayload(profitAmount, "lb-api");
+    }
+    if (lbEntry?.pnl != null && Number.isFinite(lbEntry.pnl)) {
+      return summaryPayload(lbEntry.pnl, "leaderboard");
+    }
+    if (series?.change != null && Number.isFinite(series.change)) {
+      return summaryPayload(series.change, series.source || "user-pnl-api");
+    }
+    return null;
+  }
+
+  // 90D: no lb window — use user-pnl series change
+  const result = {
+    "1D": pick("1D", profit1d, lbDay, null),
+    "1W": pick("1W", profit7d, lbWeek, null),
+    "1M": pick("1M", profit30d, lbMonth, null),
+    "3M":
+      series3m?.change != null
+        ? summaryPayload(series3m.change, series3m.source || "user-pnl-api")
+        : null,
+    ALL: pick("ALL", profitAll, lbAll, seriesAll),
+  };
+
+  // Fill any remaining nulls from series fetch per range
+  await Promise.all(
+    SUMMARY_RANGES.map(async (range) => {
+      if (result[range] != null) return;
+      const series = await settle(getPerformanceRange(identifier, { range, metric: "performance", signal }));
+      if (series?.change != null) {
+        result[range] = summaryPayload(series.change, series.source || "user-pnl-api");
+      }
+    }),
+  );
+
+  cacheSet(cacheKey, result, SUMMARY_TTL);
+  return result;
+}
+
+// Re-export mapping helpers for tests / callers
+export { LB_PROFIT_WINDOW, LB_TIME_PERIOD, SUMMARY_RANGES };

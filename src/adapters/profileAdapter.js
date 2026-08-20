@@ -25,6 +25,11 @@ function sideFromOutcome(outcome) {
 /** Open position from GET /positions */
 export function normalizePosition(raw) {
   const invested = raw.initialValue ?? (raw.avgPrice != null && raw.size != null ? raw.avgPrice * raw.size : null);
+  const size = raw.size ?? null;
+  const currentValue = raw.currentValue ?? null;
+  const redeemable = Boolean(raw.redeemable);
+  // Betmoar active filter: size > 0.1 && currentValue > 0 && !redeemable
+  const isActive = size != null && size > 0.1 && currentValue != null && currentValue > 0 && !redeemable;
   return {
     id: `${raw.conditionId || raw.asset}-${raw.asset || "open"}-open`,
     market: raw.title || "Unknown market",
@@ -34,12 +39,14 @@ export function normalizePosition(raw) {
     outcomeIndex: raw.outcomeIndex ?? null,
     averagePrice: raw.avgPrice ?? null,
     currentPrice: raw.curPrice ?? null,
-    shares: raw.size ?? null,
+    shares: size,
     invested: invested != null ? round2(invested) : null,
-    currentValue: raw.currentValue ?? null,
+    currentValue,
     pnl: raw.cashPnl ?? null,
     pnlPercent: raw.percentPnl != null ? raw.percentPnl / 100 : null,
     realizedPnl: raw.realizedPnl ?? null,
+    redeemable,
+    isActive,
     status: "open",
     closeDate: raw.endDate ?? null,
     slug: raw.slug ?? null,
@@ -131,7 +138,7 @@ function sumNotNull(values) {
  * profile fields or the leaderboard entry), those are preferred so the
  * profile never contradicts the leaderboard or comparison surfaces.
  */
-export function deriveStats({ positions, closedPositions, value, traded, rankEntry, publicProfile, account }) {
+export function deriveStats({ positions, closedPositions, value, traded, rankEntry, publicProfile, account, cashBalance }) {
   const canonical = account || publicProfile || null;
   const hasPositions = Array.isArray(positions);
   const hasClosed = Array.isArray(closedPositions);
@@ -155,8 +162,19 @@ export function deriveStats({ positions, closedPositions, value, traded, rankEnt
   const investedBasis = sumNotNull(investedRecords.map((p) => p.invested)) ?? 0;
   const pnlPercent = pnl != null && investedBasis > 0 ? pnl / investedBasis : null;
 
+  // Active positions value (Betmoar filter) preferred over raw /value when cash is known.
+  const activePositions = hasPositions ? positions.filter((p) => p.isActive) : [];
+  const activePositionsValue = hasPositions
+    ? sumNotNull(activePositions.map((p) => p.currentValue))
+    : null;
   const openPositionValue = hasPositions ? sumNotNull(positions.map((p) => p.currentValue)) : null;
-  const portfolioValue = canonical?.portfolioValue ?? value ?? openPositionValue;
+  const positionsValue = activePositionsValue ?? value ?? openPositionValue;
+  const cash = cashBalance != null && Number.isFinite(cashBalance) ? cashBalance : null;
+  // Betmoar portfolio total = active positions + on-chain cash
+  const portfolioValue =
+    positionsValue != null || cash != null
+      ? (positionsValue ?? 0) + (cash ?? 0)
+      : canonical?.portfolioValue ?? null;
 
   // Win/loss analytics over resolved positions with a known PnL. Zero wins or
   // zero losses are legitimate numbers; missing PnL fields leave them as N/A.
@@ -192,6 +210,9 @@ export function deriveStats({ positions, closedPositions, value, traded, rankEnt
 
   return {
     portfolioValue,
+    cashBalance: cash,
+    positionsValue,
+    activePositionsValue,
     pnl,
     totalPnl: pnl,
     pnlPercent,
@@ -205,7 +226,7 @@ export function deriveStats({ positions, closedPositions, value, traded, rankEnt
     largestWin,
     largestLoss,
     avgPositionSize,
-    openPositionsCount: canonical?.openPositions ?? (hasPositions ? positions.length : null),
+    openPositionsCount: canonical?.openPositions ?? (hasPositions ? activePositions.length || positions.length : null),
     activityCount: canonical?.activityCount ?? null,
     resolvedPositionsCount: hasClosed ? closedPositions.length : null,
     realizedPnl,

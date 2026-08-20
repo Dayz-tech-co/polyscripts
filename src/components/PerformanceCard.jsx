@@ -4,7 +4,7 @@ import PerformanceChart from "./PerformanceChart";
 import Tooltip from "./Tooltip";
 import { ChartSkeleton } from "./Skeleton";
 import { usePerformanceRange } from "../hooks/usePerformanceRange";
-import { getPerformanceRange } from "../services/profileService";
+import { getPerformanceSummary } from "../services/profileService";
 import { formatCompactCurrency, formatPercentage, formatSignedCurrency } from "../utils/formatters";
 import { getToneClass } from "../utils/states";
 
@@ -35,15 +35,15 @@ function useRangeSummary(identifier, metric) {
     let cancelled = false;
     setSummary((prev) => ({ ...prev, loading: true }));
 
-    Promise.all(
-      SUMMARY_RANGES.map(({ range }) =>
-        getPerformanceRange(identifier, { range, metric }).then((data) => [range, data]).catch(() => [range, null]),
-      ),
-    ).then((entries) => {
-      if (cancelled) return;
-      const data = Object.fromEntries(entries);
-      setSummary({ loading: false, data });
-    });
+    getPerformanceSummary(identifier, { metric })
+      .then((data) => {
+        if (cancelled) return;
+        setSummary({ loading: false, data: data || {} });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSummary({ loading: false, data: {} });
+      });
 
     return () => {
       cancelled = true;
@@ -189,7 +189,7 @@ export default function PerformanceCard({ identifier, stats }) {
           <ChartSkeleton />
         ) : (
           <div className="chart-empty">
-            {isVolume ? "No trading activity in this period" : "No resolved positions in this period"}
+            {isVolume ? "No trading activity in this period" : "No PnL data in this period"}
           </div>
         )}
       </div>
