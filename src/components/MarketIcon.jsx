@@ -1,15 +1,15 @@
 const CATEGORY_COLORS = {
-  Crypto: ["#FF8A18", "#ED1976"],
-  Politics: ["#5B8DEF", "#7C5CFF"],
-  Economy: ["#28C79A", "#1C9C7A"],
-  Sports: ["#FFB347", "#FF6A3D"],
-  Weather: ["#4FB6E8", "#2E7FBF"],
-  Business: ["#B08BFF", "#7C5CFF"],
-  Tech: ["#FF5C45", "#ED1976"],
+  Crypto: "#2E5CFF",
+  Politics: "#5B8DEF",
+  Economy: "#16C784",
+  Sports: "#C4A35A",
+  Weather: "#4FB6E8",
+  Business: "#8B93A7",
+  Tech: "#6E7AE8",
 };
 
-export default function MarketIcon({ category, tag, size = 28, radius = 8 }) {
-  const [from, to] = CATEGORY_COLORS[category] || ["#697586", "#4B5563"];
+export default function MarketIcon({ category, tag, size = 28, radius = 6 }) {
+  const color = CATEGORY_COLORS[category] || "#6b7380";
   return (
     <span
       className="market-icon"
@@ -17,11 +17,11 @@ export default function MarketIcon({ category, tag, size = 28, radius = 8 }) {
         width: size,
         height: size,
         borderRadius: radius,
-        background: `linear-gradient(135deg, ${from}, ${to})`,
+        background: color,
       }}
       aria-hidden="true"
     >
-      {tag ? tag.slice(0, 2) : "PS"}
+      {tag ? tag.slice(0, 2) : "·"}
     </span>
   );
 }

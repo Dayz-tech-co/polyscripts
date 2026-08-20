@@ -1,13 +1,10 @@
 import { useState } from "react";
-import { getAvatarGradient, getInitials, isValidImageUrl } from "../utils/avatar";
+import { getAvatarColor, getInitials, isValidImageUrl } from "../utils/avatar";
 
 /**
- * Renders an account's public avatar image, or a deterministic generated
- * placeholder (gradient + initials) when none exists or the image fails to
- * load. Never falls back to the PolyScripts brand mark - that belongs to
- * the site, not to any one trader.
+ * Account avatar or flat solid-color initials fallback (no gradients).
  */
-export default function Avatar({ account, size = 44, radius = 12 }) {
+export default function Avatar({ account, size = 40, radius = 8 }) {
   const [failed, setFailed] = useState(false);
   const url = account?.avatar;
   const showImage = !failed && isValidImageUrl(url);
@@ -26,7 +23,7 @@ export default function Avatar({ account, size = 44, radius = 12 }) {
     );
   }
 
-  const [from, to] = getAvatarGradient(account?.address || account?.username || account?.displayName);
+  const color = getAvatarColor(account?.address || account?.username || account?.displayName);
   const initials = getInitials(account || {});
 
   return (
@@ -36,7 +33,7 @@ export default function Avatar({ account, size = 44, radius = 12 }) {
         width: size,
         height: size,
         borderRadius: radius,
-        background: `linear-gradient(135deg, ${from}, ${to})`,
+        background: color,
         fontSize: Math.max(11, Math.round(size * 0.34)),
       }}
       aria-hidden="true"

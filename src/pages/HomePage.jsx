@@ -1,73 +1,35 @@
 import { useEffect } from "react";
-import { BarChart3, LayoutDashboard, Search, ShieldCheck } from "lucide-react";
 import AccountSearch from "../components/AccountSearch";
 import RecentAccounts from "../components/RecentAccounts";
 import TopAccounts from "../components/TopAccounts";
 import TrendingAccounts from "../components/TrendingAccounts";
 
-const CAPABILITIES = [
-  {
-    icon: Search,
-    title: "Find any account",
-    description: "Look up a public account by username or wallet address and open its analytics profile.",
-  },
-  {
-    icon: BarChart3,
-    title: "Rankings and analytics",
-    description: "Browse the leaderboard, compare profiles and inspect public positions and activity.",
-  },
-  {
-    icon: LayoutDashboard,
-    title: "Ecosystem overview",
-    description: "Live leaderboard rankings, account comparisons and curated ecosystem resources.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Read only, always",
-    description: "A research and analytics interface only. No trading, wallets or logins involved.",
-  },
-];
-
 export default function HomePage() {
   useEffect(() => {
-    document.title = "Explore | PolyScripts";
+    document.title = "PolyScripts | Polymarket account explorer";
   }, []);
 
   return (
-    <main id="main-content" className="container main-content">
-      <section className="hero">
-        <span className="hero-eyebrow">Polymarket account explorer</span>
-        <h1 className="hero-title">Explore public accounts</h1>
-        <p className="hero-subtitle">Search by username or wallet address to view statistics, positions and activity across the ecosystem.</p>
-        <div className="hero-search-wrap">
+    <main id="main-content" className="container main-content home-page">
+      <section className="home-hero" aria-labelledby="home-brand">
+        <h1 id="home-brand" className="home-brand">
+          PolyScripts
+        </h1>
+        <p className="home-lede">
+          Public Polymarket account analytics — search a username or wallet.
+        </p>
+        <div className="home-search">
           <AccountSearch variant="hero" />
         </div>
-        <p className="hero-hint">
-          Try <code>swisstony</code>, <code>RWCS</code> or <code>0x3048d65321be3497164cdfc2996f94f98a2e7537</code>
+        <p className="home-examples">
+          Examples: <code>swisstony</code> · <code>RWCS</code> · <code>0x3048…7537</code>
         </p>
       </section>
 
-      <div className="home-sections">
+      <div className="home-feed">
         <RecentAccounts />
         <TopAccounts />
         <TrendingAccounts />
-
-        <section className="section" aria-labelledby="capabilities-heading">
-          <h2 className="section-title" id="capabilities-heading">
-            What you can do
-          </h2>
-          <div className="capability-grid">
-            {CAPABILITIES.map(({ icon: Icon, title, description }) => (
-              <div className="capability-card" key={title}>
-                <span className="capability-icon">
-                  <Icon size={17} aria-hidden="true" />
-                </span>
-                <h3 className="capability-title">{title}</h3>
-                <p className="capability-description">{description}</p>
-              </div>
-            ))}
-          </div>
-        </section>
       </div>
     </main>
   );

@@ -1,16 +1,14 @@
-// Deterministic fallback avatar generation. When an account has no public
-// avatar image, we derive a small gradient + initials from its identifier so
-// the same account always renders the same placeholder, without ever using
-// the PolyScripts brand logo as a stand-in for a trader's identity.
+// Deterministic flat avatar fallbacks (no gradients). Same seed → same color.
 
-const GRADIENT_PAIRS = [
-  ["#FF8A18", "#ED1976"],
-  ["#FF5C45", "#7C5CFF"],
-  ["#5B8DEF", "#28C79A"],
-  ["#B08BFF", "#FF5C45"],
-  ["#28C79A", "#5B8DEF"],
-  ["#FFB347", "#ED1976"],
-  ["#4FB6E8", "#B08BFF"],
+const FLAT_COLORS = [
+  "#2E5CFF",
+  "#16C784",
+  "#EA3943",
+  "#5B8DEF",
+  "#8B93A7",
+  "#C4A35A",
+  "#6E7AE8",
+  "#3D9B8F",
 ];
 
 function hashString(value) {
@@ -22,20 +20,17 @@ function hashString(value) {
   return Math.abs(hash);
 }
 
-/**
- * Picks a stable gradient pair for a given account identifier (address,
- * username, anything unique and consistent works).
- */
+/** @returns {[string, string]} same color twice for API compatibility with old gradient callers */
 export function getAvatarGradient(seed) {
   const key = String(seed || "polyscripts");
-  const index = hashString(key) % GRADIENT_PAIRS.length;
-  return GRADIENT_PAIRS[index];
+  const color = FLAT_COLORS[hashString(key) % FLAT_COLORS.length];
+  return [color, color];
 }
 
-/**
- * Best-effort initials: prefer a username/display name, fall back to the
- * first characters of the wallet address, and finally a neutral glyph.
- */
+export function getAvatarColor(seed) {
+  return getAvatarGradient(seed)[0];
+}
+
 export function getInitials({ username, displayName, address }) {
   const label = username || displayName;
   if (label) {
@@ -49,9 +44,6 @@ export function getInitials({ username, displayName, address }) {
   return "?";
 }
 
-/**
- * Only ever trust http(s) URLs as avatar sources.
- */
 export function isValidImageUrl(url) {
   if (!url || typeof url !== "string") return false;
   try {

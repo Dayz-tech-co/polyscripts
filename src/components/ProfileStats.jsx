@@ -3,10 +3,11 @@ import { StatsSkeleton } from "./Skeleton";
 import { formatCompactCurrency, formatCurrency, formatNumber, formatPercentage, formatSignedCurrency } from "../utils/formatters";
 import { getToneClass, getValueState } from "../utils/states";
 
+const ICON = { size: 15, strokeWidth: 1.75 };
+
 /**
- * Hierarchical account KPI section (Betmoar / Polymarket-style).
- * Hero = Profit/Loss (strong color contrast); featured = Portfolio + Volume;
- * secondary strip = Markets / Win Rate / Open Positions.
+ * Hierarchical account KPI — flat Polymarket-mature layout.
+ * Hero P/L (left accent), featured Portfolio + Volume, secondary chips.
  */
 export default function ProfileStats({ stats, loading }) {
   if (loading || !stats) return <StatsSkeleton />;
@@ -19,7 +20,7 @@ export default function ProfileStats({ stats, loading }) {
       <div className={`account-kpi-hero tone-${pnlTone}`}>
         <div className="account-kpi-hero-top">
           <span className="account-kpi-eyebrow">
-            <TrendingUp size={14} aria-hidden="true" />
+            <TrendingUp {...ICON} aria-hidden="true" />
             Total profit / loss
           </span>
           {stats.rank != null && (
@@ -35,7 +36,7 @@ export default function ProfileStats({ stats, loading }) {
       <div className="account-kpi-featured">
         <article className="account-kpi-card account-kpi-card-feature">
           <div className="account-kpi-card-icon" aria-hidden="true">
-            <Wallet size={16} />
+            <Wallet {...ICON} />
           </div>
           <div className="account-kpi-card-body">
             <span className="account-kpi-card-label">Portfolio value</span>
@@ -52,7 +53,7 @@ export default function ProfileStats({ stats, loading }) {
 
         <article className="account-kpi-card account-kpi-card-feature">
           <div className="account-kpi-card-icon" aria-hidden="true">
-            <BarChart3 size={16} />
+            <BarChart3 {...ICON} />
           </div>
           <div className="account-kpi-card-body">
             <span className="account-kpi-card-label">Trading volume</span>
@@ -66,7 +67,7 @@ export default function ProfileStats({ stats, loading }) {
 
       <div className="account-kpi-secondary">
         <div className="account-kpi-chip">
-          <Layers3 size={14} className="account-kpi-chip-icon" aria-hidden="true" />
+          <Layers3 {...ICON} className="account-kpi-chip-icon" aria-hidden="true" />
           <div>
             <span className="account-kpi-chip-label">Markets traded</span>
             <span className="account-kpi-chip-value">
@@ -75,7 +76,7 @@ export default function ProfileStats({ stats, loading }) {
           </div>
         </div>
         <div className="account-kpi-chip">
-          <Percent size={14} className="account-kpi-chip-icon" aria-hidden="true" />
+          <Percent {...ICON} className="account-kpi-chip-icon" aria-hidden="true" />
           <div>
             <span className="account-kpi-chip-label">Win rate</span>
             <span className="account-kpi-chip-value">
@@ -84,7 +85,7 @@ export default function ProfileStats({ stats, loading }) {
           </div>
         </div>
         <div className="account-kpi-chip">
-          <CircleDot size={14} className="account-kpi-chip-icon" aria-hidden="true" />
+          <CircleDot {...ICON} className="account-kpi-chip-icon" aria-hidden="true" />
           <div>
             <span className="account-kpi-chip-label">Open positions</span>
             <span className="account-kpi-chip-value">
