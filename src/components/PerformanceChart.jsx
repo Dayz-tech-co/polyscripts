@@ -101,6 +101,8 @@ function formatDynamicXTick(ms, spanMs) {
 
 export default function PerformanceChart({ data, metric = "performance", range = "1M" }) {
   const svgRef = useRef(null);
+  const linePathRef = useRef(null);
+  const areaPathRef = useRef(null);
   const animFrameRef = useRef(null);
 
   // Time Domain state [startMs, endMs]
@@ -271,6 +273,48 @@ export default function PerformanceChart({ data, metric = "performance", range =
     return () => el.removeEventListener("wheel", handleWheel);
   }, [handleWheel]);
 
+  // Draw-in animation when series / range / metric changes
+  useEffect(() => {
+    const lineEl = linePathRef.current;
+    const areaEl = areaPathRef.current;
+    if (!lineEl || !linePath) return undefined;
+
+    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    if (prefersReducedMotion) {
+      lineEl.style.strokeDasharray = "none";
+      lineEl.style.strokeDashoffset = "0";
+      if (areaEl) areaEl.style.opacity = "1";
+      return undefined;
+    }
+
+    let length = 0;
+    try {
+      length = lineEl.getTotalLength();
+    } catch {
+      length = 0;
+    }
+    if (!length) return undefined;
+
+    lineEl.style.transition = "none";
+    lineEl.style.strokeDasharray = `${length}`;
+    lineEl.style.strokeDashoffset = `${length}`;
+    if (areaEl) {
+      areaEl.style.transition = "none";
+      areaEl.style.opacity = "0";
+    }
+
+    // Force reflow then animate
+    void lineEl.getBoundingClientRect();
+    lineEl.style.transition = "stroke-dashoffset 700ms cubic-bezier(0.22, 1, 0.36, 1)";
+    lineEl.style.strokeDashoffset = "0";
+    if (areaEl) {
+      areaEl.style.transition = "opacity 500ms ease 180ms";
+      areaEl.style.opacity = "1";
+    }
+
+    return undefined;
+  }, [linePath, range, metric]);
+
   // Drag Pan handlers
   function handleMouseDown(e) {
     if (e.button !== 0 || !fullBounds) return;
@@ -406,10 +450,18 @@ export default function PerformanceChart({ data, metric = "performance", range =
         )}
 
         {/* Subdued area fill */}
-        <path d={areaPath} fill={`url(#${areaGradientId})`} stroke="none" />
+        <path
+          ref={areaPathRef}
+          className="chart-area-fill"
+          d={areaPath}
+          fill={`url(#${areaGradientId})`}
+          stroke="none"
+        />
 
         {/* Single continuous semantic-colored line */}
         <path
+          ref={linePathRef}
+          className="chart-line-path"
           d={linePath}
           fill="none"
           stroke={lineColor}

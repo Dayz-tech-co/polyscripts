@@ -5,7 +5,7 @@ import Tooltip from "./Tooltip";
 import { ChartSkeleton } from "./Skeleton";
 import { usePerformanceRange } from "../hooks/usePerformanceRange";
 import { getPerformanceSummary } from "../services/profileService";
-import { formatCompactCurrency, formatPercentage, formatSignedCurrency } from "../utils/formatters";
+import { formatCompactCurrency, formatSignedCurrency } from "../utils/formatters";
 import { getToneClass } from "../utils/states";
 
 const RANGES = ["1D", "1W", "1M", "3M", "ALL"];
@@ -53,7 +53,7 @@ function useRangeSummary(identifier, metric) {
   return summary;
 }
 
-export default function PerformanceCard({ identifier, stats }) {
+export default function PerformanceCard({ identifier }) {
   const [range, setRange] = useState("ALL");
   const [metric, setMetric] = useState("performance");
   const [resetKey, setResetKey] = useState(0);
@@ -100,28 +100,6 @@ export default function PerformanceCard({ identifier, stats }) {
                 : "N/A"}
             </span>
           </div>
-          {stats && (
-            <div className="performance-secondary-strip">
-              {stats.portfolioValue != null && (
-                <div className="sec-stat-col">
-                  <span className="sec-stat-label">Portfolio</span>
-                  <span className="sec-stat-val">{formatCompactCurrency(stats.portfolioValue)}</span>
-                </div>
-              )}
-              {stats.volume != null && (
-                <div className="sec-stat-col">
-                  <span className="sec-stat-label">Volume</span>
-                  <span className="sec-stat-val">{formatCompactCurrency(stats.volume)}</span>
-                </div>
-              )}
-              {stats.winRate != null && (
-                <div className="sec-stat-col">
-                  <span className="sec-stat-label">Win Rate</span>
-                  <span className="sec-stat-val">{formatPercentage(stats.winRate)}</span>
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         <div className="performance-controls-row">

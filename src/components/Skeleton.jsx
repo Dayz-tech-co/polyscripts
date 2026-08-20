@@ -30,15 +30,31 @@ export function ProfileHeaderSkeleton() {
 
 export function StatsSkeleton() {
   return (
-    <div className="stats-grid stats-grid-six">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div className="stat-card" key={i}>
-          <Skeleton width={90} height={12} style={{ marginBottom: 12 }} />
-          <Skeleton width={120} height={24} style={{ marginBottom: 8 }} />
-          <Skeleton width={70} height={12} />
+    <section className="account-kpi account-kpi-skeleton" aria-hidden="true">
+      <div className="account-kpi-hero">
+        <Skeleton width={140} height={12} style={{ marginBottom: 14 }} />
+        <Skeleton width={220} height={36} style={{ marginBottom: 10 }} />
+        <Skeleton width={180} height={12} />
+      </div>
+      <div className="account-kpi-featured">
+        <div className="account-kpi-card account-kpi-card-feature">
+          <Skeleton width={100} height={12} style={{ marginBottom: 10 }} />
+          <Skeleton width={140} height={24} />
         </div>
-      ))}
-    </div>
+        <div className="account-kpi-card account-kpi-card-feature">
+          <Skeleton width={100} height={12} style={{ marginBottom: 10 }} />
+          <Skeleton width={140} height={24} />
+        </div>
+      </div>
+      <div className="account-kpi-secondary">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div className="account-kpi-chip" key={i}>
+            <Skeleton width={80} height={10} style={{ marginBottom: 8 }} />
+            <Skeleton width={64} height={18} />
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

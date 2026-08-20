@@ -1,89 +1,98 @@
-import { BarChart3, CircleDollarSign, Layers3, Percent, TrendingUp, Wallet } from "lucide-react";
+import { BarChart3, Layers3, Percent, TrendingUp, Wallet, CircleDot } from "lucide-react";
 import { StatsSkeleton } from "./Skeleton";
 import { formatCompactCurrency, formatCurrency, formatNumber, formatPercentage, formatSignedCurrency } from "../utils/formatters";
-import { getValueState } from "../utils/states";
+import { getToneClass, getValueState } from "../utils/states";
 
+/**
+ * Hierarchical account KPI section (Betmoar / Polymarket-style).
+ * Hero = Profit/Loss (strong color contrast); featured = Portfolio + Volume;
+ * secondary strip = Markets / Win Rate / Open Positions.
+ */
 export default function ProfileStats({ stats, loading }) {
   if (loading || !stats) return <StatsSkeleton />;
 
   const pnlTone = getValueState(stats.pnl);
+  const pnlClass = getToneClass(stats.pnl);
 
   return (
-    <div className="kpi-integrated-strip" role="region" aria-label="Account Overview Statistics">
-      <div className="kpi-group kpi-group-hero">
-        <div className="kpi-header">
-          <span className="kpi-label">Profit / Loss</span>
-          <TrendingUp size={12} className="kpi-icon" aria-hidden="true" />
+    <section className="account-kpi" role="region" aria-label="Account overview">
+      <div className={`account-kpi-hero tone-${pnlTone}`}>
+        <div className="account-kpi-hero-top">
+          <span className="account-kpi-eyebrow">
+            <TrendingUp size={14} aria-hidden="true" />
+            Total profit / loss
+          </span>
+          {stats.rank != null && (
+            <span className="account-kpi-rank">Rank #{formatNumber(stats.rank)}</span>
+          )}
         </div>
-        <div className={`kpi-value kpi-value-hero ${pnlTone}`}>
-          {stats.pnl != null ? formatSignedCurrency(stats.pnl) : "--"}
-        </div>
+        <p className={`account-kpi-hero-value ${pnlClass}`}>
+          {stats.pnl != null ? formatSignedCurrency(stats.pnl) : "N/A"}
+        </p>
+        <p className="account-kpi-hero-hint">Realized + unrealized · this account</p>
       </div>
 
-      <div className="kpi-divider" aria-hidden="true" />
-
-      <div className="kpi-group">
-        <div className="kpi-header">
-          <span className="kpi-label">Trading Volume</span>
-          <BarChart3 size={12} className="kpi-icon" aria-hidden="true" />
-        </div>
-        <div className="kpi-value">
-          {stats.volume != null ? formatCompactCurrency(stats.volume) : "--"}
-        </div>
-      </div>
-
-      <div className="kpi-divider" aria-hidden="true" />
-
-      <div className="kpi-group">
-        <div className="kpi-header">
-          <span className="kpi-label">Portfolio Value</span>
-          <Wallet size={12} className="kpi-icon" aria-hidden="true" />
-        </div>
-        <div className="kpi-value">
-          {stats.portfolioValue != null ? formatCurrency(stats.portfolioValue) : "--"}
-        </div>
-      </div>
-
-      <div className="kpi-divider" aria-hidden="true" />
-
-      <div className="kpi-group">
-        <div className="kpi-header">
-          <span className="kpi-label">Markets Traded</span>
-          <Layers3 size={12} className="kpi-icon" aria-hidden="true" />
-        </div>
-        <div className="kpi-value">
-          {stats.marketsTraded != null ? formatNumber(stats.marketsTraded) : "--"}
-        </div>
-      </div>
-
-      <div className="kpi-divider" aria-hidden="true" />
-
-      <div className="kpi-group">
-        <div className="kpi-header">
-          <span className="kpi-label">Win Rate</span>
-          <Percent size={12} className="kpi-icon" aria-hidden="true" />
-        </div>
-        <div className="kpi-value">
-          {stats.winRate != null ? formatPercentage(stats.winRate) : "--"}
-        </div>
-      </div>
-
-      <div className="kpi-divider" aria-hidden="true" />
-
-      <div className="kpi-group">
-        <div className="kpi-header">
-          <span className="kpi-label">Open Positions</span>
-          <CircleDollarSign size={12} className="kpi-icon" aria-hidden="true" />
-        </div>
-        <div className="kpi-value">
-          {stats.openPositionsCount != null ? formatNumber(stats.openPositionsCount) : "--"}
-        </div>
-        {stats.rank != null && (
-          <div className="kpi-subtext">
-            Rank #{formatNumber(stats.rank)}
+      <div className="account-kpi-featured">
+        <article className="account-kpi-card account-kpi-card-feature">
+          <div className="account-kpi-card-icon" aria-hidden="true">
+            <Wallet size={16} />
           </div>
-        )}
+          <div className="account-kpi-card-body">
+            <span className="account-kpi-card-label">Portfolio value</span>
+            <span className="account-kpi-card-value">
+              {stats.portfolioValue != null ? formatCurrency(stats.portfolioValue) : "N/A"}
+            </span>
+            {stats.cashBalance != null && stats.cashBalance > 0 && (
+              <span className="account-kpi-card-meta">
+                Incl. {formatCompactCurrency(stats.cashBalance)} cash
+              </span>
+            )}
+          </div>
+        </article>
+
+        <article className="account-kpi-card account-kpi-card-feature">
+          <div className="account-kpi-card-icon" aria-hidden="true">
+            <BarChart3 size={16} />
+          </div>
+          <div className="account-kpi-card-body">
+            <span className="account-kpi-card-label">Trading volume</span>
+            <span className="account-kpi-card-value">
+              {stats.volume != null ? formatCompactCurrency(stats.volume) : "N/A"}
+            </span>
+            <span className="account-kpi-card-meta">All-time notional</span>
+          </div>
+        </article>
       </div>
-    </div>
+
+      <div className="account-kpi-secondary">
+        <div className="account-kpi-chip">
+          <Layers3 size={14} className="account-kpi-chip-icon" aria-hidden="true" />
+          <div>
+            <span className="account-kpi-chip-label">Markets traded</span>
+            <span className="account-kpi-chip-value">
+              {stats.marketsTraded != null ? formatNumber(stats.marketsTraded) : "N/A"}
+            </span>
+          </div>
+        </div>
+        <div className="account-kpi-chip">
+          <Percent size={14} className="account-kpi-chip-icon" aria-hidden="true" />
+          <div>
+            <span className="account-kpi-chip-label">Win rate</span>
+            <span className="account-kpi-chip-value">
+              {stats.winRate != null ? formatPercentage(stats.winRate) : "N/A"}
+            </span>
+          </div>
+        </div>
+        <div className="account-kpi-chip">
+          <CircleDot size={14} className="account-kpi-chip-icon" aria-hidden="true" />
+          <div>
+            <span className="account-kpi-chip-label">Open positions</span>
+            <span className="account-kpi-chip-value">
+              {stats.openPositionsCount != null ? formatNumber(stats.openPositionsCount) : "N/A"}
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
