@@ -1,166 +1,328 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { formatCurrency, formatSignedCurrency, formatPercentage, formatDateTime, formatCompactCurrency } from "../utils/formatters";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { formatCurrency, formatSignedCurrency, formatDateTime, formatCompactCurrency } from "../utils/formatters";
 import { getValueState } from "../utils/states";
 
-const WIDTH = 680;
-const HEIGHT = 260;
-const PAD_TOP = 16;
-const PAD_BOTTOM = 28;
-const PAD_LEFT = 4;
-const PAD_RIGHT = 56; // Room for right-edge value tag
+const WIDTH = 800;
+const HEIGHT = 440;
+const PAD_TOP = 28;
+const PAD_RIGHT = 76;
+const PAD_BOTTOM = 48;
+const PAD_LEFT = 20;
 const USABLE_WIDTH = WIDTH - PAD_LEFT - PAD_RIGHT;
 const USABLE_HEIGHT = HEIGHT - PAD_TOP - PAD_BOTTOM;
 
-const PALETTE = {
-  positive: { line: "#2FB57E", soft: "#34C98E", fillStop: "rgba(47, 181, 126, 0.15)" },
-  negative: { line: "#E5484D", soft: "#E5484D", fillStop: "rgba(229, 72, 77, 0.15)" },
-  neutral: { line: "#6E8BFF", soft: "#7C9CFF", fillStop: "rgba(110, 139, 255, 0.15)" },
-};
-
-const X_TICK_COUNT = 4;
+const COLOR_UP = "#2FB57E";
+const COLOR_DOWN = "#E5484D";
+const COLOR_NEUTRAL = "#7C9CFF";
 
 /**
- * Fritsch-Carlson Monotone Cubic Spline SVG path generation.
- * Passes through every exact data point (x, y) without altering values or timestamps.
- * Guarantees zero overshoot beyond local extrema, producing a sleek, smooth financial curve.
+ * Fritsch-Carlson Monotone Cubic Spline control points generator.
+ * Produces control points for point[i] to point[i+1] without overshooting extrema.
  */
-function buildMonotoneSmoothPath(points) {
-  if (!points || points.length === 0) return "";
-  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
-  if (points.length === 2) return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
-
-  const n = points.length;
+function computeMonotoneTangents(pts) {
+  const n = pts.length;
+  if (n < 2) return [];
   const dx = new Array(n - 1);
   const dy = new Array(n - 1);
   const ms = new Array(n - 1);
 
   for (let i = 0; i < n - 1; i++) {
-    dx[i] = points[i + 1].x - points[i].x;
-    dy[i] = points[i + 1].y - points[i].y;
+    dx[i] = pts[i + 1].x - pts[i].x;
+    dy[i] = pts[i + 1].y - pts[i].y;
     ms[i] = dx[i] !== 0 ? dy[i] / dx[i] : 0;
   }
 
-  const mTangents = new Array(n);
-  mTangents[0] = ms[0];
+  const tangents = new Array(n);
+  tangents[0] = ms[0];
   for (let i = 1; i < n - 1; i++) {
     if (ms[i - 1] * ms[i] <= 0) {
-      mTangents[i] = 0;
+      tangents[i] = 0;
     } else {
       const common = ms[i - 1] + ms[i];
-      mTangents[i] = (3 * common) / (common / ms[i - 1] + common / ms[i]);
+      tangents[i] = (3 * common) / (common / ms[i - 1] + common / ms[i]);
     }
   }
-  mTangents[n - 1] = ms[n - 2];
-
-  let path = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
-  for (let i = 0; i < n - 1; i++) {
-    const cp1x = points[i].x + dx[i] / 3;
-    const cp1y = points[i].y + mTangents[i] * (dx[i] / 3);
-    const cp2x = points[i + 1].x - dx[i] / 3;
-    const cp2y = points[i + 1].y - mTangents[i + 1] * (dx[i] / 3);
-    path += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${points[i + 1].x.toFixed(2)} ${points[i + 1].y.toFixed(2)}`;
-  }
-  return path;
+  tangents[n - 1] = ms[n - 2];
+  return { dx, tangents };
 }
 
-function buildXTicks(points) {
-  if (!points || points.length < 2) return [];
-  const start = new Date(points[0].date).getTime();
-  const end = new Date(points[points.length - 1].date).getTime();
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return [];
+function buildSegmentBezierPath(p0, p1, t0, t1, dx) {
+  if (dx === 0) return `M ${p0.x.toFixed(2)} ${p0.y.toFixed(2)} L ${p1.x.toFixed(2)} ${p1.y.toFixed(2)}`;
+  const cp1x = p0.x + dx / 3;
+  const cp1y = p0.y + t0 * (dx / 3);
+  const cp2x = p1.x - dx / 3;
+  const cp2y = p1.y - t1 * (dx / 3);
+  return `M ${p0.x.toFixed(2)} ${p0.y.toFixed(2)} C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${p1.x.toFixed(2)} ${p1.y.toFixed(2)}`;
+}
 
+/** Dynamic Y-axis tick generator */
+function buildYTicks(minVal, maxVal, count = 6) {
+  if (!Number.isFinite(minVal) || !Number.isFinite(maxVal) || maxVal === minVal) {
+    return [{ value: minVal || 0, frac: 0.5 }];
+  }
+  const step = (maxVal - minVal) / (count - 1);
   const ticks = [];
-  for (let i = 0; i <= X_TICK_COUNT; i++) {
-    const t = start + ((end - start) * i) / X_TICK_COUNT;
-    const xPct = (PAD_LEFT / WIDTH + (i / X_TICK_COUNT) * (USABLE_WIDTH / WIDTH)) * 100;
-    ticks.push({ t, x: xPct, first: i === 0, last: i === X_TICK_COUNT });
+  for (let i = 0; i < count; i++) {
+    const value = minVal + step * i;
+    const frac = (value - minVal) / (maxVal - minVal);
+    ticks.push({ value, frac });
   }
   return ticks;
 }
 
-function formatAxisTick(ms, range, spanMs) {
+/** Dynamic X-axis tick generator for visible time domain */
+function buildDynamicXTicks(domainStartMs, domainEndMs, count = 5) {
+  if (!domainStartMs || !domainEndMs || domainEndMs <= domainStartMs) return [];
+  const spanMs = domainEndMs - domainStartMs;
+  const ticks = [];
+  for (let i = 0; i < count; i++) {
+    const tMs = domainStartMs + (spanMs * i) / (count - 1);
+    const frac = i / (count - 1);
+    const x = PAD_LEFT + frac * USABLE_WIDTH;
+    ticks.push({ tMs, x, first: i === 0, last: i === count - 1 });
+  }
+  return ticks;
+}
+
+function formatDynamicXTick(ms, spanMs) {
   const d = new Date(ms);
-  const isIntraday = (spanMs != null && spanMs > 0 && spanMs < 24 * 60 * 60 * 1000) || range === "1D";
-  if (isIntraday) return d.toLocaleTimeString("en-US", { hour: "numeric" });
-  if (range === "1W" && spanMs != null && spanMs <= 7 * 24 * 60 * 60 * 1000) {
-    return d.toLocaleDateString("en-US", { weekday: "short" });
+  if (spanMs < 36 * 60 * 60 * 1000) {
+    return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  }
+  if (spanMs < 14 * 24 * 60 * 60 * 1000) {
+    return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
   }
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-export default function PerformanceChart({ data, metric = "performance", range = "1M", startValue = 0 }) {
-  const [hoverIndex, setHoverIndex] = useState(null);
-  const [displayPoints, setDisplayPoints] = useState(null);
+export default function PerformanceChart({ data, metric = "performance", range = "1M" }) {
   const svgRef = useRef(null);
+  const animFrameRef = useRef(null);
 
-  const target = useMemo(() => {
-    if (!data || data.length === 0) {
-      return { points: [], gridLines: [], tone: "neutral" };
-    }
-    const values = data.map((d) => d.value);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const rangeWidth = max - min || max * 0.1 || 1;
-    const paddedMin = min - rangeWidth * 0.12;
-    const paddedMax = max + rangeWidth * 0.12;
-    const paddedRange = paddedMax - paddedMin || 1;
+  // Time Domain state [startMs, endMs]
+  const [domain, setDomain] = useState(null);
+  // Animated Y-range state for smooth zoom auto-scaling
+  const [animY, setAnimY] = useState({ min: 0, max: 1 });
+  const [hoverIndex, setHoverIndex] = useState(null);
 
+  // Drag pan state
+  const dragRef = useRef({ active: false, startX: 0, startDomain: null });
+
+  // Full dataset boundaries
+  const fullBounds = useMemo(() => {
+    if (!data || data.length === 0) return null;
     const startMs = new Date(data[0].date).getTime();
     const endMs = new Date(data[data.length - 1].date).getTime();
-    const spanMs = endMs - startMs || 1;
+    return { startMs, endMs, spanMs: endMs - startMs || 1 };
+  }, [data]);
 
-    const pts = data.map((d) => {
+  // Reset domain when dataset/range changes
+  useEffect(() => {
+    if (fullBounds) {
+      setDomain([fullBounds.startMs, fullBounds.endMs]);
+    } else {
+      setDomain(null);
+    }
+  }, [fullBounds, range, metric]);
+
+  const activeDomain = domain ?? (fullBounds ? [fullBounds.startMs, fullBounds.endMs] : [0, 1]);
+  const [domainStartMs, domainEndMs] = activeDomain;
+  const domainSpanMs = Math.max(1, domainEndMs - domainStartMs);
+
+  // Visible points inside current time domain
+  const visiblePoints = useMemo(() => {
+    if (!data || data.length === 0) return [];
+    return data.filter((d) => {
+      const t = new Date(d.date).getTime();
+      return t >= domainStartMs && t <= domainEndMs;
+    });
+  }, [data, domainStartMs, domainEndMs]);
+
+  // Target Y-min and Y-max for visible points
+  const targetY = useMemo(() => {
+    const pts = visiblePoints.length > 0 ? visiblePoints : data || [];
+    if (pts.length === 0) return { min: -1, max: 1 };
+    const values = pts.map((d) => d.value);
+    const minVal = Math.min(...values);
+    const maxVal = Math.max(...values);
+    const spread = maxVal - minVal || Math.abs(maxVal) * 0.1 || 1;
+    return {
+      min: minVal - spread * 0.10,
+      max: maxVal + spread * 0.10,
+    };
+  }, [visiblePoints, data]);
+
+  // Smooth Y-axis interpolation animation
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    if (prefersReducedMotion) {
+      setAnimY(targetY);
+      return undefined;
+    }
+
+    let start = null;
+    const initialY = { ...animY };
+    const duration = 180;
+
+    function step(timestamp) {
+      if (!start) start = timestamp;
+      const progress = Math.min(1, (timestamp - start) / duration);
+      const ease = 1 - Math.pow(1 - progress, 3);
+
+      setAnimY({
+        min: initialY.min + (targetY.min - initialY.min) * ease,
+        max: initialY.max + (targetY.max - initialY.max) * ease,
+      });
+
+      if (progress < 1) {
+        animFrameRef.current = requestAnimationFrame(step);
+      }
+    }
+
+    animFrameRef.current = requestAnimationFrame(step);
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    };
+  }, [targetY.min, targetY.max]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Screen coordinates for visible points
+  const mappedPoints = useMemo(() => {
+    if (!visiblePoints || visiblePoints.length === 0) return [];
+    const yRange = animY.max - animY.min || 1;
+
+    return visiblePoints.map((d, i) => {
       const tMs = new Date(d.date).getTime();
-      const frac = Number.isFinite(tMs) ? Math.max(0, Math.min(1, (tMs - startMs) / spanMs)) : 0;
+      const xFrac = (tMs - domainStartMs) / domainSpanMs;
+      const yFrac = (d.value - animY.min) / yRange;
       return {
-        x: PAD_LEFT + frac * USABLE_WIDTH,
-        y: PAD_TOP + USABLE_HEIGHT - ((d.value - paddedMin) / paddedRange) * USABLE_HEIGHT,
+        x: PAD_LEFT + xFrac * USABLE_WIDTH,
+        y: PAD_TOP + USABLE_HEIGHT - yFrac * USABLE_HEIGHT,
         value: d.value,
         date: d.date,
+        originalIndex: i,
       };
     });
+  }, [visiblePoints, domainStartMs, domainSpanMs, animY]);
 
-    const gridLines = [0, 0.25, 0.5, 0.75, 1].map((t) => ({
-      y: PAD_TOP + t * USABLE_HEIGHT,
-      value: paddedMax - t * paddedRange,
-    }));
+  // Movement-based Segment Paths (Green for recovery/up, Red for drawdown/down)
+  const segments = useMemo(() => {
+    if (mappedPoints.length < 2) return [];
+    const { dx, tangents } = computeMonotoneTangents(mappedPoints);
+    const list = [];
 
-    const change = data[data.length - 1].value - data[0].value;
-    const state = metric === "performance" ? getValueState(change) : "neutral";
+    for (let i = 0; i < mappedPoints.length - 1; i++) {
+      const p0 = mappedPoints[i];
+      const p1 = mappedPoints[i + 1];
+      const isUp = p1.value > p0.value;
+      const isDown = p1.value < p0.value;
 
-    return { points: pts, gridLines, tone: state };
-  }, [data, metric]);
+      let color = COLOR_NEUTRAL;
+      if (metric === "performance") {
+        color = isUp ? COLOR_UP : isDown ? COLOR_DOWN : list[i - 1]?.color || COLOR_NEUTRAL;
+      }
 
-  useEffect(() => {
-    setHoverIndex(null);
-    setDisplayPoints(target.points);
-  }, [target.points]);
+      const d = buildSegmentBezierPath(p0, p1, tangents[i], tangents[i + 1], dx[i]);
+      list.push({ d, color, isUp, isDown });
+    }
+    return list;
+  }, [mappedPoints, metric]);
 
-  const points = displayPoints ?? target.points;
-  const { gridLines, tone } = target;
-  const metricLabel = metric === "performance" ? "Realized PnL" : "Trading Volume";
-
-  const linePath = useMemo(() => buildMonotoneSmoothPath(points), [points]);
+  // Combined area path for translucent neutral fill
   const areaPath = useMemo(() => {
-    if (points.length === 0) return "";
-    const last = points[points.length - 1];
-    const first = points[0];
-    return `${linePath} L ${last.x.toFixed(2)} ${HEIGHT - PAD_BOTTOM} L ${first.x.toFixed(2)} ${HEIGHT - PAD_BOTTOM} Z`;
-  }, [linePath, points]);
+    if (mappedPoints.length < 2) return "";
+    const first = mappedPoints[0];
+    const last = mappedPoints[mappedPoints.length - 1];
+    let path = `M ${first.x.toFixed(2)} ${first.y.toFixed(2)}`;
 
-  const palette = PALETTE[tone] || PALETTE.neutral;
-  const gradientId = "performance-line-gradient";
-  const areaGradientId = "performance-area-gradient";
+    if (segments.length > 0) {
+      for (const seg of segments) {
+        path += seg.d.replace(/^M [0-9.]+\s+[0-9.]+/, "");
+      }
+    }
+    path += ` L ${last.x.toFixed(2)} ${HEIGHT - PAD_BOTTOM} L ${first.x.toFixed(2)} ${HEIGHT - PAD_BOTTOM} Z`;
+    return path;
+  }, [mappedPoints, segments]);
 
-  function handlePointerMove(e) {
-    if (!svgRef.current || points.length === 0) return;
+  // Wheel Zoom (centered on cursor)
+  const handleWheel = useCallback((e) => {
+    if (!svgRef.current || !fullBounds) return;
+    e.preventDefault();
+
     const rect = svgRef.current.getBoundingClientRect();
-    const clientX = e.clientX ?? e.touches?.[0]?.clientX;
-    if (clientX === undefined) return;
-    const relX = ((clientX - rect.left) / rect.width) * WIDTH;
+    const cursorFrac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const cursorMs = domainStartMs + cursorFrac * domainSpanMs;
+
+    const zoomFactor = e.deltaY < 0 ? 0.80 : 1.25;
+    const minSpan = Math.min(fullBounds.spanMs, 10 * 60 * 1000); // 10 min minimum
+    const maxSpan = fullBounds.spanMs;
+
+    let newSpan = domainSpanMs * zoomFactor;
+    newSpan = Math.max(minSpan, Math.min(maxSpan, newSpan));
+
+    let newStart = cursorMs - cursorFrac * newSpan;
+    let newEnd = cursorMs + (1 - cursorFrac) * newSpan;
+
+    if (newStart < fullBounds.startMs) {
+      newStart = fullBounds.startMs;
+      newEnd = Math.min(fullBounds.endMs, newStart + newSpan);
+    }
+    if (newEnd > fullBounds.endMs) {
+      newEnd = fullBounds.endMs;
+      newStart = Math.max(fullBounds.startMs, newEnd - newSpan);
+    }
+
+    setDomain([newStart, newEnd]);
+  }, [fullBounds, domainStartMs, domainSpanMs]);
+
+  // Attach non-passive wheel event listener to SVG to prevent page scroll while zooming
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return undefined;
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => el.removeEventListener("wheel", handleWheel);
+  }, [handleWheel]);
+
+  // Drag Pan handlers
+  function handleMouseDown(e) {
+    if (e.button !== 0 || !fullBounds) return;
+    dragRef.current = {
+      active: true,
+      startX: e.clientX,
+      startDomain: [domainStartMs, domainEndMs],
+    };
+  }
+
+  function handleMouseMove(e) {
+    if (dragRef.current.active) {
+      const rect = svgRef.current.getBoundingClientRect();
+      const deltaX = e.clientX - dragRef.current.startX;
+      const deltaMs = -(deltaX / rect.width) * domainSpanMs;
+
+      const [origStart, origEnd] = dragRef.current.startDomain;
+      let newStart = origStart + deltaMs;
+      let newEnd = origEnd + deltaMs;
+
+      if (newStart < fullBounds.startMs) {
+        newStart = fullBounds.startMs;
+        newEnd = newStart + domainSpanMs;
+      }
+      if (newEnd > fullBounds.endMs) {
+        newEnd = fullBounds.endMs;
+        newStart = newEnd - domainSpanMs;
+      }
+
+      setDomain([newStart, newEnd]);
+      return;
+    }
+
+    // Hover crosshair lookup
+    if (!svgRef.current || mappedPoints.length === 0) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const relX = ((e.clientX - rect.left) / rect.width) * WIDTH;
+
     let nearest = 0;
     let nearestDist = Infinity;
-    points.forEach((p, i) => {
+    mappedPoints.forEach((p, i) => {
       const dist = Math.abs(p.x - relX);
       if (dist < nearestDist) {
         nearestDist = dist;
@@ -170,12 +332,15 @@ export default function PerformanceChart({ data, metric = "performance", range =
     setHoverIndex(nearest);
   }
 
-  const spanMs = useMemo(() => {
-    if (!points || points.length < 2) return 0;
-    const start = new Date(points[0].date).getTime();
-    const end = new Date(points[points.length - 1].date).getTime();
-    return Number.isFinite(start) && Number.isFinite(end) ? end - start : 0;
-  }, [points]);
+  function handleMouseUp() {
+    dragRef.current.active = false;
+  }
+
+  function handleDoubleClick() {
+    if (fullBounds) {
+      setDomain([fullBounds.startMs, fullBounds.endMs]);
+    }
+  }
 
   if (!data || data.length === 0) {
     return (
@@ -185,56 +350,104 @@ export default function PerformanceChart({ data, metric = "performance", range =
     );
   }
 
-  const activePoint = hoverIndex !== null && points.length > 0 ? points[hoverIndex] : null;
-  const lastPoint = points.length > 0 ? points[points.length - 1] : null;
-  const hoverChange = activePoint ? activePoint.value - (startValue ?? 0) : 0;
-  const hoverChangePct = startValue && startValue !== 0 ? hoverChange / Math.abs(startValue) : null;
-  const hoverTone = metric === "performance" ? getValueState(hoverChange) : "neutral";
+  const activePoint = hoverIndex !== null && mappedPoints.length > 0 ? mappedPoints[hoverIndex] : null;
+  const lastPoint = mappedPoints.length > 0 ? mappedPoints[mappedPoints.length - 1] : null;
+  const lastSegment = segments.length > 0 ? segments[segments.length - 1] : null;
+
+  // Hover delta from previous point
+  let hoverChange = 0;
+  let hoverChangeTone = "neutral";
+  if (activePoint) {
+    const prevIdx = hoverIndex > 0 ? hoverIndex - 1 : 0;
+    hoverChange = activePoint.value - mappedPoints[prevIdx].value;
+    hoverChangeTone = getValueState(hoverChange);
+  }
+
+  // Zero line Y-coordinate if within visible Y range
+  const hasZero = animY.min <= 0 && animY.max >= 0;
+  const yZero = hasZero ? PAD_TOP + USABLE_HEIGHT - ((0 - animY.min) / (animY.max - animY.min)) * USABLE_HEIGHT : null;
+
+  // Dynamic Y ticks
+  const yTicks = buildYTicks(animY.min, animY.max, 6);
+  // Dynamic X ticks
+  const xTicks = buildDynamicXTicks(domainStartMs, domainEndMs, 5);
 
   return (
-    <div className="chart-wrap">
+    <div className="chart-wrap chart-wrap-tall" onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
       <svg
         ref={svgRef}
-        className="chart-svg"
+        className={`chart-svg ${dragRef.current.active ? "is-grabbing" : ""}`}
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         preserveAspectRatio="none"
-        onPointerMove={handlePointerMove}
-        onPointerLeave={() => setHoverIndex(null)}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setHoverIndex(null)}
+        onDoubleClick={handleDoubleClick}
         role="img"
-        aria-label={metric === "performance" ? "Realized PnL chart" : "Cumulative trading volume chart"}
+        aria-label={metric === "performance" ? "Interactive Realized PnL financial chart" : "Interactive Trading volume chart"}
       >
         <defs>
-          <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor={palette.line} />
-            <stop offset="100%" stopColor={palette.soft} />
-          </linearGradient>
-          <linearGradient id={areaGradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={palette.soft} stopOpacity="0.16" />
-            <stop offset="100%" stopColor={palette.soft} stopOpacity="0.0" />
+          <linearGradient id="neutral-area-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="rgba(124, 156, 255, 0.08)" />
+            <stop offset="100%" stopColor="rgba(124, 156, 255, 0.0)" />
           </linearGradient>
         </defs>
 
-        {gridLines.map((line, i) => (
-          <line key={i} x1={0} y1={line.y} x2={WIDTH} y2={line.y} className="chart-grid-line" />
+        {/* Horizontal grid lines */}
+        {yTicks.map((tick, i) => {
+          const y = PAD_TOP + USABLE_HEIGHT - tick.frac * USABLE_HEIGHT;
+          return <line key={i} x1={PAD_LEFT} y1={y} x2={WIDTH - PAD_RIGHT} y2={y} className="chart-grid-line" />;
+        })}
+
+        {/* Faint vertical grid lines */}
+        {xTicks.map((tick, i) => (
+          <line key={i} x1={tick.x} y1={PAD_TOP} x2={tick.x} y2={HEIGHT - PAD_BOTTOM} className="chart-grid-line-vert" />
         ))}
 
-        <path d={areaPath} fill={`url(#${areaGradientId})`} stroke="none" />
-        <path
-          d={linePath}
-          fill="none"
-          stroke={`url(#${gradientId})`}
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        {/* Zero line */}
+        {hasZero && yZero != null && (
+          <line
+            x1={PAD_LEFT}
+            y1={yZero}
+            x2={WIDTH - PAD_RIGHT}
+            y2={yZero}
+            className="chart-zero-line"
+          />
+        )}
 
+        {/* Translucent neutral area fill */}
+        <path d={areaPath} fill="url(#neutral-area-fill)" stroke="none" />
+
+        {/* Directional Segment Paths (Green for recovery, Red for drawdown) */}
+        {segments.map((seg, i) => (
+          <path
+            key={i}
+            d={seg.d}
+            fill="none"
+            stroke={seg.color}
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        ))}
+
+        {/* Latest point current value dashed line & end tag */}
         {lastPoint && (
-          <g transform={`translate(${lastPoint.x}, ${lastPoint.y})`}>
-            <circle r="3" fill={palette.line} />
-            <line x1="0" y1="0" x2={WIDTH - lastPoint.x} y2="0" stroke={palette.line} strokeDasharray="2 2" strokeOpacity="0.4" />
+          <g transform={`translate(0, ${lastPoint.y})`}>
+            <line
+              x1={lastPoint.x}
+              y1={0}
+              x2={WIDTH - PAD_RIGHT}
+              y2={0}
+              stroke={lastSegment?.color || COLOR_NEUTRAL}
+              strokeDasharray="3 3"
+              strokeOpacity="0.5"
+            />
+            <circle cx={lastPoint.x} cy="0" r="3" fill={lastSegment?.color || COLOR_NEUTRAL} />
           </g>
         )}
 
+        {/* Crosshair guide & active point dot */}
         {activePoint && (
           <>
             <line
@@ -244,56 +457,64 @@ export default function PerformanceChart({ data, metric = "performance", range =
               y2={HEIGHT - PAD_BOTTOM}
               className="chart-crosshair"
             />
-            <circle cx={activePoint.x} cy={activePoint.y} r="4" className={`chart-dot tone-${hoverTone}`} />
+            <circle cx={activePoint.x} cy={activePoint.y} r="4.5" className={`chart-dot tone-${hoverChangeTone}`} />
           </>
         )}
       </svg>
 
+      {/* Right Axis Current Value Tag */}
       {lastPoint && (
         <div
-          className={`chart-end-marker tone-${tone}`}
+          className={`chart-end-tag ${lastSegment?.isUp ? "tag-up" : lastSegment?.isDown ? "tag-down" : ""}`}
           style={{ top: `${(lastPoint.y / HEIGHT) * 100}%` }}
         >
           {formatCompactCurrency(lastPoint.value)}
         </div>
       )}
 
-      <div className="chart-ylabels" aria-hidden="true">
-        {gridLines.map((line, i) => (
-          <span key={i} className="chart-ylabel" style={{ top: `${(line.y / HEIGHT) * 100}%` }}>
-            {formatCompactCurrency(line.value)}
-          </span>
-        ))}
+      {/* Y-Axis Labels (Right-aligned) */}
+      <div className="chart-ylabels-right" aria-hidden="true">
+        {yTicks.map((tick, i) => {
+          const topPct = ((PAD_TOP + USABLE_HEIGHT - tick.frac * USABLE_HEIGHT) / HEIGHT) * 100;
+          return (
+            <span key={i} className="chart-ylabel" style={{ top: `${topPct}%` }}>
+              {formatCompactCurrency(tick.value)}
+            </span>
+          );
+        })}
       </div>
 
+      {/* Hover Tooltip snapped to real point */}
       {activePoint && (
         <div
           className="chart-tooltip"
           style={{
-            left: `${Math.min(84, Math.max(16, (activePoint.x / WIDTH) * 100))}%`,
-            top: `${Math.min(75, Math.max(20, (activePoint.y / HEIGHT) * 100))}%`,
+            left: `${Math.min(82, Math.max(16, (activePoint.x / WIDTH) * 100))}%`,
+            top: `${Math.min(75, Math.max(18, (activePoint.y / HEIGHT) * 100))}%`,
           }}
         >
           <div className="chart-tooltip-date">{formatDateTime(activePoint.date)}</div>
-          <div className="chart-tooltip-metric">{metricLabel}</div>
+          <div className="chart-tooltip-metric">{metric === "performance" ? "Realized PnL" : "Trading Volume"}</div>
           <div className="chart-tooltip-value">
             {metric === "performance" ? formatSignedCurrency(activePoint.value) : formatCurrency(activePoint.value)}
           </div>
-          <div className={`chart-tooltip-pnl ${metric === "performance" ? `tone-${hoverTone}` : "tone-neutral"}`}>
-            {metric === "performance" ? `Range PnL ${formatSignedCurrency(hoverChange)}` : `In range ${formatCurrency(hoverChange)}`}
-            {metric === "performance" && hoverChangePct != null ? ` (${formatPercentage(hoverChangePct, { signed: true })})` : ""}
-          </div>
+          {hoverIndex > 0 && (
+            <div className={`chart-tooltip-pnl tone-${hoverChangeTone}`}>
+              Step {formatSignedCurrency(hoverChange)}
+            </div>
+          )}
         </div>
       )}
 
+      {/* X-Axis Ticks */}
       <div className="chart-axis" aria-hidden="true">
-        {buildXTicks(points).map((tick, i) => (
+        {xTicks.map((tick, i) => (
           <span
             key={i}
             className={`chart-axis-tick ${tick.first ? "is-first" : ""} ${tick.last ? "is-last" : ""}`}
-            style={{ left: `${tick.x}%` }}
+            style={{ left: `${(tick.x / WIDTH) * 100}%` }}
           >
-            {formatAxisTick(tick.t, range, spanMs)}
+            {formatDynamicXTick(tick.tMs, domainSpanMs)}
           </span>
         ))}
       </div>

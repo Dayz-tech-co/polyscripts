@@ -9,72 +9,77 @@ export default function ProfileStats({ stats, loading }) {
   const pnlTone = getValueState(stats.pnl);
 
   return (
-    <div className="profile-stats-strip">
-      <div className="stat-card stat-card-hero">
-        <div className="stat-card-header">
-          <span className="stat-card-label">Profit / Loss</span>
-          <TrendingUp size={14} className="stat-card-icon" aria-hidden="true" />
+    <div className="kpi-integrated-strip" role="region" aria-label="Account Overview Statistics">
+      <div className="kpi-group kpi-group-hero">
+        <div className="kpi-header">
+          <span className="kpi-label">Profit / Loss</span>
+          <TrendingUp size={12} className="kpi-icon" aria-hidden="true" />
         </div>
-        <div className={`stat-card-value ${pnlTone}`}>
+        <div className={`kpi-value kpi-value-hero ${pnlTone}`}>
           {stats.pnl != null ? formatSignedCurrency(stats.pnl) : "--"}
         </div>
-        {stats.pnlPercent != null && (
-          <div className={`stat-card-sub ${getValueState(stats.pnlPercent)}`}>
-            {formatPercentage(stats.pnlPercent, { signed: true })}
-          </div>
-        )}
       </div>
 
-      <div className="stat-card">
-        <div className="stat-card-header">
-          <span className="stat-card-label">Trading Volume</span>
-          <BarChart3 size={13} className="stat-card-icon" aria-hidden="true" />
+      <div className="kpi-divider" aria-hidden="true" />
+
+      <div className="kpi-group">
+        <div className="kpi-header">
+          <span className="kpi-label">Trading Volume</span>
+          <BarChart3 size={12} className="kpi-icon" aria-hidden="true" />
         </div>
-        <div className="stat-card-value">
+        <div className="kpi-value">
           {stats.volume != null ? formatCompactCurrency(stats.volume) : "--"}
         </div>
       </div>
 
-      <div className="stat-card">
-        <div className="stat-card-header">
-          <span className="stat-card-label">Portfolio Value</span>
-          <Wallet size={13} className="stat-card-icon" aria-hidden="true" />
+      <div className="kpi-divider" aria-hidden="true" />
+
+      <div className="kpi-group">
+        <div className="kpi-header">
+          <span className="kpi-label">Portfolio Value</span>
+          <Wallet size={12} className="kpi-icon" aria-hidden="true" />
         </div>
-        <div className="stat-card-value">
+        <div className="kpi-value">
           {stats.portfolioValue != null ? formatCurrency(stats.portfolioValue) : "--"}
         </div>
       </div>
 
-      <div className="stat-card">
-        <div className="stat-card-header">
-          <span className="stat-card-label">Markets Traded</span>
-          <Layers3 size={13} className="stat-card-icon" aria-hidden="true" />
+      <div className="kpi-divider" aria-hidden="true" />
+
+      <div className="kpi-group">
+        <div className="kpi-header">
+          <span className="kpi-label">Markets Traded</span>
+          <Layers3 size={12} className="kpi-icon" aria-hidden="true" />
         </div>
-        <div className="stat-card-value">
+        <div className="kpi-value">
           {stats.marketsTraded != null ? formatNumber(stats.marketsTraded) : "--"}
         </div>
       </div>
 
-      <div className="stat-card">
-        <div className="stat-card-header">
-          <span className="stat-card-label">Win Rate</span>
-          <Percent size={13} className="stat-card-icon" aria-hidden="true" />
+      <div className="kpi-divider" aria-hidden="true" />
+
+      <div className="kpi-group">
+        <div className="kpi-header">
+          <span className="kpi-label">Win Rate</span>
+          <Percent size={12} className="kpi-icon" aria-hidden="true" />
         </div>
-        <div className="stat-card-value">
+        <div className="kpi-value">
           {stats.winRate != null ? formatPercentage(stats.winRate) : "--"}
         </div>
       </div>
 
-      <div className="stat-card">
-        <div className="stat-card-header">
-          <span className="stat-card-label">Open Positions</span>
-          <CircleDollarSign size={13} className="stat-card-icon" aria-hidden="true" />
+      <div className="kpi-divider" aria-hidden="true" />
+
+      <div className="kpi-group">
+        <div className="kpi-header">
+          <span className="kpi-label">Open Positions</span>
+          <CircleDollarSign size={12} className="kpi-icon" aria-hidden="true" />
         </div>
-        <div className="stat-card-value">
+        <div className="kpi-value">
           {stats.openPositionsCount != null ? formatNumber(stats.openPositionsCount) : "--"}
         </div>
         {stats.rank != null && (
-          <div className="stat-card-sub text-muted">
+          <div className="kpi-subtext">
             Rank #{formatNumber(stats.rank)}
           </div>
         )}

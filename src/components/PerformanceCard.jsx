@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle, RotateCcw } from "lucide-react";
 import PerformanceChart from "./PerformanceChart";
+import Tooltip from "./Tooltip";
 import { ChartSkeleton } from "./Skeleton";
 import { usePerformanceRange } from "../hooks/usePerformanceRange";
 import { getPerformanceRange } from "../services/profileService";
@@ -55,6 +56,8 @@ function useRangeSummary(identifier, metric) {
 export default function PerformanceCard({ identifier, stats }) {
   const [range, setRange] = useState("ALL");
   const [metric, setMetric] = useState("performance");
+  const [resetKey, setResetKey] = useState(0);
+
   const { status, data } = usePerformanceRange(identifier, range, metric);
   const { loading: summaryLoading, data: summary } = useRangeSummary(identifier, metric);
 
@@ -72,6 +75,10 @@ export default function PerformanceCard({ identifier, stats }) {
 
   function handleSummaryRange(targetRange) {
     setRange(targetRange);
+  }
+
+  function handleResetView() {
+    setResetKey((k) => k + 1);
   }
 
   return (
@@ -142,6 +149,17 @@ export default function PerformanceCard({ identifier, stats }) {
               </button>
             ))}
           </div>
+
+          <Tooltip label="Reset chart view">
+            <button
+              type="button"
+              className="icon-btn icon-btn-sm reset-view-btn"
+              onClick={handleResetView}
+              aria-label="Reset chart zoom & pan view"
+            >
+              <RotateCcw size={12} aria-hidden="true" />
+            </button>
+          </Tooltip>
         </div>
       </div>
 
@@ -150,7 +168,13 @@ export default function PerformanceCard({ identifier, stats }) {
           <ChartSkeleton />
         ) : hasChart ? (
           <>
-            <PerformanceChart data={perf.points} metric={metric} range={range} startValue={perf.startValue ?? 0} />
+            <PerformanceChart
+              key={resetKey}
+              data={perf.points}
+              metric={metric}
+              range={range}
+              startValue={perf.startValue ?? 0}
+            />
             {loading && (
               <div className="chart-loading-badge" role="status">
                 <LoaderCircle size={13} className="spin" aria-hidden="true" />
@@ -167,8 +191,8 @@ export default function PerformanceCard({ identifier, stats }) {
         )}
       </div>
 
-      <div className={`range-summary range-summary-five ${summaryLoading ? "is-loading" : ""}`} role="group" aria-label="Timeframe result cards">
-        {SUMMARY_RANGES.map(({ label, range: sumRange }) => {
+      <div className={`timeframe-shared-strip ${summaryLoading ? "is-loading" : ""}`} role="group" aria-label="Timeframe result cells">
+        {SUMMARY_RANGES.map(({ label, range: sumRange }, idx) => {
           const item = summary[sumRange] ?? null;
           const value = item
             ? isVolume
@@ -178,16 +202,18 @@ export default function PerformanceCard({ identifier, stats }) {
           const tone = !isVolume && item ? getToneClass(item.change) : "";
           const active = range === sumRange;
           return (
-            <button
-              key={label}
-              type="button"
-              className={`range-summary-item ${active ? "is-active" : ""}`}
-              onClick={() => handleSummaryRange(sumRange)}
-              aria-pressed={active}
-            >
-              <span className="range-summary-label">{label}</span>
-              <span className={`range-summary-value ${tone}`}>{value}</span>
-            </button>
+            <div key={label} className="timeframe-cell-wrap">
+              {idx > 0 && <div className="timeframe-cell-divider" aria-hidden="true" />}
+              <button
+                type="button"
+                className={`timeframe-cell-btn ${active ? "is-active" : ""}`}
+                onClick={() => handleSummaryRange(sumRange)}
+                aria-pressed={active}
+              >
+                <span className="timeframe-cell-label">{label}</span>
+                <span className={`timeframe-cell-value ${tone}`}>{value}</span>
+              </button>
+            </div>
           );
         })}
       </div>
