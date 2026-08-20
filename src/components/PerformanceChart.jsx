@@ -3,32 +3,35 @@ import { formatCurrency, formatSignedCurrency, formatDateTime, formatCompactCurr
 import { getValueState } from "../utils/states";
 
 const WIDTH = 800;
-const HEIGHT = 440;
-const PAD_TOP = 28;
+const HEIGHT = 500;
+const PAD_TOP = 26;
 const PAD_RIGHT = 76;
-const PAD_BOTTOM = 48;
-const PAD_LEFT = 20;
+const PAD_BOTTOM = 46;
+const PAD_LEFT = 24;
 const USABLE_WIDTH = WIDTH - PAD_LEFT - PAD_RIGHT;
 const USABLE_HEIGHT = HEIGHT - PAD_TOP - PAD_BOTTOM;
 
-const COLOR_UP = "#2FB57E";
-const COLOR_DOWN = "#E5484D";
+const COLOR_GREEN = "#2FB57E";
+const COLOR_RED = "#E5484D";
 const COLOR_NEUTRAL = "#7C9CFF";
 
 /**
- * Fritsch-Carlson Monotone Cubic Spline control points generator.
- * Produces control points for point[i] to point[i+1] without overshooting extrema.
+ * Fritsch-Carlson Monotone Cubic Spline SVG path generator.
+ * Produces a single continuous smooth curve through all data points.
  */
-function computeMonotoneTangents(pts) {
-  const n = pts.length;
-  if (n < 2) return [];
+function buildMonotonePath(points) {
+  if (!points || points.length === 0) return "";
+  if (points.length === 1) return `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
+  if (points.length === 2) return `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)} L ${points[1].x.toFixed(2)} ${points[1].y.toFixed(2)}`;
+
+  const n = points.length;
   const dx = new Array(n - 1);
   const dy = new Array(n - 1);
   const ms = new Array(n - 1);
 
   for (let i = 0; i < n - 1; i++) {
-    dx[i] = pts[i + 1].x - pts[i].x;
-    dy[i] = pts[i + 1].y - pts[i].y;
+    dx[i] = points[i + 1].x - points[i].x;
+    dy[i] = points[i + 1].y - points[i].y;
     ms[i] = dx[i] !== 0 ? dy[i] / dx[i] : 0;
   }
 
@@ -43,16 +46,16 @@ function computeMonotoneTangents(pts) {
     }
   }
   tangents[n - 1] = ms[n - 2];
-  return { dx, tangents };
-}
 
-function buildSegmentBezierPath(p0, p1, t0, t1, dx) {
-  if (dx === 0) return `M ${p0.x.toFixed(2)} ${p0.y.toFixed(2)} L ${p1.x.toFixed(2)} ${p1.y.toFixed(2)}`;
-  const cp1x = p0.x + dx / 3;
-  const cp1y = p0.y + t0 * (dx / 3);
-  const cp2x = p1.x - dx / 3;
-  const cp2y = p1.y - t1 * (dx / 3);
-  return `M ${p0.x.toFixed(2)} ${p0.y.toFixed(2)} C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${p1.x.toFixed(2)} ${p1.y.toFixed(2)}`;
+  let path = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
+  for (let i = 0; i < n - 1; i++) {
+    const cp1x = points[i].x + dx[i] / 3;
+    const cp1y = points[i].y + tangents[i] * (dx[i] / 3);
+    const cp2x = points[i + 1].x - dx[i] / 3;
+    const cp2y = points[i + 1].y - tangents[i + 1] * (dx[i] / 3);
+    path += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${points[i + 1].x.toFixed(2)} ${points[i + 1].y.toFixed(2)}`;
+  }
+  return path;
 }
 
 /** Dynamic Y-axis tick generator */
@@ -138,17 +141,17 @@ export default function PerformanceChart({ data, metric = "performance", range =
     });
   }, [data, domainStartMs, domainEndMs]);
 
-  // Target Y-min and Y-max for visible points
+  // Tight Y-min and Y-max calculation (6% to 8% padding only)
   const targetY = useMemo(() => {
     const pts = visiblePoints.length > 0 ? visiblePoints : data || [];
     if (pts.length === 0) return { min: -1, max: 1 };
     const values = pts.map((d) => d.value);
     const minVal = Math.min(...values);
     const maxVal = Math.max(...values);
-    const spread = maxVal - minVal || Math.abs(maxVal) * 0.1 || 1;
+    const spread = maxVal - minVal || Math.abs(maxVal) * 0.08 || 1;
     return {
-      min: minVal - spread * 0.10,
-      max: maxVal + spread * 0.10,
+      min: minVal - spread * 0.07,
+      max: maxVal + spread * 0.07,
     };
   }, [visiblePoints, data]);
 
@@ -167,7 +170,7 @@ export default function PerformanceChart({ data, metric = "performance", range =
     function step(timestamp) {
       if (!start) start = timestamp;
       const progress = Math.min(1, (timestamp - start) / duration);
-      const ease = 1 - Math.pow(1 - progress, 3);
+      const ease = 1 - Math.pow(1 - progress, 3); // Ease-out cubic
 
       setAnimY({
         min: initialY.min + (targetY.min - initialY.min) * ease,
@@ -204,44 +207,24 @@ export default function PerformanceChart({ data, metric = "performance", range =
     });
   }, [visiblePoints, domainStartMs, domainSpanMs, animY]);
 
-  // Movement-based Segment Paths (Green for recovery/up, Red for drawdown/down)
-  const segments = useMemo(() => {
-    if (mappedPoints.length < 2) return [];
-    const { dx, tangents } = computeMonotoneTangents(mappedPoints);
-    const list = [];
-
-    for (let i = 0; i < mappedPoints.length - 1; i++) {
-      const p0 = mappedPoints[i];
-      const p1 = mappedPoints[i + 1];
-      const isUp = p1.value > p0.value;
-      const isDown = p1.value < p0.value;
-
-      let color = COLOR_NEUTRAL;
-      if (metric === "performance") {
-        color = isUp ? COLOR_UP : isDown ? COLOR_DOWN : list[i - 1]?.color || COLOR_NEUTRAL;
-      }
-
-      const d = buildSegmentBezierPath(p0, p1, tangents[i], tangents[i + 1], dx[i]);
-      list.push({ d, color, isUp, isDown });
-    }
-    return list;
+  // Overall series color determination:
+  // In performance mode: RED if selected period PnL change is negative, GREEN if positive.
+  // In volume mode: NEUTRAL blue.
+  const seriesTone = useMemo(() => {
+    if (metric !== "performance" || mappedPoints.length < 2) return "neutral";
+    const change = mappedPoints[mappedPoints.length - 1].value - mappedPoints[0].value;
+    return change >= 0 ? "positive" : "negative";
   }, [mappedPoints, metric]);
 
-  // Combined area path for translucent neutral fill
+  const lineColor = seriesTone === "positive" ? COLOR_GREEN : seriesTone === "negative" ? COLOR_RED : COLOR_NEUTRAL;
+
+  const linePath = useMemo(() => buildMonotonePath(mappedPoints), [mappedPoints]);
   const areaPath = useMemo(() => {
     if (mappedPoints.length < 2) return "";
     const first = mappedPoints[0];
     const last = mappedPoints[mappedPoints.length - 1];
-    let path = `M ${first.x.toFixed(2)} ${first.y.toFixed(2)}`;
-
-    if (segments.length > 0) {
-      for (const seg of segments) {
-        path += seg.d.replace(/^M [0-9.]+\s+[0-9.]+/, "");
-      }
-    }
-    path += ` L ${last.x.toFixed(2)} ${HEIGHT - PAD_BOTTOM} L ${first.x.toFixed(2)} ${HEIGHT - PAD_BOTTOM} Z`;
-    return path;
-  }, [mappedPoints, segments]);
+    return `${linePath} L ${last.x.toFixed(2)} ${HEIGHT - PAD_BOTTOM} L ${first.x.toFixed(2)} ${HEIGHT - PAD_BOTTOM} Z`;
+  }, [linePath, mappedPoints]);
 
   // Wheel Zoom (centered on cursor)
   const handleWheel = useCallback((e) => {
@@ -253,7 +236,7 @@ export default function PerformanceChart({ data, metric = "performance", range =
     const cursorMs = domainStartMs + cursorFrac * domainSpanMs;
 
     const zoomFactor = e.deltaY < 0 ? 0.80 : 1.25;
-    const minSpan = Math.min(fullBounds.spanMs, 10 * 60 * 1000); // 10 min minimum
+    const minSpan = Math.min(fullBounds.spanMs, 10 * 60 * 1000);
     const maxSpan = fullBounds.spanMs;
 
     let newSpan = domainSpanMs * zoomFactor;
@@ -274,7 +257,6 @@ export default function PerformanceChart({ data, metric = "performance", range =
     setDomain([newStart, newEnd]);
   }, [fullBounds, domainStartMs, domainSpanMs]);
 
-  // Attach non-passive wheel event listener to SVG to prevent page scroll while zooming
   useEffect(() => {
     const el = svgRef.current;
     if (!el) return undefined;
@@ -315,7 +297,6 @@ export default function PerformanceChart({ data, metric = "performance", range =
       return;
     }
 
-    // Hover crosshair lookup
     if (!svgRef.current || mappedPoints.length === 0) return;
     const rect = svgRef.current.getBoundingClientRect();
     const relX = ((e.clientX - rect.left) / rect.width) * WIDTH;
@@ -352,7 +333,6 @@ export default function PerformanceChart({ data, metric = "performance", range =
 
   const activePoint = hoverIndex !== null && mappedPoints.length > 0 ? mappedPoints[hoverIndex] : null;
   const lastPoint = mappedPoints.length > 0 ? mappedPoints[mappedPoints.length - 1] : null;
-  const lastSegment = segments.length > 0 ? segments[segments.length - 1] : null;
 
   // Hover delta from previous point
   let hoverChange = 0;
@@ -367,10 +347,10 @@ export default function PerformanceChart({ data, metric = "performance", range =
   const hasZero = animY.min <= 0 && animY.max >= 0;
   const yZero = hasZero ? PAD_TOP + USABLE_HEIGHT - ((0 - animY.min) / (animY.max - animY.min)) * USABLE_HEIGHT : null;
 
-  // Dynamic Y ticks
   const yTicks = buildYTicks(animY.min, animY.max, 6);
-  // Dynamic X ticks
   const xTicks = buildDynamicXTicks(domainStartMs, domainEndMs, 5);
+
+  const areaGradientId = `area-grad-${seriesTone}`;
 
   return (
     <div className="chart-wrap chart-wrap-tall" onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
@@ -387,9 +367,9 @@ export default function PerformanceChart({ data, metric = "performance", range =
         aria-label={metric === "performance" ? "Interactive Realized PnL financial chart" : "Interactive Trading volume chart"}
       >
         <defs>
-          <linearGradient id="neutral-area-fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgba(124, 156, 255, 0.08)" />
-            <stop offset="100%" stopColor="rgba(124, 156, 255, 0.0)" />
+          <linearGradient id={areaGradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={lineColor} stopOpacity="0.14" />
+            <stop offset="100%" stopColor={lineColor} stopOpacity="0.0" />
           </linearGradient>
         </defs>
 
@@ -415,23 +395,20 @@ export default function PerformanceChart({ data, metric = "performance", range =
           />
         )}
 
-        {/* Translucent neutral area fill */}
-        <path d={areaPath} fill="url(#neutral-area-fill)" stroke="none" />
+        {/* Subdued area fill */}
+        <path d={areaPath} fill={`url(#${areaGradientId})`} stroke="none" />
 
-        {/* Directional Segment Paths (Green for recovery, Red for drawdown) */}
-        {segments.map((seg, i) => (
-          <path
-            key={i}
-            d={seg.d}
-            fill="none"
-            stroke={seg.color}
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        ))}
+        {/* Single continuous semantic-colored line */}
+        <path
+          d={linePath}
+          fill="none"
+          stroke={lineColor}
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
 
-        {/* Latest point current value dashed line & end tag */}
+        {/* Latest point current value dashed line & circle */}
         {lastPoint && (
           <g transform={`translate(0, ${lastPoint.y})`}>
             <line
@@ -439,11 +416,11 @@ export default function PerformanceChart({ data, metric = "performance", range =
               y1={0}
               x2={WIDTH - PAD_RIGHT}
               y2={0}
-              stroke={lastSegment?.color || COLOR_NEUTRAL}
+              stroke={lineColor}
               strokeDasharray="3 3"
               strokeOpacity="0.5"
             />
-            <circle cx={lastPoint.x} cy="0" r="3" fill={lastSegment?.color || COLOR_NEUTRAL} />
+            <circle cx={lastPoint.x} cy="0" r="3" fill={lineColor} />
           </g>
         )}
 
@@ -465,7 +442,7 @@ export default function PerformanceChart({ data, metric = "performance", range =
       {/* Right Axis Current Value Tag */}
       {lastPoint && (
         <div
-          className={`chart-end-tag ${lastSegment?.isUp ? "tag-up" : lastSegment?.isDown ? "tag-down" : ""}`}
+          className={`chart-end-tag tag-${seriesTone}`}
           style={{ top: `${(lastPoint.y / HEIGHT) * 100}%` }}
         >
           {formatCompactCurrency(lastPoint.value)}

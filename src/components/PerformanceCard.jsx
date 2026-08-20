@@ -99,26 +99,29 @@ export default function PerformanceCard({ identifier, stats }) {
                   : formatSignedCurrency(perf.change)
                 : "N/A"}
             </span>
-            {stats && (
-              <div className="performance-secondary-strip">
-                {stats.portfolioValue != null && (
-                  <span className="sec-stat-item">
-                    Portfolio <strong className="sec-stat-val">{formatCompactCurrency(stats.portfolioValue)}</strong>
-                  </span>
-                )}
-                {stats.volume != null && (
-                  <span className="sec-stat-item">
-                    Volume <strong className="sec-stat-val">{formatCompactCurrency(stats.volume)}</strong>
-                  </span>
-                )}
-                {stats.winRate != null && (
-                  <span className="sec-stat-item">
-                    Win Rate <strong className="sec-stat-val">{formatPercentage(stats.winRate)}</strong>
-                  </span>
-                )}
-              </div>
-            )}
           </div>
+          {stats && (
+            <div className="performance-secondary-strip">
+              {stats.portfolioValue != null && (
+                <div className="sec-stat-col">
+                  <span className="sec-stat-label">Portfolio</span>
+                  <span className="sec-stat-val">{formatCompactCurrency(stats.portfolioValue)}</span>
+                </div>
+              )}
+              {stats.volume != null && (
+                <div className="sec-stat-col">
+                  <span className="sec-stat-label">Volume</span>
+                  <span className="sec-stat-val">{formatCompactCurrency(stats.volume)}</span>
+                </div>
+              )}
+              {stats.winRate != null && (
+                <div className="sec-stat-col">
+                  <span className="sec-stat-label">Win Rate</span>
+                  <span className="sec-stat-val">{formatPercentage(stats.winRate)}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="performance-controls-row">

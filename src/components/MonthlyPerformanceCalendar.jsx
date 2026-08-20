@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Calendar, DollarSign, Percent } from "lucide-react";
-import Tooltip from "./Tooltip";
+import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { buildDailyPerformance, getCalendarInsights } from "../utils/calendarAnalytics";
 import { formatCompactCurrency, formatSignedCurrency } from "../utils/formatters";
 import { getToneClass } from "../utils/states";
@@ -26,7 +25,6 @@ function getHeatmapClass(pnl, maxMag) {
 }
 
 export default function MonthlyPerformanceCalendar({ resolvedPositions = [], activity = [], loading }) {
-  // Default to August 2026 (current active month) or local date
   const [currentDate, setCurrentDate] = useState(() => new Date(2026, 7, 1));
   const [viewMode, setViewMode] = useState("daily"); // "daily" | "monthly"
 
@@ -105,45 +103,61 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = [], act
 
   return (
     <div className={`card monthly-calendar-card ${loading ? "is-loading" : ""}`}>
-      {/* Best / Worst / Active Days Insights Bar */}
-      <div className="calendar-insights-strip">
+      {/* Monthly Performance Title & Month PnL Badge */}
+      <div className="monthly-calendar-header-top">
+        <div className="monthly-calendar-title">
+          <Calendar size={15} className="monthly-title-icon" aria-hidden="true" />
+          <span>Monthly Performance</span>
+        </div>
+        {currentMonthData && (
+          <span className={`month-badge ${getToneClass(monthPnl)}`}>
+            {formatSignedCurrency(monthPnl)} this month
+          </span>
+        )}
+      </div>
+
+      {/* Rebuilt Single Insight Strip */}
+      <div className="calendar-insights-strip" role="region" aria-label="Monthly Performance Insights">
         <div className="insight-chip">
-          <span className="insight-label">Best Day</span>
+          <span className="insight-label">BEST DAY</span>
           <span className="insight-value text-positive">
             {insights.bestDayPnL != null ? formatSignedCurrency(insights.bestDayPnL) : "--"}
           </span>
         </div>
+
+        <div className="insight-divider" aria-hidden="true" />
+
         <div className="insight-chip">
-          <span className="insight-label">Worst Day</span>
+          <span className="insight-label">WORST DAY</span>
           <span className="insight-value text-negative">
             {insights.worstDayPnL != null ? formatSignedCurrency(insights.worstDayPnL) : "--"}
           </span>
         </div>
+
+        <div className="insight-divider" aria-hidden="true" />
+
         <div className="insight-chip">
-          <span className="insight-label">Active Days</span>
+          <span className="insight-label">ACTIVE DAYS</span>
           <span className="insight-value">{insights.activeDaysCount}</span>
         </div>
+
+        <div className="insight-divider" aria-hidden="true" />
+
         <div className="insight-chip">
-          <span className="insight-label">Winning Days</span>
+          <span className="insight-label">WINNING DAYS</span>
           <span className="insight-value text-positive">{insights.winningDaysCount}</span>
         </div>
+
+        <div className="insight-divider" aria-hidden="true" />
+
         <div className="insight-chip">
-          <span className="insight-label">Losing Days</span>
+          <span className="insight-label">LOSING DAYS</span>
           <span className="insight-value text-negative">{insights.losingDaysCount}</span>
         </div>
       </div>
 
-      <div className="monthly-calendar-header">
-        <div className="monthly-calendar-title">
-          <Calendar size={15} className="monthly-title-icon" aria-hidden="true" />
-          <span>Monthly Performance</span>
-          {currentMonthData && (
-            <span className={`month-badge ${getToneClass(monthPnl)}`}>
-              {formatSignedCurrency(monthPnl)} this month
-            </span>
-          )}
-        </div>
-
+      {/* Single Aligned Toolbar */}
+      <div className="month-toolbar">
         <div className="month-nav-controls">
           <button
             type="button"
@@ -166,39 +180,27 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = [], act
           </button>
         </div>
 
-        <div className="monthly-controls">
-          <div className="segmented-toggle" role="group" aria-label="Calendar view toggle">
-            <button
-              type="button"
-              className={`segmented-btn ${viewMode === "daily" ? "is-active" : ""}`}
-              onClick={() => setViewMode("daily")}
-              aria-pressed={viewMode === "daily"}
-            >
-              Daily
-            </button>
-            <button
-              type="button"
-              className={`segmented-btn ${viewMode === "monthly" ? "is-active" : ""}`}
-              onClick={() => setViewMode("monthly")}
-              aria-pressed={viewMode === "monthly"}
-            >
-              Monthly
-            </button>
-          </div>
-
-          <div className="segmented-toggle" role="group" aria-label="Unit toggle">
-            <button type="button" className="segmented-btn is-active" aria-pressed="true">
-              <DollarSign size={12} aria-hidden="true" />
-            </button>
-            <Tooltip label="Percentage change requires base capital denominator (unavailable)">
-              <button type="button" className="segmented-btn is-disabled" disabled aria-pressed="false">
-                <Percent size={12} aria-hidden="true" />
-              </button>
-            </Tooltip>
-          </div>
+        <div className="segmented-toggle" role="group" aria-label="Calendar view toggle">
+          <button
+            type="button"
+            className={`segmented-btn ${viewMode === "daily" ? "is-active" : ""}`}
+            onClick={() => setViewMode("daily")}
+            aria-pressed={viewMode === "daily"}
+          >
+            Daily
+          </button>
+          <button
+            type="button"
+            className={`segmented-btn ${viewMode === "monthly" ? "is-active" : ""}`}
+            onClick={() => setViewMode("monthly")}
+            aria-pressed={viewMode === "monthly"}
+          >
+            Monthly
+          </button>
         </div>
       </div>
 
+      {/* Calendar Grid & Weekdays */}
       {viewMode === "daily" ? (
         <div className="calendar-grid-container">
           <div className="calendar-weekday-header">
@@ -256,6 +258,7 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = [], act
         </div>
       )}
 
+      {/* Monthly Summary Strip */}
       <div className="monthly-summary-strip">
         <div className="monthly-summary-item">
           <span className="monthly-summary-label">Monthly Realized PnL</span>
