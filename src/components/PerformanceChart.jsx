@@ -3,13 +3,14 @@ import { formatCurrency, formatSignedCurrency, formatDateTime, formatCompactCurr
 import { getValueState } from "../utils/states";
 
 const WIDTH = 800;
-const HEIGHT = 500;
+const HEIGHT = 520;
 const PAD_TOP = 26;
 const PAD_RIGHT = 76;
 const PAD_BOTTOM = 46;
 const PAD_LEFT = 24;
 const USABLE_WIDTH = WIDTH - PAD_LEFT - PAD_RIGHT;
 const USABLE_HEIGHT = HEIGHT - PAD_TOP - PAD_BOTTOM;
+const PLOT_BOTTOM = PAD_TOP + USABLE_HEIGHT;
 
 const COLOR_GREEN = "#2FB57E";
 const COLOR_RED = "#E5484D";
@@ -141,7 +142,7 @@ export default function PerformanceChart({ data, metric = "performance", range =
     });
   }, [data, domainStartMs, domainEndMs]);
 
-  // Tight Y-min and Y-max calculation (6% to 8% padding only)
+  // Tight Y-min and Y-max calculation (7% padding top and bottom)
   const targetY = useMemo(() => {
     const pts = visiblePoints.length > 0 ? visiblePoints : data || [];
     if (pts.length === 0) return { min: -1, max: 1 };
@@ -188,24 +189,30 @@ export default function PerformanceChart({ data, metric = "performance", range =
     };
   }, [targetY.min, targetY.max]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Canonical Y-scale mapping
+  const yScale = useCallback(
+    (val) => {
+      const yRange = animY.max - animY.min || 1;
+      return PLOT_BOTTOM - ((val - animY.min) / yRange) * USABLE_HEIGHT;
+    },
+    [animY]
+  );
+
   // Screen coordinates for visible points
   const mappedPoints = useMemo(() => {
     if (!visiblePoints || visiblePoints.length === 0) return [];
-    const yRange = animY.max - animY.min || 1;
-
     return visiblePoints.map((d, i) => {
       const tMs = new Date(d.date).getTime();
       const xFrac = (tMs - domainStartMs) / domainSpanMs;
-      const yFrac = (d.value - animY.min) / yRange;
       return {
         x: PAD_LEFT + xFrac * USABLE_WIDTH,
-        y: PAD_TOP + USABLE_HEIGHT - yFrac * USABLE_HEIGHT,
+        y: yScale(d.value),
         value: d.value,
         date: d.date,
         originalIndex: i,
       };
     });
-  }, [visiblePoints, domainStartMs, domainSpanMs, animY]);
+  }, [visiblePoints, domainStartMs, domainSpanMs, yScale]);
 
   // Overall series color determination:
   // In performance mode: RED if selected period PnL change is negative, GREEN if positive.
@@ -223,7 +230,7 @@ export default function PerformanceChart({ data, metric = "performance", range =
     if (mappedPoints.length < 2) return "";
     const first = mappedPoints[0];
     const last = mappedPoints[mappedPoints.length - 1];
-    return `${linePath} L ${last.x.toFixed(2)} ${HEIGHT - PAD_BOTTOM} L ${first.x.toFixed(2)} ${HEIGHT - PAD_BOTTOM} Z`;
+    return `${linePath} L ${last.x.toFixed(2)} ${PLOT_BOTTOM.toFixed(2)} L ${first.x.toFixed(2)} ${PLOT_BOTTOM.toFixed(2)} Z`;
   }, [linePath, mappedPoints]);
 
   // Wheel Zoom (centered on cursor)
@@ -345,7 +352,7 @@ export default function PerformanceChart({ data, metric = "performance", range =
 
   // Zero line Y-coordinate if within visible Y range
   const hasZero = animY.min <= 0 && animY.max >= 0;
-  const yZero = hasZero ? PAD_TOP + USABLE_HEIGHT - ((0 - animY.min) / (animY.max - animY.min)) * USABLE_HEIGHT : null;
+  const yZero = hasZero ? yScale(0) : null;
 
   const yTicks = buildYTicks(animY.min, animY.max, 6);
   const xTicks = buildDynamicXTicks(domainStartMs, domainEndMs, 5);
@@ -358,6 +365,8 @@ export default function PerformanceChart({ data, metric = "performance", range =
         ref={svgRef}
         className={`chart-svg ${dragRef.current.active ? "is-grabbing" : ""}`}
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+        width="100%"
+        height="100%"
         preserveAspectRatio="none"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -375,13 +384,13 @@ export default function PerformanceChart({ data, metric = "performance", range =
 
         {/* Horizontal grid lines */}
         {yTicks.map((tick, i) => {
-          const y = PAD_TOP + USABLE_HEIGHT - tick.frac * USABLE_HEIGHT;
+          const y = yScale(tick.value);
           return <line key={i} x1={PAD_LEFT} y1={y} x2={WIDTH - PAD_RIGHT} y2={y} className="chart-grid-line" />;
         })}
 
-        {/* Faint vertical grid lines */}
+        {/* Faint vertical grid lines extending to PLOT_BOTTOM */}
         {xTicks.map((tick, i) => (
-          <line key={i} x1={tick.x} y1={PAD_TOP} x2={tick.x} y2={HEIGHT - PAD_BOTTOM} className="chart-grid-line-vert" />
+          <line key={i} x1={tick.x} y1={PAD_TOP} x2={tick.x} y2={PLOT_BOTTOM} className="chart-grid-line-vert" />
         ))}
 
         {/* Zero line */}
@@ -408,7 +417,7 @@ export default function PerformanceChart({ data, metric = "performance", range =
           strokeLinejoin="round"
         />
 
-        {/* Latest point current value dashed line & circle */}
+        {/* Latest point current value dashed line & circle sitting at exact yScale(lastPoint.value) */}
         {lastPoint && (
           <g transform={`translate(0, ${lastPoint.y})`}>
             <line
@@ -431,7 +440,7 @@ export default function PerformanceChart({ data, metric = "performance", range =
               x1={activePoint.x}
               y1={PAD_TOP}
               x2={activePoint.x}
-              y2={HEIGHT - PAD_BOTTOM}
+              y2={PLOT_BOTTOM}
               className="chart-crosshair"
             />
             <circle cx={activePoint.x} cy={activePoint.y} r="4.5" className={`chart-dot tone-${hoverChangeTone}`} />
@@ -439,7 +448,7 @@ export default function PerformanceChart({ data, metric = "performance", range =
         )}
       </svg>
 
-      {/* Right Axis Current Value Tag */}
+      {/* Right Axis Current Value Tag (aligned to exact lastPoint.y percentage) */}
       {lastPoint && (
         <div
           className={`chart-end-tag tag-${seriesTone}`}
@@ -449,10 +458,10 @@ export default function PerformanceChart({ data, metric = "performance", range =
         </div>
       )}
 
-      {/* Y-Axis Labels (Right-aligned) */}
+      {/* Y-Axis Labels (Right-aligned to exact tick yScale) */}
       <div className="chart-ylabels-right" aria-hidden="true">
         {yTicks.map((tick, i) => {
-          const topPct = ((PAD_TOP + USABLE_HEIGHT - tick.frac * USABLE_HEIGHT) / HEIGHT) * 100;
+          const topPct = (yScale(tick.value) / HEIGHT) * 100;
           return (
             <span key={i} className="chart-ylabel" style={{ top: `${topPct}%` }}>
               {formatCompactCurrency(tick.value)}
@@ -483,8 +492,8 @@ export default function PerformanceChart({ data, metric = "performance", range =
         </div>
       )}
 
-      {/* X-Axis Ticks */}
-      <div className="chart-axis" aria-hidden="true">
+      {/* X-Axis Ticks sitting directly below PLOT_BOTTOM */}
+      <div className="chart-axis" aria-hidden="true" style={{ top: `${(PLOT_BOTTOM / HEIGHT) * 100}%` }}>
         {xTicks.map((tick, i) => (
           <span
             key={i}
