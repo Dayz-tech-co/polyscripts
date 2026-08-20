@@ -3491,9 +3491,28 @@ h3 {
   gap: 8px;
 }
 
-/* Monthly Performance Calendar Card */
+/* Monthly Performance Calendar Card — Polymarket-inspired */
 .monthly-calendar-card {
-  padding: var(--space-6);
+  --pm-blue: #2e5cff;
+  --pm-yes: #16c784;
+  --pm-no: #ea3943;
+  --pm-border: rgba(255, 255, 255, 0.08);
+  --pm-surface: rgba(255, 255, 255, 0.02);
+  padding: 20px 22px;
+  margin-top: 22px;
+  background: #0d1118;
+  border: 1px solid var(--pm-border);
+  box-shadow: none;
+}
+
+.monthly-calendar-card .tone-positive,
+.monthly-calendar-card .text-positive {
+  color: var(--pm-yes);
+}
+
+.monthly-calendar-card .tone-negative,
+.monthly-calendar-card .text-negative {
+  color: var(--pm-no);
 }
 
 .monthly-calendar-header {
@@ -3505,32 +3524,52 @@ h3 {
   flex-wrap: wrap;
 }
 
+.monthly-calendar-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .monthly-calendar-title {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
 }
+
 .monthly-title-icon {
-  color: var(--brand-orange);
+  color: var(--pm-blue);
+}
+
+.month-badge {
+  font-size: 13px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
 .month-nav-controls {
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-default);
-  padding: 4px 10px;
-  border-radius: var(--radius-sm);
+  gap: 8px;
+  background: transparent;
+  border: 1px solid var(--pm-border);
+  padding: 3px 8px;
+  border-radius: 999px;
 }
 
 .month-nav-label {
   font-size: 13px;
   font-weight: 600;
-  min-width: 110px;
+  min-width: 118px;
   text-align: center;
+  color: var(--text-primary);
 }
 
 .monthly-controls {
@@ -3539,37 +3578,90 @@ h3 {
   gap: 10px;
 }
 
+.month-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .segmented-toggle {
   display: flex;
   align-items: center;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-default);
-  padding: 2px;
-  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--pm-border);
+  padding: 3px;
+  border-radius: 999px;
+  gap: 2px;
 }
 
 .segmented-btn {
-  padding: 4px 10px;
+  padding: 5px 14px;
   font-size: 12px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  border-radius: var(--radius-xs);
-  transition: all var(--t-fast) var(--ease);
-}
-.segmented-btn.is-active {
-  background: var(--bg-card-elevated);
-  color: var(--text-primary);
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  color: var(--text-muted);
+  border-radius: 999px;
+  transition: color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
 }
+
+.segmented-btn.is-active {
+  background: var(--pm-blue);
+  color: #fff;
+  font-weight: 650;
+  box-shadow: none;
+}
+
 .segmented-btn.is-disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
+/* Insights strip */
+.calendar-insights-strip {
+  display: flex;
+  align-items: center;
+  background: var(--pm-surface);
+  border: 1px solid var(--pm-border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+}
+
+.insight-chip {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+}
+
+.insight-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.insight-value {
+  font-size: 14px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.insight-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--pm-border);
+  flex-shrink: 0;
+}
+
 /* Calendar Grid */
 .calendar-grid-container {
-  margin-bottom: var(--space-6);
+  margin-bottom: 16px;
 }
 
 .calendar-weekday-header {
@@ -3581,9 +3673,11 @@ h3 {
 
 .calendar-weekday {
   text-align: center;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 650;
   color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   padding: 4px 0;
 }
 
@@ -3594,13 +3688,15 @@ h3 {
 }
 
 .calendar-cell {
-  height: 56px;
-  padding: 6px 8px;
-  border-radius: var(--radius-sm);
+  height: 72px;
+  padding: 8px;
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  transition: border-color var(--t-fast) var(--ease);
+  border: 1px solid var(--pm-border);
+  background: var(--pm-surface);
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
 }
 
 .cell-empty {
@@ -3609,23 +3705,56 @@ h3 {
 }
 
 .cell-neutral {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--border-default);
+  background: var(--pm-surface);
+  border: 1px solid var(--pm-border);
 }
 
 .cell-positive {
-  background: rgba(52, 201, 142, 0.08);
-  border: 1px solid rgba(52, 201, 142, 0.22);
+  background: rgba(22, 199, 132, 0.08);
+  border: 1px solid rgba(22, 199, 132, 0.22);
 }
 
 .cell-negative {
-  background: rgba(229, 72, 77, 0.08);
-  border: 1px solid rgba(229, 72, 77, 0.22);
+  background: rgba(234, 57, 67, 0.08);
+  border: 1px solid rgba(234, 57, 67, 0.22);
+}
+
+/* Heatmap intensity (Polymarket Yes/No washes) */
+.cell-pos-light {
+  background: rgba(22, 199, 132, 0.06);
+  border-color: rgba(22, 199, 132, 0.16);
+}
+
+.cell-pos-med {
+  background: rgba(22, 199, 132, 0.12);
+  border-color: rgba(22, 199, 132, 0.28);
+}
+
+.cell-pos-strong {
+  background: rgba(22, 199, 132, 0.2);
+  border-color: rgba(22, 199, 132, 0.42);
+}
+
+.cell-neg-light {
+  background: rgba(234, 57, 67, 0.06);
+  border-color: rgba(234, 57, 67, 0.16);
+}
+
+.cell-neg-med {
+  background: rgba(234, 57, 67, 0.12);
+  border-color: rgba(234, 57, 67, 0.28);
+}
+
+.cell-neg-strong {
+  background: rgba(234, 57, 67, 0.2);
+  border-color: rgba(234, 57, 67, 0.42);
 }
 
 .cell-today {
-  outline: 1px solid var(--brand-orange);
+  outline: 1.5px solid var(--pm-blue);
   outline-offset: -1px;
+  border-color: transparent;
+  box-shadow: 0 0 0 1px rgba(46, 92, 255, 0.25);
 }
 
 .cell-day-num {
@@ -3636,16 +3765,17 @@ h3 {
 
 .cell-pnl-val {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 650;
   line-height: 1.2;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Monthly History List */
 .monthly-history-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: var(--space-6);
+  gap: 6px;
+  margin-bottom: 16px;
 }
 
 .monthly-history-row {
@@ -3653,9 +3783,10 @@ h3 {
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
+  background: var(--pm-surface);
+  border: 1px solid var(--pm-border);
+  border-radius: 8px;
+  gap: 12px;
 }
 
 .monthly-history-label {
@@ -3666,11 +3797,13 @@ h3 {
 .monthly-history-trades {
   font-size: 12px;
   color: var(--text-muted);
+  margin-left: auto;
 }
 
 .monthly-history-value {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
 }
 
 .monthly-history-empty {
@@ -3684,30 +3817,34 @@ h3 {
 .monthly-summary-strip {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 10px;
-  padding-top: var(--space-5);
-  border-top: 1px solid var(--border-default);
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--pm-border);
 }
 
 .monthly-summary-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-default);
+  gap: 5px;
+  background: var(--pm-surface);
+  border: 1px solid var(--pm-border);
   padding: 10px 12px;
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
 }
 
 .monthly-summary-label {
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 10px;
+  font-weight: 600;
   color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .monthly-summary-value {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
 }
 
 /* Responsive tweaks */
@@ -4009,73 +4146,8 @@ h3 {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Rebuilt Monthly Performance Header & Insights                          */
+/* Chart / KPI responsive + calendar insight wrap                         */
 /* ---------------------------------------------------------------------- */
-
-.monthly-calendar-card {
-  padding: 24px;
-  margin-top: 22px;
-}
-
-.monthly-calendar-header-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
-}
-
-.calendar-insights-strip {
-  display: flex;
-  align-items: center;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
-  padding: 10px 18px;
-  margin-bottom: 16px;
-}
-
-.insight-chip {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  align-items: center;
-}
-
-.insight-label {
-  font-size: 10.5px;
-  font-weight: 500;
-  color: var(--text-muted);
-  letter-spacing: 0.02em;
-}
-
-.insight-value {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.insight-divider {
-  width: 1px;
-  height: 24px;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.month-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-.calendar-cell {
-  height: 74px;
-  padding: 8px;
-  border-radius: 6px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  transition: border-color var(--t-fast) var(--ease);
-}
 
 /* Tablet chart height */
 @media (max-width: 1024px) {

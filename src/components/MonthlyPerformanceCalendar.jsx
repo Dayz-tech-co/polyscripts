@@ -103,7 +103,6 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = [], act
 
   return (
     <div className={`card monthly-calendar-card ${loading ? "is-loading" : ""}`}>
-      {/* Monthly Performance Title & Month PnL Badge */}
       <div className="monthly-calendar-header-top">
         <div className="monthly-calendar-title">
           <Calendar size={15} className="monthly-title-icon" aria-hidden="true" />
@@ -116,11 +115,10 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = [], act
         )}
       </div>
 
-      {/* Rebuilt Single Insight Strip */}
       <div className="calendar-insights-strip" role="region" aria-label="Monthly Performance Insights">
         <div className="insight-chip">
-          <span className="insight-label">BEST DAY</span>
-          <span className="insight-value text-positive">
+          <span className="insight-label">Best Day</span>
+          <span className={`insight-value ${insights.bestDayPnL != null ? getToneClass(insights.bestDayPnL) : ""}`}>
             {insights.bestDayPnL != null ? formatSignedCurrency(insights.bestDayPnL) : "--"}
           </span>
         </div>
@@ -128,8 +126,8 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = [], act
         <div className="insight-divider" aria-hidden="true" />
 
         <div className="insight-chip">
-          <span className="insight-label">WORST DAY</span>
-          <span className="insight-value text-negative">
+          <span className="insight-label">Worst Day</span>
+          <span className={`insight-value ${insights.worstDayPnL != null ? getToneClass(insights.worstDayPnL) : ""}`}>
             {insights.worstDayPnL != null ? formatSignedCurrency(insights.worstDayPnL) : "--"}
           </span>
         </div>
@@ -137,26 +135,25 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = [], act
         <div className="insight-divider" aria-hidden="true" />
 
         <div className="insight-chip">
-          <span className="insight-label">ACTIVE DAYS</span>
+          <span className="insight-label">Active Days</span>
           <span className="insight-value">{insights.activeDaysCount}</span>
         </div>
 
         <div className="insight-divider" aria-hidden="true" />
 
         <div className="insight-chip">
-          <span className="insight-label">WINNING DAYS</span>
-          <span className="insight-value text-positive">{insights.winningDaysCount}</span>
+          <span className="insight-label">Winning Days</span>
+          <span className="insight-value tone-positive">{insights.winningDaysCount}</span>
         </div>
 
         <div className="insight-divider" aria-hidden="true" />
 
         <div className="insight-chip">
-          <span className="insight-label">LOSING DAYS</span>
-          <span className="insight-value text-negative">{insights.losingDaysCount}</span>
+          <span className="insight-label">Losing Days</span>
+          <span className="insight-value tone-negative">{insights.losingDaysCount}</span>
         </div>
       </div>
 
-      {/* Single Aligned Toolbar */}
       <div className="month-toolbar">
         <div className="month-nav-controls">
           <button
@@ -200,7 +197,6 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = [], act
         </div>
       </div>
 
-      {/* Calendar Grid & Weekdays */}
       {viewMode === "daily" ? (
         <div className="calendar-grid-container">
           <div className="calendar-weekday-header">
@@ -258,7 +254,6 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = [], act
         </div>
       )}
 
-      {/* Monthly Summary Strip */}
       <div className="monthly-summary-strip">
         <div className="monthly-summary-item">
           <span className="monthly-summary-label">Monthly Realized PnL</span>
@@ -268,21 +263,21 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = [], act
         </div>
         <div className="monthly-summary-item">
           <span className="monthly-summary-label">Winning Positions</span>
-          <span className="monthly-summary-value text-positive">{currentMonthData ? monthWins : "--"}</span>
+          <span className="monthly-summary-value tone-positive">{currentMonthData ? monthWins : "--"}</span>
         </div>
         <div className="monthly-summary-item">
           <span className="monthly-summary-label">Losing Positions</span>
-          <span className="monthly-summary-value text-negative">{currentMonthData ? monthLosses : "--"}</span>
+          <span className="monthly-summary-value tone-negative">{currentMonthData ? monthLosses : "--"}</span>
         </div>
         <div className="monthly-summary-item">
           <span className="monthly-summary-label">Average Win</span>
-          <span className="monthly-summary-value text-positive">
+          <span className={`monthly-summary-value ${monthAvgWin != null ? "tone-positive" : ""}`}>
             {monthAvgWin != null ? formatSignedCurrency(monthAvgWin) : "--"}
           </span>
         </div>
         <div className="monthly-summary-item">
           <span className="monthly-summary-label">Average Loss</span>
-          <span className="monthly-summary-value text-negative">
+          <span className={`monthly-summary-value ${monthAvgLoss != null ? "tone-negative" : ""}`}>
             {monthAvgLoss != null ? formatSignedCurrency(monthAvgLoss) : "--"}
           </span>
         </div>
