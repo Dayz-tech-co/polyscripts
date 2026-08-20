@@ -3858,12 +3858,12 @@ h3 {
 }
 
 .chart-area-hero {
-  height: 520px;
+  height: clamp(330px, 40vh, 410px);
   position: relative;
 }
 
 .chart-wrap-tall {
-  height: 520px;
+  height: clamp(330px, 40vh, 410px);
   position: relative;
   user-select: none;
 }
@@ -4077,6 +4077,14 @@ h3 {
   transition: border-color var(--t-fast) var(--ease);
 }
 
+/* Tablet chart height */
+@media (max-width: 1024px) {
+  .chart-area-hero,
+  .chart-wrap-tall {
+    height: 340px;
+  }
+}
+
 /* Mobile Overrides */
 @media (max-width: 768px) {
   .kpi-integrated-strip {
@@ -4090,7 +4098,7 @@ h3 {
   }
   .chart-area-hero,
   .chart-wrap-tall {
-    height: 320px;
+    height: 290px;
   }
   .timeframe-shared-strip {
     flex-wrap: wrap;
