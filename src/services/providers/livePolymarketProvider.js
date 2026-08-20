@@ -84,16 +84,12 @@ export async function getPositions(address, { limit = 100, signal } = {}) {
   return Array.isArray(data) ? data : [];
 }
 
-export async function getClosedPositions(address, { limit = 50, signal } = {}) {
-  const url = `${DATA_BASE}/closed-positions?user=${encodeURIComponent(address)}&limit=${limit}&sortBy=TIMESTAMP&sortDirection=DESC`;
-  const data = await getJson(url, { signal });
-  return Array.isArray(data) ? data : [];
+export async function getClosedPositions(address, { signal } = {}) {
+  return getCachedClosed(address, { signal });
 }
 
-export async function getActivity(address, { limit = 500, signal } = {}) {
-  const url = `${DATA_BASE}/activity?user=${encodeURIComponent(address)}&limit=${limit}&sortBy=TIMESTAMP&sortDirection=DESC`;
-  const data = await getJson(url, { signal });
-  return Array.isArray(data) ? data : [];
+export async function getActivity(address, { signal } = {}) {
+  return getCachedActivity(address, { signal });
 }
 
 export async function getValue(address, { signal } = {}) {
@@ -296,15 +292,22 @@ export async function getPerformanceRange(address, { range = "ALL", metric = "pe
   if (import.meta.env.DEV) {
     const earliestTs = inWindow.length > 0 ? new Date(inWindow[0].t).toISOString() : null;
     const latestTs = inWindow.length > 0 ? new Date(inWindow[inWindow.length - 1].t).toISOString() : null;
-    console.log(`[Timeframe Analytics] range: ${rangeKey}, metric: ${metricKey}`, {
-      selectedRange: rangeKey,
-      earliestTimestamp: earliestTs,
-      latestTimestamp: latestTs,
+    const vals = inWindow.map((e) => e.v);
+    const minVal = vals.length > 0 ? Math.min(...vals) : null;
+    const maxVal = vals.length > 0 ? Math.max(...vals) : null;
+    console.debug(`[Timeframe Analytics]`, {
+      canonicalAddress: address,
+      metric: metricKey,
+      range: rangeKey,
       rawRecordCount: (raw || []).length,
-      resolvedPositionCount: inWindow.length,
+      filteredRecordCount: inWindow.length,
+      firstTimestamp: earliestTs,
+      lastTimestamp: latestTs,
       startValue,
       endValue,
-      calculatedPnL: change,
+      change,
+      minValue: minVal,
+      maxValue: maxVal,
     });
   }
 

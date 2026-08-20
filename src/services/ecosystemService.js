@@ -111,11 +111,12 @@ export async function getCompare(a, b, { signal } = {}) {
       const bundle = await getAccountProfile(identifier, { signal });
       const metrics = metricsFromBundle(bundle);
       if (!metrics) return null;
-      const perf = await getPerformanceRange(identifier, { range: "ALL", signal });
+      const perf = await getPerformanceRange(identifier, { range: "ALL", metric: "performance", signal });
       return {
         account: bundle.account,
         metrics,
         performance: (perf && perf.points) || [],
+        perfRange: perf,
       };
     } catch {
       return null;

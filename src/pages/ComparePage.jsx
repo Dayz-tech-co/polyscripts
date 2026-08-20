@@ -131,22 +131,22 @@ export default function ComparePage() {
                 <div>
                   <span className="card-label">{result.a.account.username || result.a.account.displayName || shortenAddress(result.a.account.address)}</span>
                   <div className="performance-change">
-                    <span>Cumulative volume</span>
+                    <span>All-time realized PnL</span>
                   </div>
                 </div>
               </div>
-              <PerformanceChart data={result.a.performance} volumeMode />
+              <PerformanceChart data={result.a.performance} metric="performance" range="ALL" startValue={result.a.perfRange?.startValue ?? 0} />
             </div>
             <div className="card performance-card">
               <div className="performance-header">
                 <div>
                   <span className="card-label">{result.b.account.username || result.b.account.displayName || shortenAddress(result.b.account.address)}</span>
                   <div className="performance-change">
-                    <span>Cumulative volume</span>
+                    <span>All-time realized PnL</span>
                   </div>
                 </div>
               </div>
-              <PerformanceChart data={result.b.performance} volumeMode />
+              <PerformanceChart data={result.b.performance} metric="performance" range="ALL" startValue={result.b.perfRange?.startValue ?? 0} />
             </div>
           </div>
         </>

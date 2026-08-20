@@ -33,7 +33,7 @@ async function settle(promise) {
  */
 export async function getAccountProfile(identifier, { signal } = {}) {
   const account = await resolveIdentifier(identifier, { signal });
-  const address = account.address;
+  const address = account.address.toLowerCase();
 
   const cacheKey = `profile:${address}`;
   const cached = cacheGet(cacheKey);
@@ -41,8 +41,8 @@ export async function getAccountProfile(identifier, { signal } = {}) {
 
   const [rawPositions, rawClosed, rawActivity, value, traded, rankEntry, publicProfileAccount] = await Promise.all([
     settle(provider.getPositions(address, { limit: 100, signal })),
-    settle(provider.getClosedPositions(address, { limit: 50, signal })),
-    settle(provider.getActivity(address, { limit: 500, signal })),
+    settle(provider.getClosedPositions(address, { signal })),
+    settle(provider.getActivity(address, { signal })),
     settle(provider.getValue(address, { signal })),
     settle(provider.getTraded(address, { signal })),
     getLeaderboardEntryForAddress(address, { timePeriod: "ALL", signal }),
@@ -116,7 +116,7 @@ export async function getPerformanceRange(identifier, { range = "1M", metric = "
   const rangeKey = VALID_RANGES.has(range) ? range : "1M";
   const metricKey = VALID_METRICS.has(metric) ? metric : "performance";
   const account = await resolveIdentifier(identifier, { signal });
-  const address = account.address;
+  const address = account.address.toLowerCase();
 
   const cacheKey = `profile:${address}:perf:${rangeKey}:${metricKey}`;
   const cached = cacheGet(cacheKey);

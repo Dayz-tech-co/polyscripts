@@ -14,7 +14,7 @@ export default function Footer() {
         </nav>
       </div>
       <div className="container footer-note">
-        Demo data only. Not financial advice. Read only analytics - no trading, wallets or deposits.
+        Read-only analytics. Data availability may vary. Not financial advice.
       </div>
     </footer>
   );
