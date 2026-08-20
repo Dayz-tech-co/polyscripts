@@ -2,40 +2,67 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { formatCurrency, formatSignedCurrency, formatPercentage, formatDateTime, formatCompactCurrency } from "../utils/formatters";
 import { getValueState } from "../utils/states";
 
-const WIDTH = 640;
-const HEIGHT = 220;
-const PAD_TOP = 14;
-const PAD_BOTTOM = 26;
-const PAD_X = 4;
-const USABLE_WIDTH = WIDTH - PAD_X * 2;
+const WIDTH = 680;
+const HEIGHT = 260;
+const PAD_TOP = 16;
+const PAD_BOTTOM = 28;
+const PAD_LEFT = 4;
+const PAD_RIGHT = 56; // Room for right-edge value tag
+const USABLE_WIDTH = WIDTH - PAD_LEFT - PAD_RIGHT;
 const USABLE_HEIGHT = HEIGHT - PAD_TOP - PAD_BOTTOM;
 
 const PALETTE = {
-  positive: { line: "#2FB57E", soft: "#34C98E" },
-  negative: { line: "#E5484D", soft: "#E5484D" },
-  neutral: { line: "#6E8BFF", soft: "#7C9CFF" },
+  positive: { line: "#2FB57E", soft: "#34C98E", fillStop: "rgba(47, 181, 126, 0.15)" },
+  negative: { line: "#E5484D", soft: "#E5484D", fillStop: "rgba(229, 72, 77, 0.15)" },
+  neutral: { line: "#6E8BFF", soft: "#7C9CFF", fillStop: "rgba(110, 139, 255, 0.15)" },
 };
 
 const X_TICK_COUNT = 4;
 
-// Straight-edged polyline: the line connects each real data point with a
-// straight segment, so peaks, dips, jumps and plateaus render as sharp,
-// defined turns instead of being rounded off. Every vertex is a real point
-// from the provider - no invented smoothing between them.
-function buildSmoothPath(points) {
-  if (points.length < 2) return "";
-  let d = `M ${points[0].x} ${points[0].y}`;
-  for (let i = 1; i < points.length; i++) {
-    d += ` L ${points[i].x} ${points[i].y}`;
+/**
+ * Fritsch-Carlson Monotone Cubic Spline SVG path generation.
+ * Passes through every exact data point (x, y) without altering values or timestamps.
+ * Guarantees zero overshoot beyond local extrema, producing a sleek, smooth financial curve.
+ */
+function buildMonotoneSmoothPath(points) {
+  if (!points || points.length === 0) return "";
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+  if (points.length === 2) return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
+
+  const n = points.length;
+  const dx = new Array(n - 1);
+  const dy = new Array(n - 1);
+  const ms = new Array(n - 1);
+
+  for (let i = 0; i < n - 1; i++) {
+    dx[i] = points[i + 1].x - points[i].x;
+    dy[i] = points[i + 1].y - points[i].y;
+    ms[i] = dx[i] !== 0 ? dy[i] / dx[i] : 0;
   }
-  return d;
+
+  const mTangents = new Array(n);
+  mTangents[0] = ms[0];
+  for (let i = 1; i < n - 1; i++) {
+    if (ms[i - 1] * ms[i] <= 0) {
+      mTangents[i] = 0;
+    } else {
+      const common = ms[i - 1] + ms[i];
+      mTangents[i] = (3 * common) / (common / ms[i - 1] + common / ms[i]);
+    }
+  }
+  mTangents[n - 1] = ms[n - 2];
+
+  let path = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
+  for (let i = 0; i < n - 1; i++) {
+    const cp1x = points[i].x + dx[i] / 3;
+    const cp1y = points[i].y + mTangents[i] * (dx[i] / 3);
+    const cp2x = points[i + 1].x - dx[i] / 3;
+    const cp2y = points[i + 1].y - mTangents[i + 1] * (dx[i] / 3);
+    path += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${points[i + 1].x.toFixed(2)} ${points[i + 1].y.toFixed(2)}`;
+  }
+  return path;
 }
 
-/**
- * X-axis tick labels. The tick count is constant, but the label format adapts
- * to the selected range: intraday times for 1D, weekdays for 1W, calendar
- * dates for longer windows.
- */
 function buildXTicks(points) {
   if (!points || points.length < 2) return [];
   const start = new Date(points[0].date).getTime();
@@ -45,7 +72,8 @@ function buildXTicks(points) {
   const ticks = [];
   for (let i = 0; i <= X_TICK_COUNT; i++) {
     const t = start + ((end - start) * i) / X_TICK_COUNT;
-    ticks.push({ t, x: (i / X_TICK_COUNT) * 100, first: i === 0, last: i === X_TICK_COUNT });
+    const xPct = (PAD_LEFT / WIDTH + (i / X_TICK_COUNT) * (USABLE_WIDTH / WIDTH)) * 100;
+    ticks.push({ t, x: xPct, first: i === 0, last: i === X_TICK_COUNT });
   }
   return ticks;
 }
@@ -60,13 +88,6 @@ function formatAxisTick(ms, range, spanMs) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-/**
- * Analytics line chart. In performance mode (realized PnL) the line/area and
- * hover colors follow the net direction - positive green, negative red, zero
- * neutral. In volume mode it uses a restrained neutral accent: volume is not
- * a financial state, so it never borrows the positive/negative colors.
- * Each range/metric dataset is rendered directly from its raw records.
- */
 export default function PerformanceChart({ data, metric = "performance", range = "1M", startValue = 0 }) {
   const [hoverIndex, setHoverIndex] = useState(null);
   const [displayPoints, setDisplayPoints] = useState(null);
@@ -92,7 +113,7 @@ export default function PerformanceChart({ data, metric = "performance", range =
       const tMs = new Date(d.date).getTime();
       const frac = Number.isFinite(tMs) ? Math.max(0, Math.min(1, (tMs - startMs) / spanMs)) : 0;
       return {
-        x: PAD_X + frac * USABLE_WIDTH,
+        x: PAD_LEFT + frac * USABLE_WIDTH,
         y: PAD_TOP + USABLE_HEIGHT - ((d.value - paddedMin) / paddedRange) * USABLE_HEIGHT,
         value: d.value,
         date: d.date,
@@ -119,12 +140,12 @@ export default function PerformanceChart({ data, metric = "performance", range =
   const { gridLines, tone } = target;
   const metricLabel = metric === "performance" ? "Realized PnL" : "Trading Volume";
 
-  const linePath = useMemo(() => buildSmoothPath(points), [points]);
+  const linePath = useMemo(() => buildMonotoneSmoothPath(points), [points]);
   const areaPath = useMemo(() => {
     if (points.length === 0) return "";
     const last = points[points.length - 1];
     const first = points[0];
-    return `${linePath} L ${last.x} ${HEIGHT - PAD_BOTTOM} L ${first.x} ${HEIGHT - PAD_BOTTOM} Z`;
+    return `${linePath} L ${last.x.toFixed(2)} ${HEIGHT - PAD_BOTTOM} L ${first.x.toFixed(2)} ${HEIGHT - PAD_BOTTOM} Z`;
   }, [linePath, points]);
 
   const palette = PALETTE[tone] || PALETTE.neutral;
@@ -165,6 +186,7 @@ export default function PerformanceChart({ data, metric = "performance", range =
   }
 
   const activePoint = hoverIndex !== null && points.length > 0 ? points[hoverIndex] : null;
+  const lastPoint = points.length > 0 ? points[points.length - 1] : null;
   const hoverChange = activePoint ? activePoint.value - (startValue ?? 0) : 0;
   const hoverChangePct = startValue && startValue !== 0 ? hoverChange / Math.abs(startValue) : null;
   const hoverTone = metric === "performance" ? getValueState(hoverChange) : "neutral";
@@ -183,12 +205,12 @@ export default function PerformanceChart({ data, metric = "performance", range =
       >
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stopColor={palette.line} />
-            <stop offset="1" stopColor={palette.soft} />
+            <stop offset="0%" stopColor={palette.line} />
+            <stop offset="100%" stopColor={palette.soft} />
           </linearGradient>
           <linearGradient id={areaGradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor={palette.soft} stopOpacity="0.2" />
-            <stop offset="1" stopColor={palette.soft} stopOpacity="0" />
+            <stop offset="0%" stopColor={palette.soft} stopOpacity="0.16" />
+            <stop offset="100%" stopColor={palette.soft} stopOpacity="0.0" />
           </linearGradient>
         </defs>
 
@@ -197,7 +219,21 @@ export default function PerformanceChart({ data, metric = "performance", range =
         ))}
 
         <path d={areaPath} fill={`url(#${areaGradientId})`} stroke="none" />
-        <path d={linePath} fill="none" stroke={`url(#${gradientId})`} strokeWidth="2" strokeLinecap="butt" strokeLinejoin="miter" />
+        <path
+          d={linePath}
+          fill="none"
+          stroke={`url(#${gradientId})`}
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {lastPoint && (
+          <g transform={`translate(${lastPoint.x}, ${lastPoint.y})`}>
+            <circle r="3" fill={palette.line} />
+            <line x1="0" y1="0" x2={WIDTH - lastPoint.x} y2="0" stroke={palette.line} strokeDasharray="2 2" strokeOpacity="0.4" />
+          </g>
+        )}
 
         {activePoint && (
           <>
@@ -213,6 +249,15 @@ export default function PerformanceChart({ data, metric = "performance", range =
         )}
       </svg>
 
+      {lastPoint && (
+        <div
+          className={`chart-end-marker tone-${tone}`}
+          style={{ top: `${(lastPoint.y / HEIGHT) * 100}%` }}
+        >
+          {formatCompactCurrency(lastPoint.value)}
+        </div>
+      )}
+
       <div className="chart-ylabels" aria-hidden="true">
         {gridLines.map((line, i) => (
           <span key={i} className="chart-ylabel" style={{ top: `${(line.y / HEIGHT) * 100}%` }}>
@@ -225,8 +270,8 @@ export default function PerformanceChart({ data, metric = "performance", range =
         <div
           className="chart-tooltip"
           style={{
-            left: `${(activePoint.x / WIDTH) * 100}%`,
-            top: `${(activePoint.y / HEIGHT) * 100}%`,
+            left: `${Math.min(84, Math.max(16, (activePoint.x / WIDTH) * 100))}%`,
+            top: `${Math.min(75, Math.max(20, (activePoint.y / HEIGHT) * 100))}%`,
           }}
         >
           <div className="chart-tooltip-date">{formatDateTime(activePoint.date)}</div>

@@ -101,7 +101,7 @@ export default function ProfilePage() {
         {activeTab === "Overview" && (
           <div className="tab-panel" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
             <div className="overview-stack">
-              <PerformanceCard key={account?.address || identifier} identifier={account?.address || identifier} />
+              <PerformanceCard key={account?.address || identifier} identifier={account?.address || identifier} stats={stats} />
 
               <MonthlyPerformanceCalendar
                 resolvedPositions={data?.resolvedPositions}

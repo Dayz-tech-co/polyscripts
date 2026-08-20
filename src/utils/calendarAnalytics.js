@@ -136,3 +136,42 @@ export function buildDailyPerformance(resolvedPositions = [], activity = []) {
 
   return { byDay, byMonth };
 }
+
+/**
+ * Derives daily performance insights (Best Day, Worst Day, Active Days, Winning/Losing Days)
+ * directly from the daily aggregated dataset.
+ */
+export function getCalendarInsights(byDay) {
+  if (!byDay || byDay.size === 0) {
+    return {
+      bestDayPnL: null,
+      worstDayPnL: null,
+      activeDaysCount: 0,
+      winningDaysCount: 0,
+      losingDaysCount: 0,
+    };
+  }
+
+  let bestDayPnL = -Infinity;
+  let worstDayPnL = Infinity;
+  let activeDaysCount = 0;
+  let winningDaysCount = 0;
+  let losingDaysCount = 0;
+
+  for (const [, entry] of byDay.entries()) {
+    if (!entry || entry.pnl === 0) continue;
+    activeDaysCount++;
+    if (entry.pnl > bestDayPnL) bestDayPnL = entry.pnl;
+    if (entry.pnl < worstDayPnL) worstDayPnL = entry.pnl;
+    if (entry.pnl > 0) winningDaysCount++;
+    if (entry.pnl < 0) losingDaysCount++;
+  }
+
+  return {
+    bestDayPnL: Number.isFinite(bestDayPnL) ? bestDayPnL : null,
+    worstDayPnL: Number.isFinite(worstDayPnL) ? worstDayPnL : null,
+    activeDaysCount,
+    winningDaysCount,
+    losingDaysCount,
+  };
+}

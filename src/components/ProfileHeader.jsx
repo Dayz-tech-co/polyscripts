@@ -34,6 +34,9 @@ export default function ProfileHeader({ account, loading }) {
   const tierName = account.tierName;
   const TierIcon = tierName && TIER_ICONS[tierName] ? TIER_ICONS[tierName] : Award;
 
+  // Clean bio of legacy "tier trader" text if present
+  const cleanBio = account.bio ? account.bio.replace(/([A-Z][a-z]+)\s+tier\s+trader\.?/i, "").trim() : "";
+
   async function handleCopy() {
     try {
       await navigator.clipboard.writeText(account.address);
@@ -52,7 +55,7 @@ export default function ProfileHeader({ account, loading }) {
         await navigator.share({ title: `${primary} | PolyScripts`, url });
         return;
       } catch {
-        // user cancelled or share failed, fall through to clipboard copy
+        // user cancelled or share failed
       }
     }
     try {
@@ -67,19 +70,19 @@ export default function ProfileHeader({ account, loading }) {
     <section className="profile-header" aria-label="Profile">
       <div className="container profile-header-inner">
         <div className="profile-identity">
-          <Avatar account={account} size={56} radius={12} />
+          <Avatar account={account} size={44} radius={10} />
           <div className="profile-identity-text">
             <div className="profile-name-row">
               <h1 className="profile-name">{primary}</h1>
               {account.verified && (
                 <Tooltip label="Verified profile">
-                  <BadgeCheck size={15} className="verified-badge" aria-label="Verified profile" />
+                  <BadgeCheck size={14} className="verified-badge" aria-label="Verified profile" />
                 </Tooltip>
               )}
               {tierName && (
-                <Tooltip label={`${tierName} tier account`}>
+                <Tooltip label={`${tierName} tier trader`}>
                   <span className={`tier-badge tier-${tierName.toLowerCase()}`}>
-                    <TierIcon size={12} aria-hidden="true" />
+                    <TierIcon size={11} aria-hidden="true" />
                     <span>{tierName}</span>
                   </span>
                 </Tooltip>
@@ -90,12 +93,12 @@ export default function ProfileHeader({ account, loading }) {
               <span className="address-pill">{secondary}</span>
               <Tooltip label={copied ? "Copied" : "Copy address"}>
                 <button type="button" className="icon-btn icon-btn-sm" aria-label="Copy wallet address" onClick={handleCopy}>
-                  {copied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
+                  {copied ? <Check size={13} aria-hidden="true" /> : <Copy size={13} aria-hidden="true" />}
                 </button>
               </Tooltip>
               <Tooltip label="Share profile">
                 <button type="button" className="icon-btn icon-btn-sm" aria-label="Share profile" onClick={handleShare}>
-                  <Share2 size={14} aria-hidden="true" />
+                  <Share2 size={13} aria-hidden="true" />
                 </button>
               </Tooltip>
               <Tooltip label="Open on Polymarket">
@@ -106,14 +109,14 @@ export default function ProfileHeader({ account, loading }) {
                   rel="noreferrer noopener"
                   aria-label="Open public Polymarket profile"
                 >
-                  <ExternalLink size={14} aria-hidden="true" />
+                  <ExternalLink size={13} aria-hidden="true" />
                 </a>
               </Tooltip>
             </div>
 
-            {account.bio && (
+            {cleanBio && (
               <p className="profile-description-secondary">
-                {account.bio}
+                {cleanBio}
               </p>
             )}
           </div>

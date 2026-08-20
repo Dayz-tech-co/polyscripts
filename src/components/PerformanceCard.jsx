@@ -1,16 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import PerformanceChart from "./PerformanceChart";
 import { ChartSkeleton } from "./Skeleton";
 import { usePerformanceRange } from "../hooks/usePerformanceRange";
 import { getPerformanceRange } from "../services/profileService";
-import { formatCompactCurrency, formatCurrency, formatSignedCurrency } from "../utils/formatters";
+import { formatCompactCurrency, formatPercentage, formatSignedCurrency } from "../utils/formatters";
 import { getToneClass } from "../utils/states";
 
 const RANGES = ["1D", "1W", "1M", "3M", "ALL"];
 const RANGE_LABELS = { "1D": "Last 24 hours", "1W": "Last 7 days", "1M": "Last 30 days", "3M": "Last 90 days", ALL: "Available history" };
 
-// 5 standard timeframe result cards below the chart
 const SUMMARY_RANGES = [
   { label: "1D", range: "1D" },
   { label: "7D", range: "1W" },
@@ -53,9 +52,7 @@ function useRangeSummary(identifier, metric) {
   return summary;
 }
 
-import { useEffect } from "react";
-
-export default function PerformanceCard({ identifier }) {
+export default function PerformanceCard({ identifier, stats }) {
   const [range, setRange] = useState("ALL");
   const [metric, setMetric] = useState("performance");
   const { status, data } = usePerformanceRange(identifier, range, metric);
@@ -73,29 +70,19 @@ export default function PerformanceCard({ identifier }) {
     setMetric(next);
   }
 
-  function handleSummaryRange(range) {
-    setRange(range);
+  function handleSummaryRange(targetRange) {
+    setRange(targetRange);
   }
 
   return (
     <div className={`card performance-card ${loading ? "is-loading" : ""}`}>
       <div className="performance-header">
-        <div>
+        <div className="performance-header-main">
           <div className="performance-title-row">
             <span className="card-label">Performance</span>
-            <div className="metric-toggle" role="group" aria-label="Chart metric">
-              {METRICS.map((m) => (
-                <button
-                  key={m.key}
-                  type="button"
-                  className={`metric-btn ${metric === m.key ? "is-active" : ""}`}
-                  onClick={() => handleMetric(m.key)}
-                  aria-pressed={metric === m.key}
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>
+            <span className="performance-value-suffix">
+              {isVolume ? "Trading Volume" : "Realized PnL"} · {RANGE_LABELS[range]}
+            </span>
           </div>
           <div className="performance-value-row">
             <span className={`performance-value ${headlineTone}`}>
@@ -105,45 +92,60 @@ export default function PerformanceCard({ identifier }) {
                   : formatSignedCurrency(perf.change)
                 : "N/A"}
             </span>
-            <span className="performance-value-suffix">
-              {perf ? (isVolume ? "volume" : "pnl") : ""} · {RANGE_LABELS[range]}
-            </span>
-          </div>
-          <div className="performance-change">
-            {!perf ? (
-              <span className="performance-change-pct">
-                {isVolume ? "Trading volume in this period" : "Realized PnL from resolved positions"}
-              </span>
-            ) : isVolume ? (
-              <span className="performance-change-pct">Cumulative volume traded</span>
-            ) : (
-              <span className="performance-change-pct">Realized PnL this period</span>
+            {stats && (
+              <div className="performance-secondary-strip">
+                {stats.portfolioValue != null && (
+                  <span className="sec-stat-item">
+                    Portfolio <strong className="sec-stat-val">{formatCompactCurrency(stats.portfolioValue)}</strong>
+                  </span>
+                )}
+                {stats.volume != null && (
+                  <span className="sec-stat-item">
+                    Volume <strong className="sec-stat-val">{formatCompactCurrency(stats.volume)}</strong>
+                  </span>
+                )}
+                {stats.winRate != null && (
+                  <span className="sec-stat-item">
+                    Win Rate <strong className="sec-stat-val">{formatPercentage(stats.winRate)}</strong>
+                  </span>
+                )}
+              </div>
             )}
           </div>
-          {perf && (
-            <div className="performance-note">
-              Cumulative {formatCurrency(perf.endValue ?? perf.total)}
-              {isVolume ? " notional traded" : " realized PnL"}
-            </div>
-          )}
         </div>
 
-        <div className="range-controls" role="group" aria-label="Performance time range">
-          {RANGES.map((r) => (
-            <button
-              key={r}
-              type="button"
-              className={`range-btn ${range === r ? "is-active" : ""}`}
-              onClick={() => setRange(r)}
-              aria-pressed={range === r}
-            >
-              {r === "ALL" ? "All" : r}
-            </button>
-          ))}
+        <div className="performance-controls-row">
+          <div className="metric-toggle" role="group" aria-label="Chart metric">
+            {METRICS.map((m) => (
+              <button
+                key={m.key}
+                type="button"
+                className={`metric-btn ${metric === m.key ? "is-active" : ""}`}
+                onClick={() => handleMetric(m.key)}
+                aria-pressed={metric === m.key}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="range-controls" role="group" aria-label="Performance time range">
+            {RANGES.map((r) => (
+              <button
+                key={r}
+                type="button"
+                className={`range-btn ${range === r ? "is-active" : ""}`}
+                onClick={() => setRange(r)}
+                aria-pressed={range === r}
+              >
+                {r === "ALL" ? "All" : r}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="chart-area chart-area-expanded">
+      <div className="chart-area chart-area-hero">
         {!hasIdentifier ? (
           <ChartSkeleton />
         ) : hasChart ? (

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Calendar, DollarSign, Percent } from "lucide-react";
 import Tooltip from "./Tooltip";
-import { buildDailyPerformance } from "../utils/calendarAnalytics";
+import { buildDailyPerformance, getCalendarInsights } from "../utils/calendarAnalytics";
 import { formatCompactCurrency, formatSignedCurrency } from "../utils/formatters";
 import { getToneClass } from "../utils/states";
 
@@ -11,6 +11,20 @@ const MONTH_NAMES = [
 ];
 const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
+function getHeatmapClass(pnl, maxMag) {
+  if (pnl == null || pnl === 0 || !maxMag) return "cell-neutral";
+  const ratio = Math.abs(pnl) / maxMag;
+  if (pnl > 0) {
+    if (ratio > 0.6) return "cell-pos-strong";
+    if (ratio > 0.25) return "cell-pos-med";
+    return "cell-pos-light";
+  } else {
+    if (ratio > 0.6) return "cell-neg-strong";
+    if (ratio > 0.25) return "cell-neg-med";
+    return "cell-neg-light";
+  }
+}
+
 export default function MonthlyPerformanceCalendar({ resolvedPositions = [], activity = [], loading }) {
   // Default to August 2026 (current active month) or local date
   const [currentDate, setCurrentDate] = useState(() => new Date(2026, 7, 1));
@@ -19,6 +33,10 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = [], act
   const { byDay, byMonth } = useMemo(() => {
     return buildDailyPerformance(resolvedPositions, activity);
   }, [resolvedPositions, activity]);
+
+  const insights = useMemo(() => {
+    return getCalendarInsights(byDay);
+  }, [byDay]);
 
   const year = currentDate.getFullYear();
   const monthIndex = currentDate.getMonth();
@@ -33,12 +51,23 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = [], act
     setCurrentDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
   }
 
+  // Max magnitude in active month for heatmap normalization
+  const maxMonthMagnitude = useMemo(() => {
+    let max = 0;
+    for (const [dayKey, entry] of byDay.entries()) {
+      if (dayKey.startsWith(monthKey) && entry && entry.pnl !== 0) {
+        const mag = Math.abs(entry.pnl);
+        if (mag > max) max = mag;
+      }
+    }
+    return max;
+  }, [byDay, monthKey]);
+
   // Days in month calculation
   const calendarCells = useMemo(() => {
     const firstDayObj = new Date(Date.UTC(year, monthIndex, 1));
     const totalDays = new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
-    // Monday is index 0
-    const startDay = (firstDayObj.getUTCDay() + 6) % 7;
+    const startDay = (firstDayObj.getUTCDay() + 6) % 7; // Monday = 0
 
     const cells = [];
     for (let i = 0; i < startDay; i++) {
@@ -76,10 +105,43 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = [], act
 
   return (
     <div className={`card monthly-calendar-card ${loading ? "is-loading" : ""}`}>
+      {/* Best / Worst / Active Days Insights Bar */}
+      <div className="calendar-insights-strip">
+        <div className="insight-chip">
+          <span className="insight-label">Best Day</span>
+          <span className="insight-value text-positive">
+            {insights.bestDayPnL != null ? formatSignedCurrency(insights.bestDayPnL) : "--"}
+          </span>
+        </div>
+        <div className="insight-chip">
+          <span className="insight-label">Worst Day</span>
+          <span className="insight-value text-negative">
+            {insights.worstDayPnL != null ? formatSignedCurrency(insights.worstDayPnL) : "--"}
+          </span>
+        </div>
+        <div className="insight-chip">
+          <span className="insight-label">Active Days</span>
+          <span className="insight-value">{insights.activeDaysCount}</span>
+        </div>
+        <div className="insight-chip">
+          <span className="insight-label">Winning Days</span>
+          <span className="insight-value text-positive">{insights.winningDaysCount}</span>
+        </div>
+        <div className="insight-chip">
+          <span className="insight-label">Losing Days</span>
+          <span className="insight-value text-negative">{insights.losingDaysCount}</span>
+        </div>
+      </div>
+
       <div className="monthly-calendar-header">
         <div className="monthly-calendar-title">
-          <Calendar size={16} className="monthly-title-icon" aria-hidden="true" />
+          <Calendar size={15} className="monthly-title-icon" aria-hidden="true" />
           <span>Monthly Performance</span>
+          {currentMonthData && (
+            <span className={`month-badge ${getToneClass(monthPnl)}`}>
+              {formatSignedCurrency(monthPnl)} this month
+            </span>
+          )}
         </div>
 
         <div className="month-nav-controls">
@@ -89,7 +151,7 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = [], act
             onClick={handlePrevMonth}
             aria-label="Previous month"
           >
-            <ChevronLeft size={14} aria-hidden="true" />
+            <ChevronLeft size={13} aria-hidden="true" />
           </button>
           <span className="month-nav-label">
             {monthName} {year}
@@ -100,7 +162,7 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = [], act
             onClick={handleNextMonth}
             aria-label="Next month"
           >
-            <ChevronRight size={14} aria-hidden="true" />
+            <ChevronRight size={13} aria-hidden="true" />
           </button>
         </div>
 
@@ -155,17 +217,12 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = [], act
 
               const pnl = cell.data?.pnl ?? null;
               const hasPnl = pnl != null && pnl !== 0;
-              const isPositive = hasPnl && pnl > 0;
-              const isNegative = hasPnl && pnl < 0;
-
-              let toneClass = "cell-neutral";
-              if (isPositive) toneClass = "cell-positive";
-              if (isNegative) toneClass = "cell-negative";
+              const heatmapTone = getHeatmapClass(pnl, maxMonthMagnitude);
 
               return (
                 <div
                   key={cell.key}
-                  className={`calendar-cell ${toneClass} ${cell.isToday ? "cell-today" : ""}`}
+                  className={`calendar-cell ${heatmapTone} ${cell.isToday ? "cell-today" : ""}`}
                 >
                   <span className="cell-day-num">{cell.dayNumber}</span>
                   <span className={`cell-pnl-val ${hasPnl ? getToneClass(pnl) : ""}`}>
@@ -207,11 +264,11 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = [], act
           </span>
         </div>
         <div className="monthly-summary-item">
-          <span className="monthly-summary-label">Resolved Wins</span>
+          <span className="monthly-summary-label">Winning Positions</span>
           <span className="monthly-summary-value text-positive">{currentMonthData ? monthWins : "--"}</span>
         </div>
         <div className="monthly-summary-item">
-          <span className="monthly-summary-label">Resolved Losses</span>
+          <span className="monthly-summary-label">Losing Positions</span>
           <span className="monthly-summary-value text-negative">{currentMonthData ? monthLosses : "--"}</span>
         </div>
         <div className="monthly-summary-item">
