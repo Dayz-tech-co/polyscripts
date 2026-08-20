@@ -78,10 +78,8 @@ export async function getLeaderboard({
   return Array.isArray(data) ? data : [];
 }
 
-export async function getPositions(address, { limit = 100, signal } = {}) {
-  const url = `${DATA_BASE}/positions?user=${encodeURIComponent(address)}&limit=${limit}&sortBy=CURRENT&sortDirection=DESC`;
-  const data = await getJson(url, { signal });
-  return Array.isArray(data) ? data : [];
+export async function getPositions(address, { signal } = {}) {
+  return getCachedPositions(address, { signal });
 }
 
 export async function getClosedPositions(address, { signal } = {}) {
@@ -131,9 +129,36 @@ const ACTIVITY_CACHE_TTL = 60_000;
 // switching timeframes or metrics never triggers another network call.
 const activityCache = new Map();
 const closedCache = new Map();
+const positionsCache = new Map();
 
 function round2(value) {
   return Math.round(value * 100) / 100;
+}
+
+const POSITIONS_PAGE_SIZE = 50;
+
+async function fetchPositionsHistory(address, { maxEvents = MAX_PERF_EVENTS, signal } = {}) {
+  const out = [];
+  let offset = 0;
+  while (out.length < maxEvents) {
+    const url = `${DATA_BASE}/positions?user=${encodeURIComponent(address)}&limit=${POSITIONS_PAGE_SIZE}&offset=${offset}&sortBy=CURRENT&sortDirection=DESC`;
+    const data = await getJson(url, { signal });
+    if (!Array.isArray(data) || data.length === 0) break;
+    out.push(...data);
+    if (data.length < POSITIONS_PAGE_SIZE) break;
+    offset += POSITIONS_PAGE_SIZE;
+  }
+  return out.slice(0, maxEvents);
+}
+
+async function getCachedPositions(address, { signal } = {}) {
+  const hit = positionsCache.get(address);
+  if (hit && Date.now() - hit.fetchedAt < ACTIVITY_CACHE_TTL && hit.events.length > 0) {
+    return hit.events;
+  }
+  const events = await fetchPositionsHistory(address, { signal });
+  if (events.length > 0) positionsCache.set(address, { events, fetchedAt: Date.now() });
+  return events;
 }
 
 async function fetchActivityHistory(address, { maxEvents = MAX_PERF_EVENTS, signal } = {}) {

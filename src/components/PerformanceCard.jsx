@@ -8,7 +8,7 @@ import { formatCompactCurrency, formatCurrency, formatSignedCurrency } from "../
 import { getToneClass } from "../utils/states";
 
 const RANGES = ["1D", "1W", "1M", "3M", "ALL"];
-const RANGE_LABELS = { "1D": "Last 24 hours", "1W": "Last 7 days", "1M": "Last 30 days", "3M": "Last 90 days", ALL: "All time" };
+const RANGE_LABELS = { "1D": "Last 24 hours", "1W": "Last 7 days", "1M": "Last 30 days", "3M": "Last 90 days", ALL: "Available history" };
 
 // The range summary strip always shows the four standard windows, mapped to
 // the same provider ranges so every number shares one source of truth.

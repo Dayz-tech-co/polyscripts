@@ -62,7 +62,7 @@ export function normalizeProfile(raw) {
  */
 export function normalizeLeaderboardEntry(raw) {
   if (!raw) return null;
-  const address = normalizeAddress(raw.proxyWallet);
+  const address = normalizeAddress(raw.proxyWallet || raw.user || raw.address);
   const username = raw.userName && !isPlaceholderUsername(raw.userName) ? raw.userName : null;
 
   return {
