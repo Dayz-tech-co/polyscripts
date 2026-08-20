@@ -1,10 +1,17 @@
 import { useState } from "react";
-import { BadgeCheck, Check, Copy, ExternalLink, Share2 } from "lucide-react";
+import { Award, BadgeCheck, Check, Copy, ExternalLink, Gem, Shield, Share2, Zap } from "lucide-react";
 import Avatar from "./Avatar";
 import Tooltip from "./Tooltip";
 import { ProfileHeaderSkeleton } from "./Skeleton";
 import { shortenAddress } from "../utils/address";
 import { useToast } from "../context/ToastContext";
+
+const TIER_ICONS = {
+  Diamond: Gem,
+  Gold: Zap,
+  Silver: Shield,
+  Bronze: Award,
+};
 
 export default function ProfileHeader({ account, loading }) {
   const { showToast } = useToast();
@@ -24,6 +31,8 @@ export default function ProfileHeader({ account, loading }) {
   const primary = hasUsername ? account.username : account.displayName || shortenAddress(account.address);
   const secondary = hasUsername || account.displayName ? shortenAddress(account.address) : "Public account";
   const profileUrl = `https://polymarket.com/profile/${hasUsername ? account.username : account.address}`;
+  const tierName = account.tierName;
+  const TierIcon = tierName && TIER_ICONS[tierName] ? TIER_ICONS[tierName] : Award;
 
   async function handleCopy() {
     try {
@@ -67,6 +76,14 @@ export default function ProfileHeader({ account, loading }) {
                   <BadgeCheck size={15} className="verified-badge" aria-label="Verified profile" />
                 </Tooltip>
               )}
+              {tierName && (
+                <Tooltip label={`${tierName} tier account`}>
+                  <span className={`tier-badge tier-${tierName.toLowerCase()}`}>
+                    <TierIcon size={12} aria-hidden="true" />
+                    <span>{tierName}</span>
+                  </span>
+                </Tooltip>
+              )}
             </div>
 
             <div className="profile-address-row">
@@ -94,11 +111,9 @@ export default function ProfileHeader({ account, loading }) {
               </Tooltip>
             </div>
 
-            {(account.bio || account.tierName) && (
+            {account.bio && (
               <p className="profile-description-secondary">
                 {account.bio}
-                {account.bio && account.tierName ? " · " : ""}
-                {account.tierName ? `${account.tierName} tier trader` : ""}
               </p>
             )}
           </div>

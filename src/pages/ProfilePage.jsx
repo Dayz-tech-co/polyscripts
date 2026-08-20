@@ -5,7 +5,7 @@ import ProfileHeader from "../components/ProfileHeader";
 import ProfileStats from "../components/ProfileStats";
 import ProfileTabs from "../components/ProfileTabs";
 import PerformanceCard from "../components/PerformanceCard";
-import PortfolioSummary from "../components/PortfolioSummary";
+import MonthlyPerformanceCalendar from "../components/MonthlyPerformanceCalendar";
 import PositionsSection from "../components/PositionsSection";
 import ActivitySection from "../components/ActivitySection";
 import PositionsTab from "../components/PositionsTab";
@@ -100,13 +100,18 @@ export default function ProfilePage() {
 
         {activeTab === "Overview" && (
           <div className="tab-panel" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
-            <div className="overview-grid">
+            <div className="overview-stack">
               <PerformanceCard key={account?.address || identifier} identifier={account?.address || identifier} />
-              <PortfolioSummary stats={stats} loading={loading} />
-            </div>
 
-            <PositionsSection positions={data?.positions} loading={loading} limit={6} />
-            <ActivitySection activity={data?.activity} loading={loading} limit={8} />
+              <MonthlyPerformanceCalendar
+                resolvedPositions={data?.resolvedPositions}
+                activity={data?.activity}
+                loading={loading}
+              />
+
+              <PositionsSection positions={data?.positions} loading={loading} limit={6} />
+              <ActivitySection activity={data?.activity} loading={loading} limit={8} />
+            </div>
           </div>
         )}
 

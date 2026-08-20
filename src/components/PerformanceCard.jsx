@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import PerformanceChart from "./PerformanceChart";
 import { ChartSkeleton } from "./Skeleton";
@@ -10,13 +10,13 @@ import { getToneClass } from "../utils/states";
 const RANGES = ["1D", "1W", "1M", "3M", "ALL"];
 const RANGE_LABELS = { "1D": "Last 24 hours", "1W": "Last 7 days", "1M": "Last 30 days", "3M": "Last 90 days", ALL: "Available history" };
 
-// The range summary strip always shows the four standard windows, mapped to
-// the same provider ranges so every number shares one source of truth.
+// 5 standard timeframe result cards below the chart
 const SUMMARY_RANGES = [
   { label: "1D", range: "1D" },
   { label: "7D", range: "1W" },
   { label: "30D", range: "1M" },
   { label: "90D", range: "3M" },
+  { label: "Available History", range: "ALL" },
 ];
 
 const METRICS = [
@@ -24,10 +24,6 @@ const METRICS = [
   { key: "volume", label: "Volume" },
 ];
 
-/**
- * Per-window summary (1D/7D/30D/90D) fetched from the same performance
- * provider, so every number in the strip is consistent with the chart.
- */
 function useRangeSummary(identifier, metric) {
   const [summary, setSummary] = useState({ loading: false, data: {} });
 
@@ -57,16 +53,8 @@ function useRangeSummary(identifier, metric) {
   return summary;
 }
 
-/**
- * Real-time performance for the selected timeframe and metric.
- *
- * Performance is the account's realized PnL: the cumulative net of completed
- * trades and redemptions (proceeds minus costs), so it rises and falls with
- * real results. Volume is cumulative trading volume and only ever rises or
- * stays flat. Each range and metric is fetched on demand through the active
- * provider, so the headline, percentage, summary strip and plotted series all
- * come from that combination's own dataset.
- */
+import { useEffect } from "react";
+
 export default function PerformanceCard({ identifier }) {
   const [range, setRange] = useState("ALL");
   const [metric, setMetric] = useState("performance");
@@ -75,9 +63,6 @@ export default function PerformanceCard({ identifier }) {
 
   const hasIdentifier = Boolean(identifier);
   const loading = status === "loading" || !hasIdentifier;
-  // The dataset is only ever the one fetched for the currently selected
-  // metric AND range - the hook never exposes a previous dataset, and the
-  // result itself carries its range/metric so mismatches are impossible.
   const perf = status === "ready" && data && data.metric === metric && data.range === range ? data : null;
   const hasChart = Boolean(perf && perf.points && perf.points.length > 0);
   const isVolume = metric === "volume";
@@ -158,7 +143,7 @@ export default function PerformanceCard({ identifier }) {
         </div>
       </div>
 
-      <div className="chart-area">
+      <div className="chart-area chart-area-expanded">
         {!hasIdentifier ? (
           <ChartSkeleton />
         ) : hasChart ? (
@@ -180,7 +165,7 @@ export default function PerformanceCard({ identifier }) {
         )}
       </div>
 
-      <div className={`range-summary ${summaryLoading ? "is-loading" : ""}`} role="group" aria-label="Range summary">
+      <div className={`range-summary range-summary-five ${summaryLoading ? "is-loading" : ""}`} role="group" aria-label="Timeframe result cards">
         {SUMMARY_RANGES.map(({ label, range: sumRange }) => {
           const item = summary[sumRange] ?? null;
           const value = item
