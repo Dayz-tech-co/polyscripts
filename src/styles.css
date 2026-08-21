@@ -57,43 +57,46 @@ table {
 /* ---------------------------------------------------------------------- */
 
 :root {
-  /* Surfaces - flat Polymarket-mature dark */
-  --bg-app: #0b0e14;
-  --bg-secondary: #10141c;
-  --bg-card: #12171f;
-  --bg-card-elevated: #171c26;
-  --bg-hover: rgba(255, 255, 255, 0.04);
+  /* Surfaces - Deep Midnight Terminal Theme */
+  --bg-app: #07090e;
+  --bg-secondary: #0c1017;
+  --bg-card: #0e131d;
+  --bg-card-elevated: #131a26;
+  --bg-hover: rgba(255, 255, 255, 0.045);
 
   /* Borders */
-  --border-default: rgba(255, 255, 255, 0.08);
+  --border-default: rgba(255, 255, 255, 0.07);
   --border-hover: rgba(255, 255, 255, 0.14);
-  --border-strong: rgba(255, 255, 255, 0.18);
+  --border-strong: rgba(255, 255, 255, 0.22);
+  --border-subtle: rgba(255, 255, 255, 0.06);
 
   /* Text */
-  --text-primary: #f0f2f5;
-  --text-secondary: #9aa3b2;
-  --text-muted: #6b7380;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
 
-  /* Brand - single accent (Polymarket blue). Legacy aliases map to brand. */
-  --brand: #2e5cff;
-  --brand-orange: var(--brand);
-  --brand-coral: var(--brand);
-  --brand-pink: var(--brand);
-  --brand-gradient: var(--brand);
+  /* Brand - Vibrant PolyScripts Coral/Orange Glow */
+  --brand: #ff5c45;
+  --brand-orange: #ff7a00;
+  --brand-coral: #ff5c45;
+  --brand-pink: #ff3366;
+  --brand-cyan: #00d2ff;
+  --brand-blue: #3888ff;
+  --brand-gradient: linear-gradient(135deg, #ff5c45 0%, #ff8c38 100%);
 
-  /* Financial states (Yes / No) */
-  --positive: #16c784;
-  --positive-bg: rgba(22, 199, 132, 0.12);
-  --negative: #ea3943;
-  --negative-bg: rgba(234, 57, 67, 0.12);
-  --neutral: #8a93a6;
+  /* Financial states */
+  --positive: #2fb57e;
+  --positive-bg: rgba(47, 181, 126, 0.12);
+  --negative: #e5484d;
+  --negative-bg: rgba(229, 72, 77, 0.12);
+  --neutral: #7c9cff;
 
-  /* Radius - sharp edges */
-  --radius-lg: 0;
-  --radius-md: 0;
-  --radius-sm: 0;
-  --radius-xs: 0;
-  --radius-pill: 0;
+  /* Radius - Sleek Modern Curved Corners */
+  --radius-lg: 12px;
+  --radius-md: 10px;
+  --radius-sm: 6px;
+  --radius-xs: 4px;
+  --radius-pill: 9999px;
 
   /* Spacing */
   --space-1: 4px;
@@ -108,20 +111,22 @@ table {
   --space-10: 40px;
   --space-11: 48px;
 
-  /* Shadow - popovers only */
-  --shadow-card: none;
-  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.45);
+  /* Shadow & Glow */
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --shadow-pop: 0 12px 36px rgba(0, 0, 0, 0.6);
+  --brand-glow: 0 0 20px rgba(255, 92, 69, 0.25);
 
   /* Motion */
-  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --t-fast: 140ms;
   --t-base: 200ms;
-  --t-slow: 420ms;
-  --t-rise: 620ms;
+  --t-slow: 380ms;
+  --t-rise: 500ms;
 
   /* Type */
-  --font-sans: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", monospace;
 
   color-scheme: dark;
 }
@@ -131,7 +136,7 @@ table {
 /* ---------------------------------------------------------------------- */
 
 body {
-  background: var(--bg-app);
+  background: var(--bg-app) radial-gradient(circle at 50% 0%, rgba(255, 92, 69, 0.05) 0%, transparent 60%) fixed;
   color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: 14px;
@@ -322,6 +327,7 @@ h3 {
 
 .nav-link.is-active {
   color: var(--text-primary);
+  font-weight: 600;
 }
 
 .nav-link.is-active::after {
@@ -330,9 +336,10 @@ h3 {
   left: var(--space-4);
   right: var(--space-4);
   bottom: -1px;
-  height: 2px;
+  height: 2.5px;
   border-radius: var(--radius-pill);
-  background: var(--brand);
+  background: var(--brand-gradient);
+  box-shadow: var(--brand-glow);
 }
 
 .header-right {
@@ -3268,7 +3275,7 @@ h3 {
   min-width: 28px;
   height: 26px;
   padding: 0 var(--space-2);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
@@ -3277,22 +3284,22 @@ h3 {
 }
 
 .leaderboard-rank.rank-1 {
-  color: #ffd76a;
-  border-color: rgba(255, 196, 61, 0.5);
-  background: rgba(255, 196, 61, 0.1);
-  box-shadow: 0 0 18px rgba(255, 196, 61, 0.12);
+  color: #ffe066;
+  border-color: rgba(255, 215, 0, 0.6);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 180, 0, 0.08) 100%);
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.25);
 }
 
 .leaderboard-rank.rank-2 {
-  color: #dbe4f0;
-  border-color: rgba(194, 209, 226, 0.42);
-  background: rgba(194, 209, 226, 0.08);
+  color: #e2e8f0;
+  border-color: rgba(226, 232, 240, 0.5);
+  background: linear-gradient(135deg, rgba(226, 232, 240, 0.18) 0%, rgba(148, 163, 184, 0.08) 100%);
 }
 
 .leaderboard-rank.rank-3 {
-  color: #e8a56d;
-  border-color: rgba(205, 127, 50, 0.48);
-  background: rgba(205, 127, 50, 0.09);
+  color: #f6ad55;
+  border-color: rgba(246, 173, 85, 0.5);
+  background: linear-gradient(135deg, rgba(246, 173, 85, 0.18) 0%, rgba(221, 107, 32, 0.08) 100%);
 }
 
 .account-cell {
