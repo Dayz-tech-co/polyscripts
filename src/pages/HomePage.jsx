@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { Search } from "lucide-react";
 import AccountSearch from "../components/AccountSearch";
 import LogoMark from "../components/Logo";
 import RecentAccounts from "../components/RecentAccounts";
@@ -14,16 +13,9 @@ const EXAMPLES = [
 ];
 
 export default function HomePage() {
-  const searchWrapRef = useRef(null);
-
   useEffect(() => {
     document.title = "PolyScripts | Polymarket account explorer";
   }, []);
-
-  function focusSearch() {
-    const input = searchWrapRef.current?.querySelector("input");
-    input?.focus();
-  }
 
   return (
     <main id="main-content" className="container main-content home-page">
@@ -42,7 +34,7 @@ export default function HomePage() {
             Public Polymarket account analytics — search a username or wallet.
           </p>
 
-          <div className="home-search home-rise" style={{ "--rise-delay": "160ms" }} ref={searchWrapRef}>
+          <div className="home-search home-rise" style={{ "--rise-delay": "160ms" }}>
             <AccountSearch variant="hero" autoFocus={false} />
           </div>
 
@@ -55,10 +47,6 @@ export default function HomePage() {
                 </Link>
               ))}
             </div>
-            <button type="button" className="home-examples-focus" onClick={focusSearch}>
-              <Search size={12} aria-hidden="true" />
-              <span>or type your own</span>
-            </button>
           </div>
         </div>
       </section>

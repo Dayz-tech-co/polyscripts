@@ -379,7 +379,8 @@ h3 {
   border-color: var(--border-hover);
 }
 
-.account-search-box.is-focused {
+.account-search-box.is-focused,
+.account-search-box:focus-within {
   border-color: rgba(46, 92, 255, 0.55);
   background: var(--bg-card-elevated);
   box-shadow: 0 0 0 1px rgba(46, 92, 255, 0.2);
@@ -391,7 +392,8 @@ h3 {
   transition: color var(--t-base) var(--ease), transform var(--t-base) var(--ease-out);
 }
 
-.account-search-box.is-focused .account-search-icon {
+.account-search-box.is-focused .account-search-icon,
+.account-search-box:focus-within .account-search-icon {
   color: var(--brand);
   transform: scale(1.06);
 }
@@ -461,7 +463,8 @@ h3 {
   background: var(--bg-card-elevated);
 }
 
-.account-search-hero .account-search-box.is-focused {
+.account-search-hero .account-search-box.is-focused,
+.account-search-hero .account-search-box:focus-within {
   border-color: rgba(46, 92, 255, 0.7);
   box-shadow:
     0 0 0 1px rgba(46, 92, 255, 0.25),
@@ -490,8 +493,8 @@ h3 {
   top: calc(100% + var(--space-3));
   left: 0;
   right: 0;
-  z-index: 60;
-  background: var(--bg-card-elevated);
+  z-index: 80;
+  background: #171c26;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-pop);
@@ -2298,6 +2301,22 @@ h3 {
   }
 }
 
+/* Drop leftover transform so later siblings can't paint over search dropdown. */
+.home-search.home-rise,
+.home-examples.home-rise,
+.home-feed.home-rise {
+  animation-name: home-fade;
+}
+
+@keyframes home-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .home-hero-brand {
   display: inline-flex;
   align-items: center;
@@ -2356,6 +2375,8 @@ h3 {
   margin: var(--space-8) auto 0;
   max-width: 520px;
   text-align: left;
+  position: relative;
+  z-index: 20;
 }
 
 .home-examples {
@@ -2365,6 +2386,8 @@ h3 {
   align-items: center;
   justify-content: center;
   gap: var(--space-3) var(--space-4);
+  position: relative;
+  z-index: 1;
 }
 
 .home-examples-label {
@@ -2410,20 +2433,6 @@ h3 {
   transform: translateY(0);
 }
 
-.home-examples-focus {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--text-muted);
-  padding: 4px 2px;
-  transition: color var(--t-base) var(--ease);
-}
-
-.home-examples-focus:hover {
-  color: var(--brand);
-}
-
 .home-feed {
   display: flex;
   flex-direction: column;
@@ -2435,7 +2444,10 @@ h3 {
 
 @media (prefers-reduced-motion: reduce) {
   .home-rise,
-  .home-hero-logo {
+  .home-hero-logo,
+  .home-search.home-rise,
+  .home-examples.home-rise,
+  .home-feed.home-rise {
     animation: none;
   }
 

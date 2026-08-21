@@ -80,15 +80,36 @@ export default function AccountSearch({
     }
   }
 
+  function handleFocus() {
+    const hasRecent = getRecentAccounts().length > 0;
+    if (query.trim() || hasRecent) {
+      if (hasRecent && !query.trim()) setRecent(getRecentAccounts());
+      setOpen(true);
+    }
+  }
+
+  function handleChange(e) {
+    setQuery(e.target.value);
+    setOpen(true);
+  }
+
+  const showDropdown =
+    open &&
+    (Boolean(query.trim()) ||
+      (recent && recent.length > 0) ||
+      loading ||
+      Boolean(error) ||
+      incompleteAddress);
+
   return (
     <div className={`account-search account-search-${variant}`} ref={containerRef}>
-      <div className={`account-search-box ${open ? "is-focused" : ""}`}>
+      <div className={`account-search-box ${showDropdown ? "is-focused" : ""}`}>
         <Search size={16} className="account-search-icon" aria-hidden="true" />
         <input
           ref={inputRef}
           type="text"
           role="combobox"
-          aria-expanded={open}
+          aria-expanded={showDropdown}
           aria-controls={listId}
           aria-activedescendant={activeIndex >= 0 ? `${listId}-option-${activeIndex}` : undefined}
           aria-autocomplete="list"
@@ -99,17 +120,14 @@ export default function AccountSearch({
           className="account-search-input"
           placeholder={placeholder}
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setOpen(true);
-          }}
-          onFocus={() => setOpen(true)}
+          onChange={handleChange}
+          onFocus={handleFocus}
           onKeyDown={handleKeyDown}
         />
         {loading && <LoaderCircle size={15} className="account-search-spinner spin" aria-hidden="true" />}
       </div>
 
-      {open && (
+      {showDropdown && (
         <SearchDropdown
           listId={listId}
           query={query.trim()}
