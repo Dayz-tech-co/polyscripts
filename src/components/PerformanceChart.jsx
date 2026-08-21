@@ -253,33 +253,17 @@ export default function PerformanceChart({
     });
   }, [visiblePoints, domainStartMs, domainSpanMs, yScale]);
 
-  // Secondary breakdown paths for toggled series
-  const seriesPaths = useMemo(() => {
-    const keys = ["trade", "lp", "maker", "fees", "taker"];
-    const res = {};
-    keys.forEach((key) => {
-      if (activeSeries[key] && mappedPoints.length > 0) {
-        const pts = mappedPoints.map((p) => ({ x: p.x, y: p.breakdownY[key] }));
-        res[key] = buildMonotonePath(pts);
-      }
-    });
-    return res;
-  }, [mappedPoints, activeSeries]);
-
-  // Primary series color determination
+  // Primary series color determination — always semantic green/red
   const seriesTone = useMemo(() => {
     if (metric !== "performance" || mappedPoints.length < 2) return "neutral";
     const change = mappedPoints[mappedPoints.length - 1].value - mappedPoints[0].value;
     return change >= 0 ? "positive" : "negative";
   }, [mappedPoints, metric]);
 
-  const lineColor = activeSeries.total
-    ? SERIES_COLORS.total
-    : seriesTone === "positive"
-    ? COLOR_GREEN
-    : seriesTone === "negative"
-    ? COLOR_RED
-    : COLOR_NEUTRAL;
+  const lineColor =
+    seriesTone === "positive" ? COLOR_GREEN :
+    seriesTone === "negative" ? COLOR_RED :
+    COLOR_NEUTRAL;
 
   const linePath = useMemo(() => buildMonotonePath(mappedPoints), [mappedPoints]);
   const areaPath = useMemo(() => {
@@ -463,18 +447,7 @@ export default function PerformanceChart({
         {/* Subdued area fill */}
         <path d={areaPath} fill={`url(#${areaGradientId})`} stroke="none" />
 
-        {/* Secondary breakdown series paths */}
-        {Object.entries(seriesPaths).map(([sKey, sPath]) => (
-          <path
-            key={sKey}
-            d={sPath}
-            fill="none"
-            stroke={SERIES_COLORS[sKey]}
-            strokeWidth="1.2"
-            strokeDasharray="4 2"
-            strokeOpacity="0.85"
-          />
-        ))}
+
 
         {/* Main continuous line */}
         <path
