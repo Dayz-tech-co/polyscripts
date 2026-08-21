@@ -53,7 +53,7 @@ function useRangeSummary(identifier, metric, enabled) {
   return summary;
 }
 
-export default function PerformanceCard({ identifier, onHeadlineChange }) {
+export default function PerformanceCard({ identifier, onHeadlineChange, onAllTimeSeriesChange }) {
   const [range, setRange] = useState("ALL");
   const [metric, setMetric] = useState("performance");
   const [resetKey, setResetKey] = useState(0);
@@ -75,6 +75,13 @@ export default function PerformanceCard({ identifier, onHeadlineChange }) {
       onHeadlineChange(perf.change);
     }
   }, [onHeadlineChange, metric, range, perf?.change]);
+
+  useEffect(() => {
+    if (!onAllTimeSeriesChange || metric !== "performance" || range !== "ALL") return;
+    if (Array.isArray(perf?.points) && perf.points.length > 0) {
+      onAllTimeSeriesChange(perf.points);
+    }
+  }, [onAllTimeSeriesChange, metric, range, perf?.points]);
 
   function handleMetric(next) {
     if (next === metric) return;

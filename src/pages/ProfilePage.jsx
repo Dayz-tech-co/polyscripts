@@ -25,11 +25,13 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("Overview");
   const [positionsQuery, setPositionsQuery] = useState("");
   const [chartPnl, setChartPnl] = useState(null);
+  const [allTimePnlSeries, setAllTimePnlSeries] = useState([]);
 
   useEffect(() => {
     setActiveTab("Overview");
     setPositionsQuery("");
     setChartPnl(null);
+    setAllTimePnlSeries([]);
   }, [identifier]);
 
   const handleHeadlineChange = useCallback((value) => {
@@ -113,10 +115,17 @@ export default function ProfilePage() {
         />
 
         <div className="overview-stack profile-persist-stack">
-          <PerformanceCard key={chartKey} identifier={chartKey} onHeadlineChange={handleHeadlineChange} />
+          <PerformanceCard
+            key={chartKey}
+            identifier={chartKey}
+            onHeadlineChange={handleHeadlineChange}
+            onAllTimeSeriesChange={setAllTimePnlSeries}
+          />
           <MonthlyPerformanceCalendar
+            key={`calendar-${chartKey}`}
             resolvedPositions={data?.resolvedPositions}
             activity={data?.activity}
+            performanceSeries={allTimePnlSeries}
             loading={historyLoading}
           />
         </div>

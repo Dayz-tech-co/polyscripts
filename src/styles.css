@@ -3223,8 +3223,9 @@ h3 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 24px;
-  height: 24px;
+  gap: 4px;
+  min-width: 28px;
+  height: 26px;
   padding: 0 var(--space-2);
   border-radius: var(--radius-xs);
   font-size: 12px;
@@ -3235,18 +3236,22 @@ h3 {
 }
 
 .leaderboard-rank.rank-1 {
-  color: var(--brand-coral);
-  border-color: rgba(255, 92, 69, 0.35);
+  color: #ffd76a;
+  border-color: rgba(255, 196, 61, 0.5);
+  background: rgba(255, 196, 61, 0.1);
+  box-shadow: 0 0 18px rgba(255, 196, 61, 0.12);
 }
 
 .leaderboard-rank.rank-2 {
-  color: var(--brand-orange);
-  border-color: rgba(255, 138, 24, 0.35);
+  color: #dbe4f0;
+  border-color: rgba(194, 209, 226, 0.42);
+  background: rgba(194, 209, 226, 0.08);
 }
 
 .leaderboard-rank.rank-3 {
-  color: var(--brand-pink);
-  border-color: rgba(237, 25, 118, 0.35);
+  color: #e8a56d;
+  border-color: rgba(205, 127, 50, 0.48);
+  background: rgba(205, 127, 50, 0.09);
 }
 
 .account-cell {
@@ -3322,7 +3327,7 @@ h3 {
 
 .leaderboard-card-mobile-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--space-4);
   padding-top: var(--space-5);
   border-top: 1px solid var(--border-default);
@@ -4452,6 +4457,25 @@ h3 {
   gap: 8px;
   margin-top: 4px;
   flex-wrap: wrap;
+}
+
+.monthly-calendar-title > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.calendar-history-range {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.month-nav-controls .icon-btn:disabled {
+  opacity: 0.28;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 .address-pill {
   font-family: var(--font-mono, monospace);

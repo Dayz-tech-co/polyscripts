@@ -24,7 +24,20 @@ function getStableActivityId(act, index) {
   return `${hash}-${ts}-${amt}`;
 }
 
-export function buildDailyPerformance(resolvedPositions = [], activity = []) {
+function utcDayKey(timestamp) {
+  const date = new Date(timestamp);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+}
+
+function emptyDayEntry() {
+  return { pnl: 0, wins: 0, losses: 0, winSum: 0, lossSum: 0, count: 0 };
+}
+
+function emptyMonthEntry() {
+  return { pnl: 0, wins: 0, losses: 0, winSum: 0, lossSum: 0, count: 0, volume: 0 };
+}
+
+export function buildDailyPerformance(resolvedPositions = [], activity = [], performanceSeries = []) {
   const byDay = new Map();
   const byMonth = new Map();
 
@@ -60,7 +73,7 @@ export function buildDailyPerformance(resolvedPositions = [], activity = []) {
     // Day level aggregation
     let dEntry = byDay.get(dayKey);
     if (!dEntry) {
-      dEntry = { pnl: 0, wins: 0, losses: 0, winSum: 0, lossSum: 0, count: 0 };
+      dEntry = emptyDayEntry();
       byDay.set(dayKey, dEntry);
     }
     dEntry.pnl = round2(dEntry.pnl + pnl);
@@ -76,7 +89,7 @@ export function buildDailyPerformance(resolvedPositions = [], activity = []) {
     // Month level aggregation
     let mEntry = byMonth.get(monthKey);
     if (!mEntry) {
-      mEntry = { pnl: 0, wins: 0, losses: 0, winSum: 0, lossSum: 0, count: 0, volume: 0 };
+      mEntry = emptyMonthEntry();
       byMonth.set(monthKey, mEntry);
     }
     mEntry.pnl = round2(mEntry.pnl + pnl);
@@ -87,6 +100,43 @@ export function buildDailyPerformance(resolvedPositions = [], activity = []) {
     } else {
       mEntry.losses += 1;
       mEntry.lossSum = round2(mEntry.lossSum + pnl);
+    }
+  }
+
+  // The official all-time series is cumulative. Keep the last point for each
+  // UTC day, then subtract consecutive closes to obtain complete daily PnL.
+  const dailyCloses = new Map();
+  for (const point of Array.isArray(performanceSeries) ? performanceSeries : []) {
+    const timestamp = new Date(point?.date).getTime();
+    const value = Number(point?.value);
+    const dayKey = utcDayKey(timestamp);
+    if (!dayKey || !Number.isFinite(value)) continue;
+    const existing = dailyCloses.get(dayKey);
+    if (!existing || timestamp >= existing.timestamp) {
+      dailyCloses.set(dayKey, { timestamp, value });
+    }
+  }
+
+  if (dailyCloses.size > 0) {
+    const officialMonthPnl = new Map();
+    let previousClose = 0;
+    for (const [dayKey, close] of Array.from(dailyCloses.entries()).sort((a, b) => a[0].localeCompare(b[0]))) {
+      const dailyPnl = round2(close.value - previousClose);
+      previousClose = close.value;
+      const dayEntry = byDay.get(dayKey) || emptyDayEntry();
+      dayEntry.pnl = dailyPnl;
+      dayEntry.hasOfficialPnl = true;
+      byDay.set(dayKey, dayEntry);
+
+      const monthKey = dayKey.slice(0, 7);
+      officialMonthPnl.set(monthKey, round2((officialMonthPnl.get(monthKey) || 0) + dailyPnl));
+    }
+
+    for (const [monthKey, pnl] of officialMonthPnl) {
+      const monthEntry = byMonth.get(monthKey) || emptyMonthEntry();
+      monthEntry.pnl = pnl;
+      monthEntry.hasOfficialPnl = true;
+      byMonth.set(monthKey, monthEntry);
     }
   }
 
@@ -115,7 +165,7 @@ export function buildDailyPerformance(resolvedPositions = [], activity = []) {
 
     let mEntry = byMonth.get(monthKey);
     if (!mEntry) {
-      mEntry = { pnl: 0, wins: 0, losses: 0, winSum: 0, lossSum: 0, count: 0, volume: 0 };
+      mEntry = emptyMonthEntry();
       byMonth.set(monthKey, mEntry);
     }
     mEntry.volume = round2(mEntry.volume + (act.amount ?? 0));

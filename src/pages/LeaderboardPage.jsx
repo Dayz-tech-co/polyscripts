@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowUpRight, ChevronRight, SearchX } from "lucide-react";
+import { ArrowUpRight, ChevronRight, Crown, Medal, SearchX } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import Avatar from "../components/Avatar";
 import Filters from "../components/Filters";
@@ -10,7 +10,7 @@ import ErrorState from "../components/ErrorState";
 import { TableSkeleton } from "../components/Skeleton";
 import { getLeaderboard } from "../services/ecosystemService";
 import { shortenAddress } from "../utils/address";
-import { formatCompactCurrency, formatNumber, formatPercentage, formatSignedCurrency } from "../utils/formatters";
+import { formatCompactCurrency, formatSignedCurrency } from "../utils/formatters";
 import { getToneClass } from "../utils/states";
 
 const METRICS = [
@@ -25,6 +25,20 @@ const PERIODS = [
   { label: "Monthly", value: "MONTH" },
   { label: "All Time", value: "ALL" },
 ];
+
+function RankBadge({ rank }) {
+  const isPodium = Number.isFinite(rank) && rank <= 3;
+  return (
+    <span
+      className={`leaderboard-rank ${isPodium ? `rank-${rank}` : ""}`}
+      aria-label={isPodium ? `Rank ${rank}, top three` : `Rank ${rank}`}
+    >
+      {rank === 1 && <Crown size={12} strokeWidth={2.2} aria-hidden="true" />}
+      {(rank === 2 || rank === 3) && <Medal size={12} strokeWidth={2.2} aria-hidden="true" />}
+      <span>{rank}</span>
+    </span>
+  );
+}
 
 export default function LeaderboardPage() {
   const [metric, setMetric] = useState("pnl");
@@ -107,8 +121,6 @@ export default function LeaderboardPage() {
                   <th>Account</th>
                   <th>PnL</th>
                   <th>Volume</th>
-                  <th>Win Rate</th>
-                  <th>Markets</th>
                   <th aria-label="Open" />
                 </tr>
               </thead>
@@ -118,11 +130,11 @@ export default function LeaderboardPage() {
                   return (
                     <tr key={row.address} className={`leaderboard-row ${row.rank <= 3 ? "is-top" : ""}`}>
                       <td>
-                        <span className={`leaderboard-rank ${row.rank <= 3 ? `rank-${row.rank}` : ""}`}>{row.rank}</span>
+                        <RankBadge rank={row.rank} />
                       </td>
                       <td className="account-cell">
                         <button type="button" className="account-cell-btn" onClick={() => open(row)}>
-                          <Avatar account={row} size={30} radius={9} />
+                          <Avatar account={row} size={30} radius="50%" />
                           <span className="account-cell-text">
                             <span className="account-cell-name">{row.username || row.displayName || shortenAddress(row.address)}</span>
                             <span className="account-cell-address">{shortenAddress(row.address)}</span>
@@ -131,8 +143,6 @@ export default function LeaderboardPage() {
                       </td>
                       <td className={`num-cell ${pnlTone}`}>{formatSignedCurrency(row.pnl, { decimals: 0 })}</td>
                       <td className="num-cell">{formatCompactCurrency(row.volume)}</td>
-                      <td className="num-cell">{formatPercentage(row.winRate)}</td>
-                      <td className="num-cell">{formatNumber(row.markets)}</td>
                       <td className="action-cell">
                         <button type="button" className="icon-btn icon-btn-sm" aria-label={`Open ${row.username || shortenAddress(row.address)}`} onClick={() => open(row)}>
                           <ArrowUpRight size={14} aria-hidden="true" />
@@ -151,8 +161,8 @@ export default function LeaderboardPage() {
               return (
                 <button type="button" key={row.address} className="leaderboard-card-mobile" onClick={() => open(row)}>
                   <div className="leaderboard-card-mobile-top">
-                    <span className={`leaderboard-rank ${row.rank <= 3 ? `rank-${row.rank}` : ""}`}>{row.rank}</span>
-                    <Avatar account={row} size={32} radius={9} />
+                    <RankBadge rank={row.rank} />
+                    <Avatar account={row} size={32} radius="50%" />
                     <span className="account-cell-text">
                       <span className="account-cell-name">{row.username || row.displayName || shortenAddress(row.address)}</span>
                       <span className="account-cell-address">{shortenAddress(row.address)}</span>
@@ -167,10 +177,6 @@ export default function LeaderboardPage() {
                     <div className="position-card-stat">
                       <span className="position-card-stat-label">Volume</span>
                       <span className="position-card-stat-value">{formatCompactCurrency(row.volume)}</span>
-                    </div>
-                    <div className="position-card-stat">
-                      <span className="position-card-stat-label">Win Rate</span>
-                      <span className="position-card-stat-value">{formatPercentage(row.winRate)}</span>
                     </div>
                   </div>
                 </button>

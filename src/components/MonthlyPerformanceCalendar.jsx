@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { buildDailyPerformance, getCalendarInsights } from "../utils/calendarAnalytics";
 import { formatCompactCurrency, formatSignedCurrency } from "../utils/formatters";
@@ -9,6 +9,7 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December",
 ];
 const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
+const EMPTY_LIST = [];
 
 function getHeatmapClass(pnl, maxMag) {
   if (pnl == null || pnl === 0 || !maxMag) return "cell-neutral";
@@ -24,13 +25,27 @@ function getHeatmapClass(pnl, maxMag) {
   }
 }
 
-export default function MonthlyPerformanceCalendar({ resolvedPositions = [], activity = [], loading }) {
-  const [currentDate, setCurrentDate] = useState(() => new Date(2026, 7, 1));
+export default function MonthlyPerformanceCalendar({ resolvedPositions = EMPTY_LIST, activity = EMPTY_LIST, performanceSeries = EMPTY_LIST, loading }) {
+  const [currentDate, setCurrentDate] = useState(() => new Date());
   const [viewMode, setViewMode] = useState("daily"); // "daily" | "monthly"
 
   const { byDay, byMonth } = useMemo(() => {
-    return buildDailyPerformance(resolvedPositions, activity);
-  }, [resolvedPositions, activity]);
+    return buildDailyPerformance(resolvedPositions, activity, performanceSeries);
+  }, [resolvedPositions, activity, performanceSeries]);
+
+  const historyBounds = useMemo(() => {
+    const dates = performanceSeries
+      .map((point) => new Date(point?.date))
+      .filter((date) => !Number.isNaN(date.getTime()))
+      .sort((a, b) => a - b);
+    return dates.length > 0 ? { first: dates[0], last: dates[dates.length - 1] } : null;
+  }, [performanceSeries]);
+
+  useEffect(() => {
+    if (historyBounds?.last) {
+      setCurrentDate(new Date(historyBounds.last.getUTCFullYear(), historyBounds.last.getUTCMonth(), 1));
+    }
+  }, [historyBounds]);
 
   const insights = useMemo(() => {
     return getCalendarInsights(byDay);
@@ -40,6 +55,12 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = [], act
   const monthIndex = currentDate.getMonth();
   const monthName = MONTH_NAMES[monthIndex];
   const monthKey = `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
+  const firstMonthKey = historyBounds
+    ? `${historyBounds.first.getUTCFullYear()}-${String(historyBounds.first.getUTCMonth() + 1).padStart(2, "0")}`
+    : null;
+  const lastMonthKey = historyBounds
+    ? `${historyBounds.last.getUTCFullYear()}-${String(historyBounds.last.getUTCMonth() + 1).padStart(2, "0")}`
+    : null;
 
   function handlePrevMonth() {
     setCurrentDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
@@ -106,7 +127,14 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = [], act
       <div className="monthly-calendar-header-top">
         <div className="monthly-calendar-title">
           <Calendar size={15} className="monthly-title-icon" aria-hidden="true" />
-          <span>Monthly Performance</span>
+          <span>
+            Monthly Performance
+            {historyBounds && (
+              <small className="calendar-history-range">
+                Official daily PnL since {historyBounds.first.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" })}
+              </small>
+            )}
+          </span>
         </div>
         {currentMonthData && (
           <span className={`month-badge ${getToneClass(monthPnl)}`}>
@@ -160,6 +188,7 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = [], act
             type="button"
             className="icon-btn icon-btn-sm"
             onClick={handlePrevMonth}
+            disabled={firstMonthKey != null && monthKey <= firstMonthKey}
             aria-label="Previous month"
           >
             <ChevronLeft size={13} aria-hidden="true" />
@@ -171,6 +200,7 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = [], act
             type="button"
             className="icon-btn icon-btn-sm"
             onClick={handleNextMonth}
+            disabled={lastMonthKey != null && monthKey >= lastMonthKey}
             aria-label="Next month"
           >
             <ChevronRight size={13} aria-hidden="true" />
