@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Bookmark, X } from "lucide-react";
+import { ArrowUpRight, Bookmark, BookmarkCheck, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Avatar from "./Avatar";
 import { shortenAddress } from "../utils/address";
+import { formatTimeAgo } from "../utils/formatters";
 import { getWatchlist, removeWatchlistAccount, subscribeToWatchlist } from "../utils/watchlist";
 
 export default function WatchlistSection() {
@@ -14,11 +15,14 @@ export default function WatchlistSection() {
   return (
     <section className="section watchlist-section" aria-labelledby="watchlist-heading">
       <div className="section-header">
-        <div>
-          <h2 className="section-title" id="watchlist-heading">Watchlist</h2>
-          <p className="section-description">Traders saved on this device</p>
+        <div className="watchlist-heading-group">
+          <span className="watchlist-heading-icon" aria-hidden="true"><BookmarkCheck size={15} /></span>
+          <div>
+            <h2 className="section-title" id="watchlist-heading">Your watchlist</h2>
+            <p className="section-description">Profiles you are monitoring on this device</p>
+          </div>
         </div>
-        <span className="section-count">{accounts.length}</span>
+        <span className="watchlist-summary">{accounts.length} saved</span>
       </div>
 
       {accounts.length === 0 ? (
@@ -27,7 +31,7 @@ export default function WatchlistSection() {
           <span>Save traders from their profile to monitor them here.</span>
         </div>
       ) : (
-        <ul className="card watchlist-list">
+        <ul className="watchlist-list">
           {accounts.map((account) => (
             <li className="watchlist-item" key={account.address}>
               <button
@@ -35,19 +39,21 @@ export default function WatchlistSection() {
                 className="watchlist-open"
                 onClick={() => navigate(`/profile/${encodeURIComponent(account.username || account.address)}`)}
               >
-                <Avatar account={account} size={32} radius={0} />
+                <span className="watchlist-avatar"><Avatar account={account} size={38} radius={0} /></span>
                 <span className="top-account-identity">
                   <span className="top-account-name">{account.username || account.displayName || shortenAddress(account.address)}</span>
                   <span className="top-account-address">{shortenAddress(account.address)}</span>
+                  {account.addedAt && <span className="watchlist-saved-at">Saved {formatTimeAgo(account.addedAt)}</span>}
                 </span>
+                <ArrowUpRight size={15} className="watchlist-open-arrow" aria-hidden="true" />
               </button>
               <button
                 type="button"
-                className="icon-btn icon-btn-sm"
+                className="watchlist-remove"
                 aria-label={`Remove ${account.username || shortenAddress(account.address)} from watchlist`}
                 onClick={() => removeWatchlistAccount(account.address)}
               >
-                <X size={13} aria-hidden="true" />
+                <Trash2 size={13} aria-hidden="true" />
               </button>
             </li>
           ))}
