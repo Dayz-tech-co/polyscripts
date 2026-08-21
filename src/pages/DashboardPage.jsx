@@ -9,6 +9,7 @@ import CategoryBreakdown from "../components/CategoryBreakdown";
 import Avatar from "../components/Avatar";
 import { ActivityTypeBadge } from "../components/ActivityRow";
 import EmptyState from "../components/EmptyState";
+import WatchlistSection from "../components/WatchlistSection";
 import { ChartSkeleton, StatsSkeleton, TableSkeleton } from "../components/Skeleton";
 import {
   getActivityTrend,
@@ -81,6 +82,8 @@ export default function DashboardPage() {
   return (
     <main id="main-content" className="container main-content">
       <PageHeader title="Dashboard" description="Aggregate view of the Polymarket ecosystem." />
+
+      <WatchlistSection />
 
       {!loaded ? (
         <StatsSkeleton />

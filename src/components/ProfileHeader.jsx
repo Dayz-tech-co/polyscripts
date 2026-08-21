@@ -1,11 +1,12 @@
-import { useState } from "react";
-import { Award, BadgeCheck, Check, Copy, Crown, Gem, Hexagon, Shield, Share2, Zap } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Award, BadgeCheck, Bookmark, BookmarkCheck, Check, Copy, Crown, Gem, Hexagon, Shield, Share2, Zap } from "lucide-react";
 import Avatar from "./Avatar";
 import Tooltip from "./Tooltip";
 import PolymarketIcon from "./PolymarketIcon";
 import { ProfileHeaderSkeleton } from "./Skeleton";
 import { shortenAddress } from "../utils/address";
 import { useToast } from "../context/ToastContext";
+import { isAccountWatched, toggleWatchlistAccount } from "../utils/watchlist";
 
 const TIER_ICONS = {
   "Tier 0": Award,
@@ -26,6 +27,11 @@ function tierCssSlug(tierName, tier) {
 export default function ProfileHeader({ account, loading }) {
   const { showToast } = useToast();
   const [copied, setCopied] = useState(false);
+  const [watched, setWatched] = useState(() => isAccountWatched(account?.address));
+
+  useEffect(() => {
+    setWatched(isAccountWatched(account?.address));
+  }, [account?.address]);
 
   if (loading || !account) {
     return (
@@ -76,6 +82,12 @@ export default function ProfileHeader({ account, loading }) {
     }
   }
 
+  function handleWatchlist() {
+    const next = toggleWatchlistAccount(account);
+    setWatched(next);
+    showToast(next ? "Added to watchlist" : "Removed from watchlist");
+  }
+
   return (
     <section className="profile-header" aria-label="Profile">
       <div className="container profile-header-inner">
@@ -111,6 +123,17 @@ export default function ProfileHeader({ account, loading }) {
               <Tooltip label="Share profile" position="bottom">
                 <button type="button" className="icon-btn icon-btn-sm" aria-label="Share profile" onClick={handleShare}>
                   <Share2 size={13} aria-hidden="true" />
+                </button>
+              </Tooltip>
+              <Tooltip label={watched ? "Remove from watchlist" : "Add to watchlist"} position="bottom">
+                <button
+                  type="button"
+                  className={`icon-btn icon-btn-sm ${watched ? "is-active" : ""}`}
+                  aria-label={watched ? "Remove from watchlist" : "Add to watchlist"}
+                  aria-pressed={watched}
+                  onClick={handleWatchlist}
+                >
+                  {watched ? <BookmarkCheck size={13} aria-hidden="true" /> : <Bookmark size={13} aria-hidden="true" />}
                 </button>
               </Tooltip>
               <Tooltip label="Open on Polymarket" position="bottom">

@@ -7,6 +7,8 @@ import ProfileTabs from "../components/ProfileTabs";
 import PerformanceCard from "../components/PerformanceCard";
 import MonthlyPerformanceCalendar from "../components/MonthlyPerformanceCalendar";
 import PortfolioSummary from "../components/PortfolioSummary";
+import MarketExposure from "../components/MarketExposure";
+import ProfileActions from "../components/ProfileActions";
 import PositionsSection from "../components/PositionsSection";
 import ActivitySection from "../components/ActivitySection";
 import PositionsTab from "../components/PositionsTab";
@@ -119,6 +121,8 @@ export default function ProfilePage() {
           />
         </div>
 
+        <ProfileActions data={data} loading={historyLoading} />
+
         <ProfileTabs
           active={activeTab}
           onChange={setActiveTab}
@@ -136,7 +140,10 @@ export default function ProfilePage() {
                 <PositionsSection positions={data?.positions} loading={loading} limit={6} />
                 <ActivitySection activity={data?.activity} loading={historyLoading} limit={8} />
               </div>
-              <PortfolioSummary stats={stats} loading={historyLoading} />
+              <div className="overview-stack">
+                <PortfolioSummary stats={stats} loading={historyLoading} />
+                <MarketExposure positions={data?.positions} loading={loading} />
+              </div>
             </div>
           </div>
         )}

@@ -904,6 +904,22 @@ h3 {
   border-bottom: 1px solid var(--border-default);
 }
 
+.profile-data-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-6);
+}
+
+.profile-data-actions .btn {
+  min-height: 34px;
+  padding: 0 var(--space-5);
+}
+
+.profile-data-actions .btn:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
 .tab-btn {
   position: relative;
   padding: var(--space-4) var(--space-5);
@@ -1295,6 +1311,117 @@ h3 {
   gap: var(--space-5);
   position: sticky;
   top: var(--space-6);
+}
+
+.market-exposure-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.market-exposure-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.market-exposure-header .card-description {
+  display: block;
+  margin-top: 2px;
+}
+
+.exposure-risk {
+  flex-shrink: 0;
+  padding: 3px 7px;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.market-exposure-empty,
+.watchlist-empty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.watchlist-section {
+  margin-bottom: var(--space-7);
+}
+
+.watchlist-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  padding: 0;
+}
+
+.watchlist-item {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: var(--space-4);
+  border-right: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.watchlist-item:nth-child(3n) {
+  border-right: 0;
+}
+
+.watchlist-open {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+  flex: 1;
+  text-align: left;
+}
+
+.watchlist-open:hover .top-account-name {
+  color: var(--brand);
+}
+
+.icon-btn.is-active {
+  color: var(--brand);
+  border-color: rgba(46, 92, 255, 0.4);
+  background: rgba(46, 92, 255, 0.08);
+}
+
+@media (max-width: 900px) {
+  .watchlist-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .watchlist-item:nth-child(3n) {
+    border-right: 1px solid var(--border-default);
+  }
+
+  .watchlist-item:nth-child(2n) {
+    border-right: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .watchlist-list {
+    grid-template-columns: 1fr;
+  }
+
+  .watchlist-item,
+  .watchlist-item:nth-child(2n),
+  .watchlist-item:nth-child(3n) {
+    border-right: 0;
+  }
+
+  .profile-data-actions .btn {
+    width: 100%;
+  }
 }
 
 .summary-list {
