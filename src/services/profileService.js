@@ -77,9 +77,12 @@ export async function getAccountProfile(identifier, { signal } = {}) {
   // and rank (gamma's weightedVolume can be 0 - or far smaller - for
   // accounts that are active on the leaderboard), then the identity/search
   // account, then the gamma profile to fill in fields the leaderboard lacks
-  // (bio, tier, avatar). mergeAccounts keeps the first non-null value, so the
-  // leaderboard must be merged first.
+  // (bio, avatar). Live taker tier always comes from public-profile.
   const enrichedAccount = mergeAccounts(mergeAccounts(rankEntry, account), publicProfileAccount);
+  if (publicProfileAccount) {
+    enrichedAccount.tier = publicProfileAccount.tier ?? enrichedAccount.tier ?? null;
+    enrichedAccount.tierName = publicProfileAccount.tierName ?? enrichedAccount.tierName ?? null;
+  }
 
   const positions = (rawPositions || []).map(normalizePosition);
   const resolvedPositions = (rawClosed || []).map(normalizeClosedPosition);

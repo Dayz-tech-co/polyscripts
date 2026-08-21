@@ -12,6 +12,40 @@ import { normalizeAddress } from "../utils/address";
 
 const PLACEHOLDER_USERNAME_RE = /^0x[0-9a-fA-F]{40}-\d+$/;
 
+/** Official Polymarket taker rebate tiers (docs: trading/taker-rebates). */
+export const POLYMARKET_TIER_NAMES = [
+  "Tier 0", // API label for level 0 / None
+  "Bronze",
+  "Silver",
+  "Gold",
+  "Platinum",
+  "Diamond",
+  "Obsidian",
+];
+
+/** Resolve live taker tier from gamma public-profile fields. */
+export function resolveTakerTier(raw) {
+  if (!raw) return { tier: null, tierName: null };
+
+  const tierNum =
+    raw.takerTier != null && Number.isFinite(Number(raw.takerTier)) ? Number(raw.takerTier) : null;
+
+  if (tierNum != null && tierNum >= 0 && tierNum < POLYMARKET_TIER_NAMES.length) {
+    return { tier: tierNum, tierName: POLYMARKET_TIER_NAMES[tierNum] };
+  }
+
+  const fromName = raw.takerTierName != null ? String(raw.takerTierName).trim() : "";
+  if (fromName) {
+    const namedIdx = POLYMARKET_TIER_NAMES.findIndex(
+      (n) => n.toLowerCase() === fromName.toLowerCase() || (n === "Tier 0" && /^tier\s*0$/i.test(fromName)),
+    );
+    if (namedIdx >= 0) return { tier: namedIdx, tierName: POLYMARKET_TIER_NAMES[namedIdx] };
+    return { tier: null, tierName: fromName };
+  }
+
+  return { tier: null, tierName: null };
+}
+
 /** Some public sources return an auto-generated "address-timestamp" string
  * in place of a real chosen username. Treat that as "no username" rather
  * than inventing an identity for the account. */
@@ -34,6 +68,7 @@ export function normalizeProfile(raw) {
   const rawName = usernamePublic ? raw.name : null;
   const username = rawName && !isPlaceholderUsername(rawName) ? rawName : null;
   const displayName = username || raw.pseudonym || null;
+  const { tier, tierName } = resolveTakerTier(raw);
 
   return {
     id: address || username || raw.id || null,
@@ -53,7 +88,8 @@ export function normalizeProfile(raw) {
     unrealizedPnl: raw.unrealizedPnl ?? null,
     verified: raw.verifiedBadge ?? null,
     bio: raw.bio ?? null,
-    tierName: raw.takerTierName ?? null,
+    tier,
+    tierName,
   };
 }
 
@@ -83,6 +119,7 @@ export function normalizeLeaderboardEntry(raw) {
     unrealizedPnl: null,
     verified: raw.verifiedBadge ?? null,
     bio: null,
+    tier: null,
     tierName: null,
   };
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Award, BadgeCheck, Check, Copy, Gem, Shield, Share2, Zap } from "lucide-react";
+import { Award, BadgeCheck, Check, Copy, Crown, Gem, Hexagon, Shield, Share2, Zap } from "lucide-react";
 import Avatar from "./Avatar";
 import Tooltip from "./Tooltip";
 import PolymarketIcon from "./PolymarketIcon";
@@ -8,28 +8,19 @@ import { shortenAddress } from "../utils/address";
 import { useToast } from "../context/ToastContext";
 
 const TIER_ICONS = {
-  Diamond: Gem,
-  Gold: Zap,
-  Silver: Shield,
+  "Tier 0": Award,
   Bronze: Award,
+  Silver: Shield,
+  Gold: Zap,
+  Platinum: Crown,
+  Diamond: Gem,
+  Obsidian: Hexagon,
 };
 
-const NAMED_TIERS = new Set(["Diamond", "Gold", "Silver", "Bronze"]);
-
-function formatTierLabel(tierName) {
-  if (tierName == null || tierName === "") return null;
-  const raw = String(tierName).trim();
-  if (!raw) return null;
-  if (NAMED_TIERS.has(raw)) return raw;
-  if (/^\d+$/.test(raw)) return `Tier ${raw}`;
-  if (/^tier\s+/i.test(raw)) return raw.replace(/^tier\s+/i, "Tier ");
-  return raw;
-}
-
-function tierCssSlug(tierName, label) {
-  if (NAMED_TIERS.has(tierName)) return tierName.toLowerCase();
-  if (/^\d+$/.test(String(tierName))) return String(tierName);
-  return label.toLowerCase().replace(/\s+/g, "-");
+function tierCssSlug(tierName, tier) {
+  if (tier != null && Number.isFinite(tier)) return String(tier);
+  if (!tierName) return "0";
+  return String(tierName).toLowerCase().replace(/\s+/g, "-");
 }
 
 export default function ProfileHeader({ account, loading }) {
@@ -50,9 +41,9 @@ export default function ProfileHeader({ account, loading }) {
   const primary = hasUsername ? account.username : account.displayName || shortenAddress(account.address);
   const secondary = hasUsername || account.displayName ? shortenAddress(account.address) : "Public account";
   const profileUrl = `https://polymarket.com/profile/${hasUsername ? account.username : account.address}`;
-  const tierLabel = formatTierLabel(account.tierName);
-  const TierIcon = account.tierName && TIER_ICONS[account.tierName] ? TIER_ICONS[account.tierName] : Award;
-  const tierSlug = tierLabel ? tierCssSlug(account.tierName, tierLabel) : null;
+  const tierLabel = account.tierName || null;
+  const TierIcon = tierLabel && TIER_ICONS[tierLabel] ? TIER_ICONS[tierLabel] : Award;
+  const tierSlug = tierLabel ? tierCssSlug(tierLabel, account.tier) : null;
 
   const cleanBio = account.bio ? account.bio.replace(/([A-Z][a-z]+)\s+tier\s+trader\.?/i, "").trim() : "";
 
@@ -101,7 +92,7 @@ export default function ProfileHeader({ account, loading }) {
                 </Tooltip>
               )}
               {tierLabel && (
-                <Tooltip label={`${tierLabel} trader`} position="bottom">
+                <Tooltip label={`Polymarket taker tier · ${tierLabel}`} position="bottom">
                   <span className={`tier-badge tier-${tierSlug} profile-badge-hit`} tabIndex={0}>
                     <TierIcon size={11} aria-hidden="true" />
                     <span>{tierLabel}</span>

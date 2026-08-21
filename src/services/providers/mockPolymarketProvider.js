@@ -44,6 +44,7 @@ function toProfileShape(account) {
     verifiedBadge: account.verified,
     profileImage: null,
     bio: account.bio,
+    takerTier: account.tier ?? null,
     takerTierName: account.tierName,
     weightedVolume: account.volume,
     winRate: account.winRate,

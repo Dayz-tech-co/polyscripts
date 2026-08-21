@@ -4,7 +4,7 @@
 
 import { provider } from "./providers";
 import { cacheGet, cacheSet } from "./cache";
-import { normalizeProfile, normalizeLeaderboardEntry, dedupeAccounts } from "../adapters/accountAdapter";
+import { normalizeProfile, normalizeLeaderboardEntry, dedupeAccounts, mergeAccounts } from "../adapters/accountAdapter";
 import { isValidAddress, looksLikeAddressInput, normalizeAddress } from "../utils/address";
 import { NotFoundError } from "./errors";
 
@@ -81,6 +81,7 @@ export async function getAccountByAddress(address, { signal } = {}) {
         pnl: null,
         verified: null,
         bio: null,
+        tier: null,
         tierName: null,
       };
 
@@ -99,9 +100,22 @@ export async function getAccountByUsername(username, { signal } = {}) {
   const profiles = await provider.searchProfiles(trimmed, { limit: 8, signal });
   const exact = profiles.find((p) => (p.name || "").toLowerCase() === trimmed.toLowerCase());
   if (exact) {
-    const account = normalizeProfile(exact);
-    cacheSet(cacheKey, account, ACCOUNT_TTL);
-    return account;
+    const partial = normalizeProfile(exact);
+    // Search omits live takerTier — hydrate from public-profile by address.
+    if (partial?.address) {
+      const full = await getAccountByAddress(partial.address, { signal });
+      const account = full
+        ? {
+            ...mergeAccounts(partial, full),
+            tier: full.tier ?? partial.tier ?? null,
+            tierName: full.tierName ?? partial.tierName ?? null,
+          }
+        : partial;
+      cacheSet(cacheKey, account, ACCOUNT_TTL);
+      return account;
+    }
+    cacheSet(cacheKey, partial, ACCOUNT_TTL);
+    return partial;
   }
 
   // Fall back to an exact leaderboard username filter in case the account
