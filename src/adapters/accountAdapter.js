@@ -88,6 +88,7 @@ export function normalizeProfile(raw) {
     unrealizedPnl: raw.unrealizedPnl ?? null,
     verified: raw.verifiedBadge ?? null,
     bio: raw.bio ?? null,
+    xUsername: raw.xUsername || raw.twitterUsername || null,
     tier,
     tierName,
   };
@@ -119,6 +120,7 @@ export function normalizeLeaderboardEntry(raw) {
     unrealizedPnl: null,
     verified: raw.verifiedBadge ?? null,
     bio: null,
+    xUsername: null,
     tier: null,
     tierName: null,
   };

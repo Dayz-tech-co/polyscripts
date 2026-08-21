@@ -81,6 +81,7 @@ export async function getAccountByAddress(address, { signal } = {}) {
         pnl: null,
         verified: null,
         bio: null,
+        xUsername: null,
         tier: null,
         tierName: null,
       };

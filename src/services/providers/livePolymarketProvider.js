@@ -137,17 +137,25 @@ const USER_PNL_PARAMS = {
 const VALID_PERF_METRICS = new Set(["performance", "volume"]);
 
 const POSITIONS_PAGE_SIZE = 100;
-const CLOSED_PAGE_SIZE = 50;
+const CLOSED_PAGE_SIZE = 100;
 const ACTIVITY_PAGE_SIZE = 100;
 const MAX_POSITIONS = 2000;
-const MAX_CLOSED = 5000;
-const MAX_ACTIVITY = 1500;
+/** Cap closed history for first paint — enough for win-rate/calendar, far fewer round-trips. */
+const MAX_CLOSED = 1500;
+/** Cap recent activity for first paint; sparse types fill gaps in parallel. */
+const MAX_ACTIVITY = 600;
+const MAX_MIXED_ACTIVITY_PAGES = 6;
 const FEED_CACHE_TTL = 60_000;
 
 const activityCache = new Map();
 const closedCache = new Map();
 const positionsCache = new Map();
 const userPnlCache = new Map();
+/** In-flight coalescing so parallel callers share one network walk. */
+const activityInflight = new Map();
+const closedInflight = new Map();
+const positionsInflight = new Map();
+const userPnlInflight = new Map();
 
 function round2(value) {
   return Math.round(value * 100) / 100;
@@ -179,9 +187,17 @@ async function getCachedPositions(address, { signal } = {}) {
   if (hit && Date.now() - hit.fetchedAt < FEED_CACHE_TTL && hit.events.length > 0) {
     return hit.events;
   }
-  const events = await fetchPositionsHistory(address, { signal });
-  if (events.length > 0) positionsCache.set(address, { events, fetchedAt: Date.now() });
-  return events;
+  if (positionsInflight.has(address)) return positionsInflight.get(address);
+
+  const pending = fetchPositionsHistory(address, { signal })
+    .then((events) => {
+      if (events.length > 0) positionsCache.set(address, { events, fetchedAt: Date.now() });
+      return events;
+    })
+    .finally(() => positionsInflight.delete(address));
+
+  positionsInflight.set(address, pending);
+  return pending;
 }
 
 async function fetchActivityPage(address, { offset, type, signal } = {}) {
@@ -222,36 +238,43 @@ function activityDedupeKey(event) {
   ].join(":");
 }
 
-/** Sparse types often miss the mixed feed's first pages — fetch + merge (Betmoar). */
+/** Sparse types often miss the mixed feed — fetch in parallel with capped pages. */
 const SPARSE_ACTIVITY_TYPES = [
-  { type: "MAKER_REBATE", maxPages: 5 },
-  { type: "TAKER_REBATE", maxPages: 5 },
-  { type: "REFERRAL_REWARD", maxPages: 5 },
-  { type: "REWARD", maxPages: 5 },
-  { type: "YIELD", maxPages: 5 },
-  { type: "DEPOSIT", maxPages: 20 },
-  { type: "WITHDRAWAL", maxPages: 20 },
+  { type: "MAKER_REBATE", maxPages: 2 },
+  { type: "TAKER_REBATE", maxPages: 2 },
+  { type: "REFERRAL_REWARD", maxPages: 2 },
+  { type: "REWARD", maxPages: 2 },
+  { type: "YIELD", maxPages: 2 },
+  { type: "DEPOSIT", maxPages: 3 },
+  { type: "WITHDRAWAL", maxPages: 3 },
 ];
 
-async function fetchActivityHistory(address, { maxEvents = MAX_ACTIVITY, signal } = {}) {
+async function fetchMixedActivity(address, { maxEvents = MAX_ACTIVITY, signal } = {}) {
   const mixed = [];
   let offset = 0;
-  while (mixed.length < maxEvents) {
+  let pages = 0;
+  while (mixed.length < maxEvents && pages < MAX_MIXED_ACTIVITY_PAGES) {
     const batch = await fetchActivityPage(address, { offset, signal });
+    pages += 1;
     if (batch.length === 0) break;
     mixed.push(...batch);
     if (batch.length < ACTIVITY_PAGE_SIZE) break;
     offset += ACTIVITY_PAGE_SIZE;
   }
+  return mixed;
+}
 
-  const sparseBatches = await Promise.all(
-    SPARSE_ACTIVITY_TYPES.map(({ type, maxPages }) =>
+async function fetchActivityHistory(address, { maxEvents = MAX_ACTIVITY, signal } = {}) {
+  // Mixed feed + sparse types in parallel (not sequential) for faster first paint.
+  const [mixed, ...sparseBatches] = await Promise.all([
+    fetchMixedActivity(address, { maxEvents, signal }),
+    ...SPARSE_ACTIVITY_TYPES.map(({ type, maxPages }) =>
       fetchActivityByType(address, type, { maxPages, signal }).catch((err) => {
         if (err?.name === "AbortError") throw err;
         return [];
       }),
     ),
-  );
+  ]);
 
   const byKey = new Map();
   for (const event of [...mixed, ...sparseBatches.flat()]) {
@@ -268,9 +291,17 @@ async function getCachedActivity(address, { signal } = {}) {
   if (hit && Date.now() - hit.fetchedAt < FEED_CACHE_TTL && hit.events.length > 0) {
     return hit.events;
   }
-  const events = await fetchActivityHistory(address, { signal });
-  if (events.length > 0) activityCache.set(address, { events, fetchedAt: Date.now() });
-  return events;
+  if (activityInflight.has(address)) return activityInflight.get(address);
+
+  const pending = fetchActivityHistory(address, { signal })
+    .then((events) => {
+      if (events.length > 0) activityCache.set(address, { events, fetchedAt: Date.now() });
+      return events;
+    })
+    .finally(() => activityInflight.delete(address));
+
+  activityInflight.set(address, pending);
+  return pending;
 }
 
 async function fetchClosedHistory(address, { maxEvents = MAX_CLOSED, signal } = {}) {
@@ -298,9 +329,17 @@ async function getCachedClosed(address, { signal } = {}) {
   if (hit && Date.now() - hit.fetchedAt < FEED_CACHE_TTL && hit.events.length > 0) {
     return hit.events;
   }
-  const events = await fetchClosedHistory(address, { signal });
-  if (events.length > 0) closedCache.set(address, { events, fetchedAt: Date.now() });
-  return events;
+  if (closedInflight.has(address)) return closedInflight.get(address);
+
+  const pending = fetchClosedHistory(address, { signal })
+    .then((events) => {
+      if (events.length > 0) closedCache.set(address, { events, fetchedAt: Date.now() });
+      return events;
+    })
+    .finally(() => closedInflight.delete(address));
+
+  closedInflight.set(address, pending);
+  return pending;
 }
 
 function volumeContribution(event) {
@@ -319,18 +358,24 @@ async function fetchUserPnlSeries(address, { interval, fidelity, signal } = {}) 
   if (hit && Date.now() - hit.fetchedAt < FEED_CACHE_TTL) {
     return hit.points;
   }
+  if (userPnlInflight.has(cacheKey)) return userPnlInflight.get(cacheKey);
 
-  const url = `${USER_PNL_BASE}/user-pnl?user_address=${encodeURIComponent(user)}&interval=${encodeURIComponent(interval)}&fidelity=${encodeURIComponent(fidelity)}`;
-  const data = await getJson(url, { signal });
-  const points = Array.isArray(data)
-    ? data
-        .filter((row) => row && Number.isFinite(row.t) && Number.isFinite(row.p))
-        .map((row) => ({ t: row.t, p: row.p }))
-        .sort((a, b) => a.t - b.t)
-    : [];
+  const pending = (async () => {
+    const url = `${USER_PNL_BASE}/user-pnl?user_address=${encodeURIComponent(user)}&interval=${encodeURIComponent(interval)}&fidelity=${encodeURIComponent(fidelity)}`;
+    const data = await getJson(url, { signal });
+    const points = Array.isArray(data)
+      ? data
+          .filter((row) => row && Number.isFinite(row.t) && Number.isFinite(row.p))
+          .map((row) => ({ t: row.t, p: row.p }))
+          .sort((a, b) => a.t - b.t)
+      : [];
 
-  userPnlCache.set(cacheKey, { points, fetchedAt: Date.now() });
-  return points;
+    userPnlCache.set(cacheKey, { points, fetchedAt: Date.now() });
+    return points;
+  })().finally(() => userPnlInflight.delete(cacheKey));
+
+  userPnlInflight.set(cacheKey, pending);
+  return pending;
 }
 
 /**

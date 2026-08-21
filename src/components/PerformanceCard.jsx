@@ -53,7 +53,7 @@ function useRangeSummary(identifier, metric) {
   return summary;
 }
 
-export default function PerformanceCard({ identifier }) {
+export default function PerformanceCard({ identifier, onHeadlineChange }) {
   const [range, setRange] = useState("ALL");
   const [metric, setMetric] = useState("performance");
   const [resetKey, setResetKey] = useState(0);
@@ -67,6 +67,14 @@ export default function PerformanceCard({ identifier }) {
   const hasChart = Boolean(perf && perf.points && perf.points.length > 0);
   const isVolume = metric === "volume";
   const headlineTone = isVolume || !perf ? "" : getToneClass(perf.change);
+
+  useEffect(() => {
+    if (!onHeadlineChange) return;
+    if (metric !== "performance" || range !== "ALL") return;
+    if (perf?.change != null && Number.isFinite(perf.change)) {
+      onHeadlineChange(perf.change);
+    }
+  }, [onHeadlineChange, metric, range, perf?.change]);
 
   function handleMetric(next) {
     if (next === metric) return;

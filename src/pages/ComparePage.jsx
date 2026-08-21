@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { GitCompareArrows } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import CompareSelect from "../components/CompareSelect";
@@ -7,6 +8,7 @@ import Avatar from "../components/Avatar";
 import EmptyState from "../components/EmptyState";
 import { TableSkeleton } from "../components/Skeleton";
 import { getCompare } from "../services/ecosystemService";
+import { resolveIdentifier } from "../services/polymarketService";
 import { shortenAddress } from "../utils/address";
 import { formatCompactCurrency, formatCurrency, formatNumber, formatPercentage, formatSignedCurrency } from "../utils/formatters";
 import { getValueState } from "../utils/states";
@@ -46,6 +48,7 @@ function metricTone(key, value) {
 }
 
 export default function ComparePage() {
+  const [searchParams] = useSearchParams();
   const [a, setA] = useState(null);
   const [b, setB] = useState(null);
   const [result, setResult] = useState(null);
@@ -54,6 +57,21 @@ export default function ComparePage() {
   useEffect(() => {
     document.title = "Compare Accounts | PolyScripts";
   }, []);
+
+  // Prefill Account A from ?a=username-or-address (profile Compare link).
+  useEffect(() => {
+    const seed = (searchParams.get("a") || "").trim();
+    if (!seed) return undefined;
+    let cancelled = false;
+    resolveIdentifier(seed)
+      .then((account) => {
+        if (!cancelled && account) setA(account);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams]);
 
   useEffect(() => {
     if (!a || !b) {

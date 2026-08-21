@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Home, SearchX } from "lucide-react";
 import ProfileHeader from "../components/ProfileHeader";
@@ -6,6 +6,7 @@ import ProfileStats from "../components/ProfileStats";
 import ProfileTabs from "../components/ProfileTabs";
 import PerformanceCard from "../components/PerformanceCard";
 import MonthlyPerformanceCalendar from "../components/MonthlyPerformanceCalendar";
+import PortfolioSummary from "../components/PortfolioSummary";
 import PositionsSection from "../components/PositionsSection";
 import ActivitySection from "../components/ActivitySection";
 import PositionsTab from "../components/PositionsTab";
@@ -13,7 +14,6 @@ import HistoryTab from "../components/HistoryTab";
 import ErrorState from "../components/ErrorState";
 import AccountSearch from "../components/AccountSearch";
 import { useProfile } from "../hooks/useProfile";
-import { getPerformanceRange } from "../services/profileService";
 import { shortenAddress } from "../utils/address";
 import { validateProfileData, logDataIntegrity } from "../utils/dataIntegrity";
 
@@ -30,23 +30,9 @@ export default function ProfilePage() {
     setChartPnl(null);
   }, [identifier]);
 
-  // Hero Total uses the same ALL performance change as the chart (display only).
-  useEffect(() => {
-    const address = data?.account?.address;
-    if (status !== "success" || !address) return undefined;
-    let cancelled = false;
-    getPerformanceRange(address, { range: "ALL", metric: "performance" })
-      .then((perf) => {
-        if (cancelled) return;
-        setChartPnl(perf?.change != null && Number.isFinite(perf.change) ? perf.change : null);
-      })
-      .catch(() => {
-        if (!cancelled) setChartPnl(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [status, data?.account?.address]);
+  const handleHeadlineChange = useCallback((value) => {
+    setChartPnl(value != null && Number.isFinite(value) ? value : null);
+  }, []);
 
   useEffect(() => {
     if (import.meta.env.DEV && status === "success" && data) {
@@ -118,9 +104,8 @@ export default function ProfilePage() {
       <main id="main-content" className="container main-content">
         <ProfileStats stats={stats} headlinePnl={chartPnl} loading={loading} />
 
-        {/* Chart + calendar stay visible; tabs only swap the tables below. */}
         <div className="overview-stack profile-persist-stack">
-          <PerformanceCard key={chartKey} identifier={chartKey} />
+          <PerformanceCard key={chartKey} identifier={chartKey} onHeadlineChange={handleHeadlineChange} />
           <MonthlyPerformanceCalendar
             resolvedPositions={data?.resolvedPositions}
             activity={data?.activity}
@@ -132,9 +117,12 @@ export default function ProfilePage() {
 
         {activeTab === "Overview" && (
           <div className="tab-panel" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
-            <div className="overview-stack">
-              <PositionsSection positions={data?.positions} loading={loading} limit={6} />
-              <ActivitySection activity={data?.activity} loading={loading} limit={8} />
+            <div className="overview-grid">
+              <div className="overview-stack">
+                <PositionsSection positions={data?.positions} loading={loading} limit={6} />
+                <ActivitySection activity={data?.activity} loading={loading} limit={8} />
+              </div>
+              <PortfolioSummary stats={stats} loading={loading} />
             </div>
           </div>
         )}

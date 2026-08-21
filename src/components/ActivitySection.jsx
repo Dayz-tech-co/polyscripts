@@ -6,11 +6,19 @@ import ActivityCardMobile from "./ActivityCardMobile";
 import EmptyState from "./EmptyState";
 import { TableSkeleton } from "./Skeleton";
 
-const TYPE_FILTERS = ["All", "Buy", "Sell", "Deposit", "Withdrawal", "Other"];
+const TYPE_FILTERS = ["All", "Buy", "Sell", "Deposit", "Withdrawal", "Rewards", "Other"];
 
 const TRADE_TYPES = new Set(["Bought", "Sold"]);
 const DEPOSIT_TYPES = new Set(["Deposit", "Deposited"]);
 const WITHDRAWAL_TYPES = new Set(["Withdrawal", "Withdrew"]);
+const REWARD_TYPES = new Set([
+  "Reward",
+  "Referral reward",
+  "Maker rebate",
+  "Taker rebate",
+  "Yield",
+]);
+const REWARD_RAW = new Set(["REWARD", "REFERRAL_REWARD", "MAKER_REBATE", "TAKER_REBATE", "YIELD"]);
 
 function matchesFilter(activity, filter) {
   if (filter === "All") return true;
@@ -18,13 +26,16 @@ function matchesFilter(activity, filter) {
   if (filter === "Sell") return activity.type === "Sold";
   if (filter === "Deposit") return DEPOSIT_TYPES.has(activity.type) || activity.rawType === "DEPOSIT";
   if (filter === "Withdrawal") return WITHDRAWAL_TYPES.has(activity.type) || activity.rawType === "WITHDRAWAL";
+  if (filter === "Rewards") return REWARD_TYPES.has(activity.type) || REWARD_RAW.has(activity.rawType);
   if (filter === "Other") {
     return (
       !TRADE_TYPES.has(activity.type) &&
       !DEPOSIT_TYPES.has(activity.type) &&
       !WITHDRAWAL_TYPES.has(activity.type) &&
+      !REWARD_TYPES.has(activity.type) &&
       activity.rawType !== "DEPOSIT" &&
-      activity.rawType !== "WITHDRAWAL"
+      activity.rawType !== "WITHDRAWAL" &&
+      !REWARD_RAW.has(activity.rawType)
     );
   }
   return true;

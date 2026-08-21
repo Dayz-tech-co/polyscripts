@@ -1271,12 +1271,14 @@ h3 {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+  position: sticky;
+  top: var(--space-6);
 }
 
 .summary-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 
 .summary-row {
@@ -1284,6 +1286,7 @@ h3 {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
+  min-height: 22px;
 }
 
 .summary-label {
@@ -4181,7 +4184,7 @@ h3 {
 .account-kpi-secondary {
   grid-column: 2;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 10px;
 }
 
