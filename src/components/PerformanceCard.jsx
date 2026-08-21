@@ -25,12 +25,12 @@ const METRICS = [
 ];
 
 const SERIES_DEFS = [
-  { key: "total", label: "Total", color: "#E5A125" },
-  { key: "trade", label: "Trade", color: "#FF7A00" },
-  { key: "lp", label: "LP", color: "#3888FF" },
-  { key: "maker", label: "Maker", color: "#00D2FF" },
-  { key: "fees", label: "Fees", color: "#8899A6" },
-  { key: "taker", label: "Taker", color: "#50B4FF" },
+  { key: "total", label: "Total", color: "#E5A125", rgb: "229, 161, 37" },
+  { key: "trade", label: "Trade", color: "#FF7A00", rgb: "255, 122, 0" },
+  { key: "lp", label: "LP", color: "#3888FF", rgb: "56, 136, 255" },
+  { key: "maker", label: "Maker", color: "#00D2FF", rgb: "0, 210, 255" },
+  { key: "fees", label: "Fees", color: "#8899A6", rgb: "136, 153, 166" },
+  { key: "taker", label: "Taker", color: "#50B4FF", rgb: "80, 180, 255" },
 ];
 
 function useRangeSummary(identifier, metric) {
@@ -73,7 +73,7 @@ export default function PerformanceCard({ identifier, stats }) {
     lp: true,
     maker: true,
     fees: false,
-    taker: false,
+    taker: true,
   });
 
   const { status, data } = usePerformanceRange(identifier, range, metric);
@@ -217,20 +217,24 @@ export default function PerformanceCard({ identifier, stats }) {
         )}
       </div>
 
-      {/* Series Breakdown Legend Chips Strip */}
+      {/* Series Breakdown Legend Chips Strip with High Enable/Disable Contrast */}
       <div className="series-legend-strip" role="group" aria-label="Chart series breakdown toggles">
-        {SERIES_DEFS.map(({ key, label, color }) => {
+        {SERIES_DEFS.map(({ key, label, color, rgb }) => {
           const active = activeSeries[key];
           return (
             <button
               key={key}
               type="button"
-              className={`legend-pill ${active ? "is-active" : ""}`}
+              className={`legend-pill ${active ? "is-active" : "is-disabled"}`}
+              style={{
+                "--pill-color": color,
+                "--pill-rgb": rgb,
+              }}
               onClick={() => toggleSeries(key)}
               aria-pressed={active}
             >
               <span className="legend-dot" style={{ backgroundColor: color }} />
-              <span>{label}</span>
+              <span className="legend-label">{label}</span>
             </button>
           );
         })}
