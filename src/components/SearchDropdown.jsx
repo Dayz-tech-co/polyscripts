@@ -20,15 +20,12 @@ export default function SearchDropdown({
 }) {
   const showRecent = !query && recent && recent.length > 0;
 
-  // Empty focus with no recents — parent should not mount us; guard anyway.
-  if (!query && !showRecent && !loading && !error && !incompleteAddress) {
-    return null;
-  }
-
   return (
     <div className="search-dropdown" role="presentation">
       {showRecent ? (
         <RecentSearches accounts={recent} onSelect={onSelectRecent} onClear={onClearRecent} />
+      ) : !query ? (
+        <div className="search-dropdown-hint">Search by username or wallet address</div>
       ) : incompleteAddress ? (
         <div className="search-dropdown-hint">Keep typing the full wallet address</div>
       ) : error ? (

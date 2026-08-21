@@ -69,8 +69,6 @@ export default function AccountSearch({
         e.preventDefault();
         goToAccount(results[activeIndex]);
       } else if (isValidAddress(query.trim())) {
-        // A complete address resolves through the direct profile lookup even
-        // when discovery (search/leaderboard/demo roster) returned nothing.
         e.preventDefault();
         goToAccount({ address: normalizeAddress(query.trim()), username: null });
       }
@@ -80,36 +78,15 @@ export default function AccountSearch({
     }
   }
 
-  function handleFocus() {
-    const hasRecent = getRecentAccounts().length > 0;
-    if (query.trim() || hasRecent) {
-      if (hasRecent && !query.trim()) setRecent(getRecentAccounts());
-      setOpen(true);
-    }
-  }
-
-  function handleChange(e) {
-    setQuery(e.target.value);
-    setOpen(true);
-  }
-
-  const showDropdown =
-    open &&
-    (Boolean(query.trim()) ||
-      (recent && recent.length > 0) ||
-      loading ||
-      Boolean(error) ||
-      incompleteAddress);
-
   return (
     <div className={`account-search account-search-${variant}`} ref={containerRef}>
-      <div className={`account-search-box ${showDropdown ? "is-focused" : ""}`}>
+      <div className={`account-search-box ${open ? "is-focused" : ""}`}>
         <Search size={16} className="account-search-icon" aria-hidden="true" />
         <input
           ref={inputRef}
           type="text"
           role="combobox"
-          aria-expanded={showDropdown}
+          aria-expanded={open}
           aria-controls={listId}
           aria-activedescendant={activeIndex >= 0 ? `${listId}-option-${activeIndex}` : undefined}
           aria-autocomplete="list"
@@ -120,14 +97,17 @@ export default function AccountSearch({
           className="account-search-input"
           placeholder={placeholder}
           value={query}
-          onChange={handleChange}
-          onFocus={handleFocus}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
           onKeyDown={handleKeyDown}
         />
         {loading && <LoaderCircle size={15} className="account-search-spinner spin" aria-hidden="true" />}
       </div>
 
-      {showDropdown && (
+      {open && (
         <SearchDropdown
           listId={listId}
           query={query.trim()}
