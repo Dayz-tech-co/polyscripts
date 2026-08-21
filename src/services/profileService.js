@@ -16,6 +16,8 @@ import { mergeAccounts } from "../adapters/accountAdapter";
 import { normalizePosition, normalizeClosedPosition, normalizeActivity, deriveStats } from "../adapters/profileAdapter";
 
 const BUNDLE_TTL = 45_000;
+const OVERVIEW_TTL = 45_000;
+const OVERVIEW_POSITIONS_LIMIT = 100;
 const PERF_TTL = 60_000;
 const SUMMARY_TTL = 60_000;
 
@@ -46,6 +48,120 @@ async function settle(promise) {
   } catch {
     return null;
   }
+}
+
+function buildBundle({ account, rawPositions, positions: normalizedPositions, rawClosed, rawActivity, value, traded, rankEntry, cashBalance }) {
+  const positions = Array.isArray(rawPositions) ? rawPositions.map(normalizePosition) : (normalizedPositions ?? null);
+  const resolvedPositions = Array.isArray(rawClosed) ? rawClosed.map(normalizeClosedPosition) : null;
+  const activity = Array.isArray(rawActivity)
+    ? rawActivity.map(normalizeActivity).sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
+    : null;
+
+  return {
+    account,
+    stats: deriveStats({
+      positions,
+      closedPositions: resolvedPositions,
+      value,
+      traded,
+      rankEntry,
+      publicProfile: account,
+      account,
+      cashBalance,
+    }),
+    positions,
+    resolvedPositions,
+    activity,
+  };
+}
+
+/**
+ * Fast first-stage profile payload. Deep history is deliberately excluded so
+ * one long pagination walk cannot hold the entire page in its skeleton state.
+ */
+export async function getAccountProfileOverview(identifier, { signal } = {}) {
+  const account = await resolveIdentifier(identifier, { signal });
+  const address = account.address.toLowerCase();
+
+  const fullCached = cacheGet(`profile:${address}`);
+  if (fullCached) return fullCached;
+
+  const cacheKey = `profile:${address}:overview`;
+  const cached = cacheGet(cacheKey);
+  if (cached) return cached;
+
+  const [rawPositions, value, traded, rankEntry, publicProfileAccount] = await Promise.all([
+    settle(provider.getPositions(address, { maxEvents: OVERVIEW_POSITIONS_LIMIT, signal })),
+    settle(provider.getValue(address, { signal })),
+    settle(provider.getTraded(address, { signal })),
+    getLeaderboardEntryForAddress(address, { timePeriod: "ALL", signal }),
+    settle(getAccountByAddress(address, { signal })),
+  ]);
+
+  const enrichedAccount = mergeAccounts(mergeAccounts(rankEntry, account), publicProfileAccount);
+  if (publicProfileAccount) {
+    enrichedAccount.tier = publicProfileAccount.tier ?? enrichedAccount.tier ?? null;
+    enrichedAccount.tierName = publicProfileAccount.tierName ?? enrichedAccount.tierName ?? null;
+  }
+
+  const hasIdentity = Boolean(account.username || account.displayName || account.bio || account.avatar);
+  const hasAnalytics =
+    (rawPositions?.length ?? 0) > 0 ||
+    (value != null && value > 0) ||
+    (traded != null && traded > 0) ||
+    rankEntry != null;
+  if (!hasIdentity && !hasAnalytics) {
+    // A wallet can have resolved history without a current position or Gamma
+    // identity. Use the complete path only for this otherwise-empty edge case.
+    return getAccountProfile(identifier, { signal });
+  }
+
+  const bundle = buildBundle({
+    account: enrichedAccount,
+    rawPositions: rawPositions || [],
+    rawClosed: null,
+    rawActivity: null,
+    value,
+    traded,
+    rankEntry,
+    cashBalance: null,
+  });
+  cacheSet(cacheKey, bundle, OVERVIEW_TTL);
+  return bundle;
+}
+
+/** Fill the fast overview with complete positions, resolved history and activity. */
+export async function hydrateAccountProfile(overview, { signal } = {}) {
+  const address = overview?.account?.address?.toLowerCase();
+  if (!address) throw new NotFoundError();
+
+  const cacheKey = `profile:${address}`;
+  const cached = cacheGet(cacheKey);
+  if (cached) return cached;
+
+  const [rawPositions, rawClosed, rawActivity, cashBalance] = await Promise.all([
+    settle(provider.getPositions(address, { signal })),
+    settle(provider.getClosedPositions(address, { signal })),
+    settle(provider.getActivity(address, { signal })),
+    settle(provider.getCashBalance?.(address, { signal }) ?? Promise.resolve(null)),
+  ]);
+
+  const bundle = buildBundle({
+    account: overview.account,
+    rawPositions,
+    positions: overview.positions,
+    rawClosed: rawClosed || [],
+    rawActivity: rawActivity || [],
+    value: overview.stats?.positionsValue,
+    traded: overview.stats?.marketsTraded,
+    rankEntry: {
+      rank: overview.stats?.rank,
+      volume: overview.stats?.volume,
+    },
+    cashBalance: cashBalance ?? overview.stats?.cashBalance,
+  });
+  cacheSet(cacheKey, bundle, BUNDLE_TTL);
+  return bundle;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { getAccountProfile } from "../services/profileService";
+import { getAccountProfileOverview, hydrateAccountProfile } from "../services/profileService";
 import { NotFoundError } from "../services/errors";
 
 /**
@@ -11,11 +11,13 @@ import { NotFoundError } from "../services/errors";
 export function useProfile(identifier) {
   const [status, setStatus] = useState("loading");
   const [data, setData] = useState(null);
+  const [detailsStatus, setDetailsStatus] = useState("loading");
   const [reloadToken, setReloadToken] = useState(0);
   const abortRef = useRef(null);
 
   useEffect(() => {
     setStatus("loading");
+    setDetailsStatus("loading");
     setData(null);
     abortRef.current?.abort();
 
@@ -27,10 +29,21 @@ export function useProfile(identifier) {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    getAccountProfile(identifier, { signal: controller.signal })
-      .then((bundle) => {
-        setData(bundle);
+    getAccountProfileOverview(identifier, { signal: controller.signal })
+      .then(async (overview) => {
+        if (controller.signal.aborted) return;
+        setData(overview);
         setStatus("success");
+
+        try {
+          const bundle = await hydrateAccountProfile(overview, { signal: controller.signal });
+          if (controller.signal.aborted) return;
+          setData(bundle);
+          setDetailsStatus("ready");
+        } catch (err) {
+          if (err?.name === "AbortError") return;
+          setDetailsStatus("error");
+        }
       })
       .catch((err) => {
         if (err?.name === "AbortError") return;
@@ -42,5 +55,5 @@ export function useProfile(identifier) {
 
   const retry = useCallback(() => setReloadToken((t) => t + 1), []);
 
-  return { status, data, retry };
+  return { status, data, detailsStatus, retry };
 }

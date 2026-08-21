@@ -24,11 +24,11 @@ const METRICS = [
   { key: "volume", label: "Volume" },
 ];
 
-function useRangeSummary(identifier, metric) {
+function useRangeSummary(identifier, metric, enabled) {
   const [summary, setSummary] = useState({ loading: false, data: {} });
 
   useEffect(() => {
-    if (!identifier) {
+    if (!identifier || !enabled) {
       setSummary({ loading: false, data: {} });
       return undefined;
     }
@@ -48,7 +48,7 @@ function useRangeSummary(identifier, metric) {
     return () => {
       cancelled = true;
     };
-  }, [identifier, metric]);
+  }, [identifier, metric, enabled]);
 
   return summary;
 }
@@ -59,7 +59,7 @@ export default function PerformanceCard({ identifier, onHeadlineChange }) {
   const [resetKey, setResetKey] = useState(0);
 
   const { status, data } = usePerformanceRange(identifier, range, metric);
-  const { loading: summaryLoading, data: summary } = useRangeSummary(identifier, metric);
+  const { loading: summaryLoading, data: summary } = useRangeSummary(identifier, metric, status === "ready");
 
   const hasIdentifier = Boolean(identifier);
   const loading = status === "loading" || !hasIdentifier;

@@ -19,7 +19,7 @@ import { validateProfileData, logDataIntegrity } from "../utils/dataIntegrity";
 
 export default function ProfilePage() {
   const { identifier } = useParams();
-  const { status, data, retry } = useProfile(identifier);
+  const { status, data, detailsStatus, retry } = useProfile(identifier);
   const [activeTab, setActiveTab] = useState("Overview");
   const [positionsQuery, setPositionsQuery] = useState("");
   const [chartPnl, setChartPnl] = useState(null);
@@ -93,6 +93,7 @@ export default function ProfilePage() {
   }
 
   const loading = status === "loading";
+  const historyLoading = loading || detailsStatus === "loading";
   const account = data?.account ?? null;
   const stats = data?.stats ?? null;
   const chartKey = account?.address || identifier;
@@ -102,27 +103,40 @@ export default function ProfilePage() {
       <ProfileHeader account={account} loading={loading} />
 
       <main id="main-content" className="container main-content">
-        <ProfileStats stats={stats} headlinePnl={chartPnl} loading={loading} />
+        <ProfileStats
+          stats={stats}
+          headlinePnl={chartPnl}
+          loading={loading}
+          detailsLoading={historyLoading}
+        />
 
         <div className="overview-stack profile-persist-stack">
           <PerformanceCard key={chartKey} identifier={chartKey} onHeadlineChange={handleHeadlineChange} />
           <MonthlyPerformanceCalendar
             resolvedPositions={data?.resolvedPositions}
             activity={data?.activity}
-            loading={loading}
+            loading={historyLoading}
           />
         </div>
 
-        <ProfileTabs active={activeTab} onChange={setActiveTab} />
+        <ProfileTabs
+          active={activeTab}
+          onChange={setActiveTab}
+          counts={{
+            Positions: data?.positions?.length ?? null,
+            Activity: historyLoading ? null : (data?.activity?.length ?? 0),
+            History: historyLoading ? null : (data?.resolvedPositions?.length ?? 0),
+          }}
+        />
 
         {activeTab === "Overview" && (
           <div className="tab-panel" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
             <div className="overview-grid">
               <div className="overview-stack">
                 <PositionsSection positions={data?.positions} loading={loading} limit={6} />
-                <ActivitySection activity={data?.activity} loading={loading} limit={8} />
+                <ActivitySection activity={data?.activity} loading={historyLoading} limit={8} />
               </div>
-              <PortfolioSummary stats={stats} loading={loading} />
+              <PortfolioSummary stats={stats} loading={historyLoading} />
             </div>
           </div>
         )}
@@ -141,13 +155,13 @@ export default function ProfilePage() {
 
         {activeTab === "Activity" && (
           <div className="tab-panel" id="panel-activity" role="tabpanel" aria-labelledby="tab-activity">
-            <ActivitySection activity={data?.activity} loading={loading} />
+            <ActivitySection activity={data?.activity} loading={historyLoading} />
           </div>
         )}
 
         {activeTab === "History" && (
           <div className="tab-panel" id="panel-history" role="tabpanel" aria-labelledby="tab-history">
-            <HistoryTab resolvedPositions={data?.resolvedPositions} loading={loading} />
+            <HistoryTab resolvedPositions={data?.resolvedPositions} loading={historyLoading} />
           </div>
         )}
       </main>

@@ -1,4 +1,4 @@
-import { BarChart3, CircleDot, Layers3, Percent, TrendingUp, Wallet } from "lucide-react";
+import { BarChart3, CircleDot, Layers3, LoaderCircle, Percent, TrendingUp, Wallet } from "lucide-react";
 import { StatsSkeleton } from "./Skeleton";
 import { formatCompactCurrency, formatCurrency, formatNumber, formatPercentage, formatSignedCurrency } from "../utils/formatters";
 import { getToneClass, getValueState } from "../utils/states";
@@ -9,13 +9,13 @@ const ICON = { size: 15, strokeWidth: 1.75 };
  * Hierarchical account KPI — flat Polymarket-mature layout.
  * Hero Total prefers the ALL Performance chart change when provided.
  */
-export default function ProfileStats({ stats, headlinePnl = null, loading }) {
+export default function ProfileStats({ stats, headlinePnl = null, loading, detailsLoading = false }) {
   if (loading || !stats) return <StatsSkeleton />;
 
-  const displayPnl = headlinePnl != null && Number.isFinite(headlinePnl) ? headlinePnl : stats.pnl;
+  const usingChart = headlinePnl != null && Number.isFinite(headlinePnl);
+  const displayPnl = usingChart ? headlinePnl : detailsLoading ? null : stats.pnl;
   const pnlTone = getValueState(displayPnl);
   const pnlClass = getToneClass(displayPnl);
-  const usingChart = headlinePnl != null && Number.isFinite(headlinePnl);
   return (
     <section className="account-kpi" role="region" aria-label="Account overview">
       <div className={`account-kpi-hero tone-${pnlTone}`}>
@@ -32,7 +32,11 @@ export default function ProfileStats({ stats, headlinePnl = null, loading }) {
           {displayPnl != null ? formatSignedCurrency(displayPnl) : "N/A"}
         </p>
         <p className="account-kpi-hero-hint">
-          {usingChart ? "Available history · matches Performance chart" : "Realized + unrealized · this account"}
+          {usingChart
+            ? "Available history · matches Performance chart"
+            : detailsLoading
+              ? "Loading complete account history..."
+              : "Realized + unrealized · this account"}
         </p>
       </div>
 
@@ -42,15 +46,20 @@ export default function ProfileStats({ stats, headlinePnl = null, loading }) {
             <Wallet {...ICON} />
           </div>
           <div className="account-kpi-card-body">
-            <span className="account-kpi-card-label">Portfolio value</span>
+            <span className="account-kpi-card-label">{detailsLoading ? "Open position value" : "Portfolio value"}</span>
             <span className="account-kpi-card-value">
               {stats.portfolioValue != null ? formatCurrency(stats.portfolioValue) : "N/A"}
             </span>
-            {stats.cashBalance != null && stats.cashBalance > 0 && (
+            {detailsLoading ? (
+              <span className="account-kpi-card-meta">
+                <LoaderCircle size={11} className="spin" aria-hidden="true" />
+                Adding cash balance
+              </span>
+            ) : stats.cashBalance != null && stats.cashBalance > 0 ? (
               <span className="account-kpi-card-meta">
                 Incl. {formatCompactCurrency(stats.cashBalance)} cash
               </span>
-            )}
+            ) : null}
           </div>
         </article>
 

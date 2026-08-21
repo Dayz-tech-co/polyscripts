@@ -68,8 +68,8 @@ export async function getLeaderboard({
   return Array.isArray(data) ? data : [];
 }
 
-export async function getPositions(address, { signal } = {}) {
-  return getCachedPositions(address, { signal });
+export async function getPositions(address, { maxEvents, signal } = {}) {
+  return getCachedPositions(address, { maxEvents, signal });
 }
 
 export async function getClosedPositions(address, { signal } = {}) {
@@ -182,21 +182,22 @@ async function fetchPositionsHistory(address, { maxEvents = MAX_POSITIONS, signa
   return out.slice(0, maxEvents);
 }
 
-async function getCachedPositions(address, { signal } = {}) {
-  const hit = positionsCache.get(address);
+async function getCachedPositions(address, { maxEvents = MAX_POSITIONS, signal } = {}) {
+  const cacheKey = `${address}:${maxEvents}`;
+  const hit = positionsCache.get(cacheKey);
   if (hit && Date.now() - hit.fetchedAt < FEED_CACHE_TTL && hit.events.length > 0) {
     return hit.events;
   }
-  if (positionsInflight.has(address)) return positionsInflight.get(address);
+  if (positionsInflight.has(cacheKey)) return positionsInflight.get(cacheKey);
 
-  const pending = fetchPositionsHistory(address, { signal })
+  const pending = fetchPositionsHistory(address, { maxEvents, signal })
     .then((events) => {
-      if (events.length > 0) positionsCache.set(address, { events, fetchedAt: Date.now() });
+      if (events.length > 0) positionsCache.set(cacheKey, { events, fetchedAt: Date.now() });
       return events;
     })
-    .finally(() => positionsInflight.delete(address));
+    .finally(() => positionsInflight.delete(cacheKey));
 
-  positionsInflight.set(address, pending);
+  positionsInflight.set(cacheKey, pending);
   return pending;
 }
 
