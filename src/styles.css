@@ -2053,12 +2053,15 @@ h3 {
 }
 
 .polymarket-link-btn {
-  padding: 4px;
+  padding: 3px;
 }
 
-.polymarket-link-btn svg {
+.polymarket-link-btn .polymarket-icon,
+.polymarket-icon {
   display: block;
   flex-shrink: 0;
+  object-fit: contain;
+  border-radius: 0;
 }
 
 .profile-persist-stack {
@@ -3515,6 +3518,17 @@ h3 {
   background: rgba(217, 119, 6, 0.12);
   border: 1px solid rgba(217, 119, 6, 0.3);
   color: #f59e0b;
+}
+
+.tier-badge.tier-0,
+.tier-badge.tier-1,
+.tier-badge.tier-2,
+.tier-badge.tier-3,
+.tier-badge.tier-4,
+.tier-badge.tier-5 {
+  background: rgba(46, 92, 255, 0.1);
+  border: 1px solid rgba(46, 92, 255, 0.28);
+  color: #8babff;
 }
 
 /* Horizontal Profile Stats Strip */

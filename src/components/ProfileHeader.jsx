@@ -16,6 +16,22 @@ const TIER_ICONS = {
 
 const NAMED_TIERS = new Set(["Diamond", "Gold", "Silver", "Bronze"]);
 
+function formatTierLabel(tierName) {
+  if (tierName == null || tierName === "") return null;
+  const raw = String(tierName).trim();
+  if (!raw) return null;
+  if (NAMED_TIERS.has(raw)) return raw;
+  if (/^\d+$/.test(raw)) return `Tier ${raw}`;
+  if (/^tier\s+/i.test(raw)) return raw.replace(/^tier\s+/i, "Tier ");
+  return raw;
+}
+
+function tierCssSlug(tierName, label) {
+  if (NAMED_TIERS.has(tierName)) return tierName.toLowerCase();
+  if (/^\d+$/.test(String(tierName))) return String(tierName);
+  return label.toLowerCase().replace(/\s+/g, "-");
+}
+
 export default function ProfileHeader({ account, loading }) {
   const { showToast } = useToast();
   const [copied, setCopied] = useState(false);
@@ -34,8 +50,9 @@ export default function ProfileHeader({ account, loading }) {
   const primary = hasUsername ? account.username : account.displayName || shortenAddress(account.address);
   const secondary = hasUsername || account.displayName ? shortenAddress(account.address) : "Public account";
   const profileUrl = `https://polymarket.com/profile/${hasUsername ? account.username : account.address}`;
-  const tierName = account.tierName && NAMED_TIERS.has(account.tierName) ? account.tierName : null;
-  const TierIcon = tierName ? TIER_ICONS[tierName] : Award;
+  const tierLabel = formatTierLabel(account.tierName);
+  const TierIcon = account.tierName && TIER_ICONS[account.tierName] ? TIER_ICONS[account.tierName] : Award;
+  const tierSlug = tierLabel ? tierCssSlug(account.tierName, tierLabel) : null;
 
   const cleanBio = account.bio ? account.bio.replace(/([A-Z][a-z]+)\s+tier\s+trader\.?/i, "").trim() : "";
 
@@ -83,14 +100,11 @@ export default function ProfileHeader({ account, loading }) {
                   </span>
                 </Tooltip>
               )}
-              {tierName && (
-                <Tooltip label={`${tierName} tier`} position="bottom">
-                  <span
-                    className={`tier-badge tier-${tierName.toLowerCase()} profile-badge-hit`}
-                    tabIndex={0}
-                  >
+              {tierLabel && (
+                <Tooltip label={`${tierLabel} trader`} position="bottom">
+                  <span className={`tier-badge tier-${tierSlug} profile-badge-hit`} tabIndex={0}>
                     <TierIcon size={11} aria-hidden="true" />
-                    <span>{tierName}</span>
+                    <span>{tierLabel}</span>
                   </span>
                 </Tooltip>
               )}
@@ -116,7 +130,7 @@ export default function ProfileHeader({ account, loading }) {
                   rel="noreferrer noopener"
                   aria-label="Open public Polymarket profile"
                 >
-                  <PolymarketIcon size={14} />
+                  <PolymarketIcon size={16} />
                 </a>
               </Tooltip>
             </div>
