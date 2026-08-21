@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Award, BadgeCheck, Check, Copy, Crown, Gem, GitCompareArrows, Hexagon, Shield, Share2, Zap } from "lucide-react";
+import { Award, BadgeCheck, Check, Copy, Crown, Gem, Hexagon, Shield, Share2, Zap } from "lucide-react";
 import Avatar from "./Avatar";
 import Tooltip from "./Tooltip";
 import PolymarketIcon from "./PolymarketIcon";
@@ -24,14 +23,6 @@ function tierCssSlug(tierName, tier) {
   return String(tierName).toLowerCase().replace(/\s+/g, "-");
 }
 
-function XIcon({ size = 13 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.727-8.835L1.254 2.25H8.08l4.263 5.688L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z" />
-    </svg>
-  );
-}
-
 export default function ProfileHeader({ account, loading }) {
   const { showToast } = useToast();
   const [copied, setCopied] = useState(false);
@@ -50,8 +41,6 @@ export default function ProfileHeader({ account, loading }) {
   const primary = hasUsername ? account.username : account.displayName || shortenAddress(account.address);
   const secondary = hasUsername || account.displayName ? shortenAddress(account.address) : "Public account";
   const profileUrl = `https://polymarket.com/profile/${hasUsername ? account.username : account.address}`;
-  const compareTo = encodeURIComponent(account.username || account.address);
-  const xHandle = account.xUsername ? String(account.xUsername).replace(/^@/, "") : null;
   const tierLabel = account.tierName || null;
   const TierIcon = tierLabel && TIER_ICONS[tierLabel] ? TIER_ICONS[tierLabel] : Award;
   const tierSlug = tierLabel ? tierCssSlug(tierLabel, account.tier) : null;
@@ -124,28 +113,6 @@ export default function ProfileHeader({ account, loading }) {
                   <Share2 size={13} aria-hidden="true" />
                 </button>
               </Tooltip>
-              <Tooltip label="Compare this account" position="bottom">
-                <Link
-                  className="icon-btn icon-btn-sm"
-                  to={`/compare?a=${compareTo}`}
-                  aria-label="Compare this account"
-                >
-                  <GitCompareArrows size={13} aria-hidden="true" />
-                </Link>
-              </Tooltip>
-              {xHandle && (
-                <Tooltip label={`@${xHandle} on X`} position="bottom">
-                  <a
-                    className="icon-btn icon-btn-sm"
-                    href={`https://x.com/${encodeURIComponent(xHandle)}`}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    aria-label={`Open @${xHandle} on X`}
-                  >
-                    <XIcon size={13} />
-                  </a>
-                </Tooltip>
-              )}
               <Tooltip label="Open on Polymarket" position="bottom">
                 <a
                   className="icon-btn icon-btn-sm polymarket-link-btn"

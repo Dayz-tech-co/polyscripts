@@ -1,4 +1,4 @@
-import { BarChart3, CircleDot, Layers3, Percent, Scale, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { BarChart3, CircleDot, Layers3, Percent, TrendingUp, Wallet } from "lucide-react";
 import { StatsSkeleton } from "./Skeleton";
 import { formatCompactCurrency, formatCurrency, formatNumber, formatPercentage, formatSignedCurrency } from "../utils/formatters";
 import { getToneClass, getValueState } from "../utils/states";
@@ -16,9 +16,6 @@ export default function ProfileStats({ stats, headlinePnl = null, loading }) {
   const pnlTone = getValueState(displayPnl);
   const pnlClass = getToneClass(displayPnl);
   const usingChart = headlinePnl != null && Number.isFinite(headlinePnl);
-  const realizedClass = getToneClass(stats.realizedPnl);
-  const unrealizedClass = getToneClass(stats.unrealizedPnl);
-
   return (
     <section className="account-kpi" role="region" aria-label="Account overview">
       <div className={`account-kpi-hero tone-${pnlTone}`}>
@@ -72,24 +69,6 @@ export default function ProfileStats({ stats, headlinePnl = null, loading }) {
       </div>
 
       <div className="account-kpi-secondary">
-        <div className="account-kpi-chip">
-          <Scale {...ICON} className="account-kpi-chip-icon" aria-hidden="true" />
-          <div>
-            <span className="account-kpi-chip-label">Realized</span>
-            <span className={`account-kpi-chip-value ${realizedClass}`}>
-              {stats.realizedPnl != null ? formatSignedCurrency(stats.realizedPnl) : "N/A"}
-            </span>
-          </div>
-        </div>
-        <div className="account-kpi-chip">
-          <TrendingDown {...ICON} className="account-kpi-chip-icon" aria-hidden="true" />
-          <div>
-            <span className="account-kpi-chip-label">Unrealized</span>
-            <span className={`account-kpi-chip-value ${unrealizedClass}`}>
-              {stats.unrealizedPnl != null ? formatSignedCurrency(stats.unrealizedPnl) : "N/A"}
-            </span>
-          </div>
-        </div>
         <div className="account-kpi-chip">
           <Layers3 {...ICON} className="account-kpi-chip-icon" aria-hidden="true" />
           <div>
