@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { GitCompareArrows } from "lucide-react";
+import { GitCompareArrows, Link2 } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import CompareSelect from "../components/CompareSelect";
 import PerformanceChart from "../components/PerformanceChart";
@@ -12,6 +12,7 @@ import { resolveIdentifier } from "../services/polymarketService";
 import { shortenAddress } from "../utils/address";
 import { formatCompactCurrency, formatCurrency, formatNumber, formatPercentage, formatSignedCurrency } from "../utils/formatters";
 import { getValueState } from "../utils/states";
+import { useToast } from "../context/ToastContext";
 
 const METRIC_ROWS = [
   { key: "pnl", label: "P&L" },
@@ -48,30 +49,55 @@ function metricTone(key, value) {
 }
 
 export default function ComparePage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { showToast } = useToast();
   const [a, setA] = useState(null);
   const [b, setB] = useState(null);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const addressA = a?.address || "";
+  const addressB = b?.address || "";
 
   useEffect(() => {
     document.title = "Compare Accounts | PolyScripts";
   }, []);
 
-  // Prefill Account A from ?a=username-or-address (profile Compare link).
+  // Shared comparison links can prefill either or both selectors.
   useEffect(() => {
-    const seed = (searchParams.get("a") || "").trim();
-    if (!seed) return undefined;
+    const seedA = (searchParams.get("a") || "").trim();
+    const seedB = (searchParams.get("b") || "").trim();
+    if (!seedA && !seedB) return undefined;
     let cancelled = false;
-    resolveIdentifier(seed)
-      .then((account) => {
-        if (!cancelled && account) setA(account);
-      })
-      .catch(() => {});
+    Promise.all([
+      seedA ? resolveIdentifier(seedA).catch(() => null) : null,
+      seedB ? resolveIdentifier(seedB).catch(() => null) : null,
+    ]).then(([accountA, accountB]) => {
+      if (cancelled) return;
+      if (accountA) setA((current) => current?.address === accountA.address ? current : accountA);
+      if (accountB) setB((current) => current?.address === accountB.address ? current : accountB);
+    });
     return () => {
       cancelled = true;
     };
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!addressA && !addressB) return;
+    if ((searchParams.get("a") || "") === addressA && (searchParams.get("b") || "") === addressB) return;
+    const next = new URLSearchParams(searchParams);
+    if (addressA) next.set("a", addressA);
+    if (addressB) next.set("b", addressB);
+    setSearchParams(next, { replace: true });
+  }, [addressA, addressB, searchParams, setSearchParams]);
+
+  async function handleShareComparison() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      showToast("Comparison link copied");
+    } catch {
+      showToast("Unable to copy comparison link");
+    }
+  }
 
   useEffect(() => {
     if (!a || !b) {
@@ -103,6 +129,15 @@ export default function ComparePage() {
         </span>
         <CompareSelect label="Account B" value={b} onSelect={setB} />
       </div>
+
+      {a && b && (
+        <div className="compare-actions">
+          <button type="button" className="btn btn-secondary" onClick={handleShareComparison}>
+            <Link2 size={13} aria-hidden="true" />
+            <span>Copy comparison link</span>
+          </button>
+        </div>
+      )}
 
       {!ready ? (
         loading ? (

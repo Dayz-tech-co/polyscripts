@@ -1,5 +1,5 @@
-import { ExternalLink } from "lucide-react";
 import MarketImage from "./MarketImage";
+import MarketLink from "./MarketLink";
 import { formatCurrency, formatDate, formatNumber, formatPercentage, formatPrice, formatSignedCurrency } from "../utils/formatters";
 import { getToneClass } from "../utils/states";
 
@@ -35,9 +35,7 @@ export default function PositionRow({ position, variant = "open" }) {
           <td className={`num-cell ${pnlTone}`}>{formatSignedCurrency(position.pnl)}</td>
           <td className={`num-cell ${pnlTone}`}>{formatPercentage(position.pnlPercent, { signed: true })}</td>
           <td className="action-cell">
-            <button type="button" className="icon-btn icon-btn-sm" aria-label={`Open ${position.market}`}>
-              <ExternalLink size={14} aria-hidden="true" />
-            </button>
+            <MarketLink position={position} iconOnly />
           </td>
         </>
       ) : (

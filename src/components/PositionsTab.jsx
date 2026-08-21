@@ -4,6 +4,7 @@ import SearchInput from "./SearchInput";
 import Filters from "./Filters";
 import SortDropdown from "./SortDropdown";
 import MarketImage from "./MarketImage";
+import MarketLink from "./MarketLink";
 import EmptyState from "./EmptyState";
 import { TableSkeleton } from "./Skeleton";
 import { formatCurrency, formatDate, formatNumber, formatPercentage, formatPrice, formatSignedCurrency } from "../utils/formatters";
@@ -112,6 +113,7 @@ function UnifiedRow({ position, expanded, onToggle }) {
                   <span className={`position-detail-value ${item.tone ? `tone-${item.tone}` : ""}`}>{item.value}</span>
                 </div>
               ))}
+              <MarketLink position={position} />
             </div>
           </td>
         </tr>
@@ -170,6 +172,7 @@ function UnifiedCardMobile({ position, expanded, onToggle }) {
               <span className="position-card-stat-value">{value}</span>
             </div>
           ))}
+          <MarketLink position={position} />
         </div>
       )}
     </div>

@@ -3,6 +3,7 @@ import { ChevronDown, Layers3 } from "lucide-react";
 import Filters from "./Filters";
 import SortDropdown from "./SortDropdown";
 import EmptyState from "./EmptyState";
+import MarketLink from "./MarketLink";
 import { TableSkeleton } from "./Skeleton";
 import {
   formatCurrency,
@@ -103,6 +104,7 @@ function OverviewRow({ position, expanded, onToggle }) {
                   </span>
                 </div>
               ))}
+              <MarketLink position={position} />
             </div>
           </td>
         </tr>
@@ -157,6 +159,7 @@ function OverviewCardMobile({ position, expanded, onToggle }) {
               <span className="position-card-stat-value">{value}</span>
             </div>
           ))}
+          <MarketLink position={position} />
         </div>
       )}
     </div>

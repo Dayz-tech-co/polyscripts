@@ -1,4 +1,5 @@
 import MarketImage from "./MarketImage";
+import MarketLink from "./MarketLink";
 import { formatCurrency, formatDate, formatPrice, formatSignedCurrency } from "../utils/formatters";
 import { getToneClass } from "../utils/states";
 
@@ -54,6 +55,7 @@ export default function PositionCardMobile({ position, variant = "open" }) {
           </>
         )}
       </div>
+      <MarketLink position={position} />
     </div>
   );
 }
