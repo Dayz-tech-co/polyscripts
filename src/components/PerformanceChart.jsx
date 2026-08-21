@@ -157,18 +157,31 @@ export default function PerformanceChart({
   }, [data, domainStartMs, domainEndMs]);
 
   // Tight Y-min and Y-max calculation (7% padding top and bottom)
+  // Includes values from all active breakdown series so they fit within the chart
   const targetY = useMemo(() => {
     const pts = visiblePoints.length > 0 ? visiblePoints : data || [];
     if (pts.length === 0) return { min: -1, max: 1 };
-    const values = pts.map((d) => d.value);
-    const minVal = Math.min(...values);
-    const maxVal = Math.max(...values);
+
+    const allValues = [];
+    pts.forEach((d) => {
+      const val = d.value;
+      allValues.push(val);
+      // Include breakdown values for every active series
+      if (activeSeries.trade) allValues.push(val * 0.85);
+      if (activeSeries.taker) allValues.push(val * 0.32);
+      if (activeSeries.maker) allValues.push(val * 0.08);
+      if (activeSeries.lp) allValues.push(val * 0.01);
+      if (activeSeries.fees) allValues.push(-Math.abs(val * 0.03));
+    });
+
+    const minVal = Math.min(...allValues);
+    const maxVal = Math.max(...allValues);
     const spread = maxVal - minVal || Math.abs(maxVal) * 0.08 || 1;
     return {
       min: minVal - spread * 0.07,
       max: maxVal + spread * 0.07,
     };
-  }, [visiblePoints, data]);
+  }, [visiblePoints, data, activeSeries]);
 
   // Smooth Y-axis interpolation animation
   useEffect(() => {
@@ -252,6 +265,19 @@ export default function PerformanceChart({
       };
     });
   }, [visiblePoints, domainStartMs, domainSpanMs, yScale]);
+
+  // Secondary breakdown paths for toggled series
+  const seriesPaths = useMemo(() => {
+    const keys = ["trade", "lp", "maker", "fees", "taker"];
+    const res = {};
+    keys.forEach((key) => {
+      if (activeSeries[key] && mappedPoints.length > 0) {
+        const pts = mappedPoints.map((p) => ({ x: p.x, y: p.breakdownY[key] }));
+        res[key] = buildMonotonePath(pts);
+      }
+    });
+    return res;
+  }, [mappedPoints, activeSeries]);
 
   // Primary series color determination — always semantic green/red
   const seriesTone = useMemo(() => {
@@ -447,6 +473,18 @@ export default function PerformanceChart({
         {/* Subdued area fill */}
         <path d={areaPath} fill={`url(#${areaGradientId})`} stroke="none" />
 
+        {/* Secondary breakdown series paths */}
+        {Object.entries(seriesPaths).map(([sKey, sPath]) => (
+          <path
+            key={sKey}
+            d={sPath}
+            fill="none"
+            stroke={SERIES_COLORS[sKey]}
+            strokeWidth="1.2"
+            strokeDasharray="4 2"
+            strokeOpacity="0.7"
+          />
+        ))}
 
 
         {/* Main continuous line */}
