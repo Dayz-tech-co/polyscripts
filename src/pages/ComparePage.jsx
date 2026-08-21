@@ -12,7 +12,7 @@ import { resolveIdentifier } from "../services/polymarketService";
 import { shortenAddress } from "../utils/address";
 import { formatCompactCurrency, formatCurrency, formatNumber, formatPercentage, formatSignedCurrency } from "../utils/formatters";
 import { getValueState } from "../utils/states";
-import { useToast } from "../context/ToastContext";
+import { useToast } from "../context/toast";
 
 const METRIC_ROWS = [
   { key: "pnl", label: "P&L" },

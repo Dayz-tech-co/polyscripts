@@ -16,7 +16,7 @@ export default function HomePage() {
           PolyScripts
         </h1>
         <p className="home-lede">
-          Public Polymarket account analytics — search a username or wallet.
+          Public Polymarket account analytics - search a username or wallet.
         </p>
         <div className="home-search">
           <AccountSearch variant="hero" />

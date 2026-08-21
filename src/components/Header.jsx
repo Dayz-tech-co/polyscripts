@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { Menu, Search, X } from "lucide-react";
+import { Compass, LayoutDashboard, Menu, Search, Trophy, Wrench, X } from "lucide-react";
 import LogoMark from "./Logo";
 import AccountSearch from "./AccountSearch";
 import MobileMenu from "./MobileMenu";
@@ -30,16 +30,20 @@ export default function Header() {
           </Link>
           <nav className="nav" aria-label="Primary">
             <NavLink to="/" end className={({ isActive }) => `nav-link ${isActive ? "is-active" : ""}`}>
-              Explore
+              <Compass size={14} aria-hidden="true" />
+              <span>Explore</span>
             </NavLink>
             <NavLink to="/leaderboard" className={({ isActive }) => `nav-link ${isActive ? "is-active" : ""}`}>
-              Leaderboard
+              <Trophy size={14} aria-hidden="true" />
+              <span>Leaderboard</span>
             </NavLink>
             <NavLink to="/dashboard" className={({ isActive }) => `nav-link ${isActive ? "is-active" : ""}`}>
-              Dashboard
+              <LayoutDashboard size={14} aria-hidden="true" />
+              <span>Dashboard</span>
             </NavLink>
             <NavLink to="/tools" className={({ isActive }) => `nav-link ${isActive ? "is-active" : ""}`}>
-              Tools
+              <Wrench size={14} aria-hidden="true" />
+              <span>Tools</span>
             </NavLink>
           </nav>
         </div>

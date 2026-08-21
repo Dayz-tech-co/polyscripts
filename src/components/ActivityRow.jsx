@@ -13,7 +13,7 @@ const TYPE_ICON = {
 };
 
 function sideClass(side) {
-  if (!side || side === "—") return null;
+  if (!side || side === "-") return null;
   return `side-${String(side).toLowerCase().replace(/\s+/g, "-")}`;
 }
 
@@ -47,11 +47,11 @@ export default function ActivityRow({ activity }) {
         {sideCls ? (
           <span className={`side-badge ${sideCls}`}>{activity.side}</span>
         ) : (
-          <span className="text-muted">—</span>
+          <span className="text-muted">-</span>
         )}
       </td>
       <td className="num-cell">{formatCurrency(activity.amount)}</td>
-      <td className="num-cell">{activity.price != null ? formatPrice(activity.price) : "—"}</td>
+      <td className="num-cell">{activity.price != null ? formatPrice(activity.price) : "-"}</td>
       <td className="num-cell text-muted">{formatTimeAgo(activity.timestamp)}</td>
     </tr>
   );

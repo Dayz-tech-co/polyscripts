@@ -156,7 +156,7 @@ const POSITIONS_PAGE_SIZE = 100;
 const CLOSED_PAGE_SIZE = 100;
 const ACTIVITY_PAGE_SIZE = 100;
 const MAX_POSITIONS = 2000;
-/** Cap closed history for first paint — enough for win-rate/calendar, far fewer round-trips. */
+/** Cap closed history for first paint - enough for win-rate/calendar, far fewer round-trips. */
 const MAX_CLOSED = 1500;
 /** Cap recent activity for first paint; sparse types fill gaps in parallel. */
 const MAX_ACTIVITY = 600;
@@ -254,7 +254,7 @@ function activityDedupeKey(event) {
   ].join(":");
 }
 
-/** Sparse types often miss the mixed feed — fetch in parallel with capped pages. */
+/** Sparse types often miss the mixed feed - fetch in parallel with capped pages. */
 const SPARSE_ACTIVITY_TYPES = [
   { type: "MAKER_REBATE", maxPages: 2 },
   { type: "TAKER_REBATE", maxPages: 2 },

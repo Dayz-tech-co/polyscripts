@@ -1,6 +1,6 @@
 import { Download, LoaderCircle } from "lucide-react";
 import { downloadProfileCsv } from "../utils/exportProfile";
-import { useToast } from "../context/ToastContext";
+import { useToast } from "../context/toast";
 
 export default function ProfileActions({ data, loading }) {
   const { showToast } = useToast();

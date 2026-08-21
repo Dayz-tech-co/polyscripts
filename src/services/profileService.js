@@ -323,7 +323,7 @@ export async function getPerformanceSummary(identifier, { metric = "performance"
     return null;
   }
 
-  // 90D: no lb window — use user-pnl series change
+  // 90D: no lb window - use user-pnl series change
   const result = {
     "1D": pick("1D", profit1d, lbDay, null),
     "1W": pick("1W", profit7d, lbWeek, null),

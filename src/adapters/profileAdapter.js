@@ -108,7 +108,7 @@ function activityTypeLabel(type, side) {
     .join(" ");
 }
 
-/** Market column label — never "Unknown market" for non-market events. */
+/** Market column label - never "Unknown market" for non-market events. */
 function activityMarketLabel(raw) {
   if (raw.title && String(raw.title).trim()) return raw.title;
   switch (raw.type) {
@@ -151,7 +151,7 @@ export function normalizeActivity(raw) {
     rawType,
     market: activityMarketLabel(raw),
     category: raw.category ?? null,
-    side: isTrade || raw.outcome ? sideFromOutcome(raw.outcome) : "—",
+    side: isTrade || raw.outcome ? sideFromOutcome(raw.outcome) : "-",
     amount: raw.usdcSize ?? null,
     price: isTrade ? (raw.price ?? null) : null,
     shares: raw.size ?? null,

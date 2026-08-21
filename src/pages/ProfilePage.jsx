@@ -18,6 +18,7 @@ import AccountSearch from "../components/AccountSearch";
 import { useProfile } from "../hooks/useProfile";
 import { shortenAddress } from "../utils/address";
 import { validateProfileData, logDataIntegrity } from "../utils/dataIntegrity";
+import { addRecentAccount } from "../utils/recentSearches";
 
 export default function ProfilePage() {
   const { identifier } = useParams();
@@ -52,6 +53,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (status === "success" && data?.account) {
+      addRecentAccount(data.account);
       const label = data.account.username || shortenAddress(data.account.address);
       document.title = `${label} | PolyScripts`;
     } else if (status === "not-found") {

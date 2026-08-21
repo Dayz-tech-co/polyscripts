@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Award, BadgeCheck, Bookmark, BookmarkCheck, Check, Copy, Crown, Gem, Hexagon, Shield, Share2, Zap } from "lucide-react";
+import { ArrowUpRight, Award, BadgeCheck, Bookmark, BookmarkCheck, Check, Copy, Crown, Gem, Hexagon, Shield, Share2, Zap } from "lucide-react";
 import Avatar from "./Avatar";
 import Tooltip from "./Tooltip";
 import PolymarketIcon from "./PolymarketIcon";
 import { ProfileHeaderSkeleton } from "./Skeleton";
 import { shortenAddress } from "../utils/address";
-import { useToast } from "../context/ToastContext";
+import { useToast } from "../context/toast";
 import { isAccountWatched, subscribeToWatchlist, toggleWatchlistAccount } from "../utils/watchlist";
 
 const TIER_ICONS = {
@@ -48,7 +48,8 @@ export default function ProfileHeader({ account, loading }) {
   const hasUsername = Boolean(account.username);
   const primary = hasUsername ? account.username : account.displayName || shortenAddress(account.address);
   const secondary = hasUsername || account.displayName ? shortenAddress(account.address) : "Public account";
-  const profileUrl = `https://polymarket.com/profile/${hasUsername ? account.username : account.address}`;
+  const profileIdentifier = hasUsername ? account.username : account.address;
+  const profileUrl = `https://polymarket.com/profile/${encodeURIComponent(profileIdentifier)}`;
   const tierLabel = account.tierName || null;
   const TierIcon = tierLabel && TIER_ICONS[tierLabel] ? TIER_ICONS[tierLabel] : Award;
   const tierSlug = tierLabel ? tierCssSlug(tierLabel, account.tier) : null;
@@ -97,7 +98,11 @@ export default function ProfileHeader({ account, loading }) {
           <Avatar account={account} size={44} />
           <div className="profile-identity-text">
             <div className="profile-name-row">
-              <h1 className="profile-name">{primary}</h1>
+              <h1 className="profile-name">
+                <a href={profileUrl} target="_blank" rel="noreferrer noopener" title="Open on Polymarket">
+                  {primary}
+                </a>
+              </h1>
               {account.verified && (
                 <Tooltip label="Verified profile" position="bottom">
                   <span className="profile-badge-hit" tabIndex={0} aria-label="Verified profile">
@@ -127,32 +132,34 @@ export default function ProfileHeader({ account, loading }) {
                   <Share2 size={13} aria-hidden="true" />
                 </button>
               </Tooltip>
-              <button
-                type="button"
-                className={`watchlist-toggle ${watched ? "is-active" : ""}`}
-                aria-label={watched ? "Remove from watchlist" : "Add to watchlist"}
-                aria-pressed={watched}
-                onClick={handleWatchlist}
-              >
-                {watched ? <BookmarkCheck size={13} aria-hidden="true" /> : <Bookmark size={13} aria-hidden="true" />}
-                <span>{watched ? "Watching" : "Watch"}</span>
-              </button>
-              {watched && <Link className="watchlist-view-link" to="/dashboard">View list</Link>}
-              <Tooltip label="Open on Polymarket" position="bottom">
-                <a
-                  className="icon-btn icon-btn-sm polymarket-link-btn"
-                  href={profileUrl}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  aria-label="Open public Polymarket profile"
-                >
-                  <PolymarketIcon size={16} />
-                </a>
-              </Tooltip>
             </div>
 
             {cleanBio && <p className="profile-description-secondary">{cleanBio}</p>}
           </div>
+        </div>
+        <div className="profile-header-actions">
+          <button
+            type="button"
+            className={`watchlist-toggle ${watched ? "is-active" : ""}`}
+            aria-label={watched ? "Remove from watchlist" : "Add to watchlist"}
+            aria-pressed={watched}
+            onClick={handleWatchlist}
+          >
+            {watched ? <BookmarkCheck size={14} aria-hidden="true" /> : <Bookmark size={14} aria-hidden="true" />}
+            <span>{watched ? "Watching" : "Watch"}</span>
+          </button>
+          {watched && <Link className="watchlist-view-link" to="/dashboard">View list</Link>}
+          <a
+            className="polymarket-profile-link"
+            href={profileUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-label="Open public Polymarket profile"
+          >
+            <PolymarketIcon size={16} />
+            <span>Polymarket</span>
+            <ArrowUpRight size={13} aria-hidden="true" />
+          </a>
         </div>
       </div>
     </section>

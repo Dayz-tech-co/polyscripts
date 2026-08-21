@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, Clock3 } from "lucide-react";
 import Avatar from "./Avatar";
-import { clearRecentAccounts, getRecentAccounts } from "../utils/recentSearches";
+import { clearRecentAccounts, getRecentAccounts, subscribeToRecentAccounts } from "../utils/recentSearches";
 import { shortenAddress } from "../utils/address";
 
 export default function RecentAccounts() {
@@ -10,7 +10,9 @@ export default function RecentAccounts() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    setAccounts(getRecentAccounts());
+    const refresh = () => setAccounts(getRecentAccounts());
+    refresh();
+    return subscribeToRecentAccounts(refresh);
   }, []);
 
   if (accounts.length === 0) return null;

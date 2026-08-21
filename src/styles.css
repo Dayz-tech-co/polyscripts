@@ -1,5 +1,5 @@
 /* =========================================================================
-   PolyScripts — design system & application styles
+   PolyScripts - design system & application styles
    Sections: Reset, Root tokens, Base, Layout, Header, Profile, Stats, Tabs,
    Chart, Tables, Activity, Buttons, Utilities, Responsive
    ========================================================================= */
@@ -57,7 +57,7 @@ table {
 /* ---------------------------------------------------------------------- */
 
 :root {
-  /* Surfaces — flat Polymarket-mature dark */
+  /* Surfaces - flat Polymarket-mature dark */
   --bg-app: #0b0e14;
   --bg-secondary: #10141c;
   --bg-card: #12171f;
@@ -74,7 +74,7 @@ table {
   --text-secondary: #9aa3b2;
   --text-muted: #6b7380;
 
-  /* Brand — single accent (Polymarket blue). Legacy aliases map to brand. */
+  /* Brand - single accent (Polymarket blue). Legacy aliases map to brand. */
   --brand: #2e5cff;
   --brand-orange: var(--brand);
   --brand-coral: var(--brand);
@@ -88,7 +88,7 @@ table {
   --negative-bg: rgba(234, 57, 67, 0.12);
   --neutral: #8a93a6;
 
-  /* Radius — sharp edges */
+  /* Radius - sharp edges */
   --radius-lg: 0;
   --radius-md: 0;
   --radius-sm: 0;
@@ -108,7 +108,7 @@ table {
   --space-10: 40px;
   --space-11: 48px;
 
-  /* Shadow — popovers only */
+  /* Shadow - popovers only */
   --shadow-card: none;
   --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.45);
 
@@ -304,6 +304,9 @@ h3 {
 
 .nav-link {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);
@@ -627,12 +630,25 @@ h3 {
 /* Mobile search panel --------------------------------------------------- */
 
 .mobile-search-panel {
-  position: relative;
+  position: fixed;
+  top: 62px;
+  right: 0;
+  left: 0;
   z-index: 90;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-default);
   padding: var(--space-5) 0;
   animation: panel-in var(--t-base) var(--ease);
+}
+
+.mobile-search-panel .container,
+.mobile-search-panel .account-search-mobile {
+  width: 100%;
+}
+
+.mobile-search-panel .search-dropdown {
+  position: static;
+  margin-top: var(--space-3);
 }
 
 /* Avatars ------------------------------------------------------------------ */
@@ -703,9 +719,10 @@ h3 {
   position: relative;
   z-index: 1;
   order: 1;
-  width: 100%;
+  width: min(320px, 88vw);
+  height: 100%;
   background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-default);
+  border-right: 1px solid var(--border-default);
   padding: var(--space-5) var(--space-6);
   display: flex;
   flex-direction: column;
@@ -725,6 +742,9 @@ h3 {
 }
 
 .mobile-panel-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
   text-align: left;
   padding: var(--space-5) var(--space-4);
   border-radius: var(--radius-sm);
@@ -1959,6 +1979,25 @@ h3 {
   font-weight: 600;
 }
 
+.positions-scroll {
+  max-height: min(72vh, 720px);
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.positions-scroll .positions-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.positions-scroll-mobile {
+  max-height: 70vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
 .watchlist-toggle {
   display: inline-flex;
   align-items: center;
@@ -2489,7 +2528,7 @@ h3 {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Homepage — brand-first explore hero                                    */
+/* Homepage - brand-first explore hero                                    */
 /* ---------------------------------------------------------------------- */
 
 .home-page {
@@ -3929,7 +3968,7 @@ h3 {
 /* Profile Redesign & Monthly Performance Calendar                        */
 /* ---------------------------------------------------------------------- */
 
-/* Tier badges — Polymarket taker tiers 0–6 */
+/* Tier badges - Polymarket taker tiers 0-6 */
 .tier-badge {
   display: inline-flex;
   align-items: center;
@@ -4026,7 +4065,7 @@ h3 {
   gap: 8px;
 }
 
-/* Monthly Performance Calendar Card — Polymarket-inspired */
+/* Monthly Performance Calendar Card - Polymarket-inspired */
 .monthly-calendar-card {
   --pm-blue: #2e5cff;
   --pm-yes: #16c784;
@@ -4453,12 +4492,48 @@ h3 {
   letter-spacing: -0.02em;
   line-height: 1.2;
 }
+
+.profile-name a {
+  transition: color var(--t-fast) var(--ease);
+}
+
+.profile-name a:hover {
+  color: var(--brand);
+}
 .profile-address-row {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-top: 4px;
   flex-wrap: wrap;
+}
+
+.profile-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.polymarket-profile-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 10px;
+  color: #a9bcff;
+  font-size: 12px;
+  font-weight: 650;
+  border: 1px solid rgba(46, 92, 255, 0.38);
+  background: rgba(46, 92, 255, 0.1);
+  transition: color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+
+.polymarket-profile-link:hover {
+  color: #fff;
+  border-color: rgba(46, 92, 255, 0.62);
+  background: rgba(46, 92, 255, 0.18);
 }
 
 .monthly-calendar-title > span {
@@ -4490,7 +4565,7 @@ h3 {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Account KPI — hierarchical hero (Polymarket / Betmoar contrast)        */
+/* Account KPI - hierarchical hero (Polymarket / Betmoar contrast)        */
 /* ---------------------------------------------------------------------- */
 
 .account-kpi {
@@ -4634,6 +4709,16 @@ h3 {
   line-height: 1.15;
 }
 
+.account-kpi-card.is-portfolio .account-kpi-card-icon,
+.account-kpi-card.is-portfolio .account-kpi-card-value {
+  color: #6f94ff;
+}
+
+.account-kpi-card.is-volume .account-kpi-card-icon,
+.account-kpi-card.is-volume .account-kpi-card-value {
+  color: #f2b45f;
+}
+
 .account-kpi-card-meta {
   font-size: 11px;
   color: var(--text-muted);
@@ -4682,6 +4767,21 @@ h3 {
   font-variant-numeric: tabular-nums;
 }
 
+.account-kpi-chip.is-markets .account-kpi-chip-icon,
+.account-kpi-chip.is-markets .account-kpi-chip-value {
+  color: #55c8ff;
+}
+
+.account-kpi-chip.is-win-rate .account-kpi-chip-icon,
+.account-kpi-chip.is-win-rate .account-kpi-chip-value {
+  color: var(--positive);
+}
+
+.account-kpi-chip.is-open-positions .account-kpi-chip-icon,
+.account-kpi-chip.is-open-positions .account-kpi-chip-value {
+  color: #d49bff;
+}
+
 @media (max-width: 1024px) {
   .account-kpi {
     grid-template-columns: 1fr;
@@ -4698,6 +4798,12 @@ h3 {
 }
 
 @media (max-width: 640px) {
+  .profile-header-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
   .account-kpi-featured,
   .account-kpi-secondary {
     grid-template-columns: 1fr;
@@ -4709,6 +4815,19 @@ h3 {
 
   .tab-btn {
     padding-inline: var(--space-4);
+  }
+}
+
+@media (max-width: 768px) {
+  .profile-header-inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .profile-header-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 }
 
@@ -4943,4 +5062,10 @@ h3 {
 *::before,
 *::after {
   border-radius: 0 !important;
+}
+
+/* Account identity is the deliberate exception to the sharp-corner system. */
+.account-avatar,
+.watchlist-avatar {
+  border-radius: 50% !important;
 }

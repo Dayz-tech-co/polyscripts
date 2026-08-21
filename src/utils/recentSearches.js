@@ -4,6 +4,7 @@
 
 const KEY = "polyscripts:recent-accounts";
 const MAX = 5;
+const CHANGE_EVENT = "polyscripts:recent-accounts";
 
 function read() {
   try {
@@ -19,6 +20,7 @@ function read() {
 function write(list) {
   try {
     localStorage.setItem(KEY, JSON.stringify(list));
+    window.dispatchEvent(new Event(CHANGE_EVENT));
   } catch {
     // localStorage unavailable (private mode, quota, etc.) - fail silently
   }
@@ -42,4 +44,13 @@ export function addRecentAccount(account) {
 
 export function clearRecentAccounts() {
   write([]);
+}
+
+export function subscribeToRecentAccounts(callback) {
+  window.addEventListener(CHANGE_EVENT, callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(CHANGE_EVENT, callback);
+    window.removeEventListener("storage", callback);
+  };
 }

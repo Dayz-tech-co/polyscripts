@@ -228,7 +228,7 @@ export default function PositionsTab({ openPositions, resolvedPositions, loading
         <EmptyState icon={Layers3} title="No positions found" description="Try adjusting your filters." />
       ) : (
         <>
-          <div className="table-wrap">
+          <div className="table-wrap positions-scroll">
             <table className="positions-table">
               <thead>
                 <tr>
@@ -255,7 +255,7 @@ export default function PositionsTab({ openPositions, resolvedPositions, loading
               </tbody>
             </table>
           </div>
-          <div className="positions-mobile-list">
+          <div className="positions-mobile-list positions-scroll-mobile">
             {visible.map((position) => (
               <UnifiedCardMobile
                 key={position.id}

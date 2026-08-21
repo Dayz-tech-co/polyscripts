@@ -1,5 +1,5 @@
 import { CheckCircle2 } from "lucide-react";
-import { useToast } from "../context/ToastContext";
+import { useToast } from "../context/toast";
 
 export default function Toast() {
   const { toasts, dismissToast } = useToast();

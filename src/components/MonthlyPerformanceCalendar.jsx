@@ -116,10 +116,17 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = EMPTY_L
   // Selected month statistics
   const currentMonthData = byMonth.get(monthKey) ?? null;
   const monthPnl = currentMonthData?.pnl ?? 0;
-  const monthWins = currentMonthData?.wins ?? 0;
-  const monthLosses = currentMonthData?.losses ?? 0;
-  const monthAvgWin = monthWins > 0 ? currentMonthData.winSum / monthWins : null;
-  const monthAvgLoss = monthLosses > 0 ? currentMonthData.lossSum / monthLosses : null;
+  const selectedMonthDays = Array.from(byDay.entries())
+    .filter(([dayKey, entry]) => dayKey.startsWith(monthKey) && entry?.pnl !== 0)
+    .map(([, entry]) => entry.pnl);
+  const winningDays = selectedMonthDays.filter((pnl) => pnl > 0);
+  const losingDays = selectedMonthDays.filter((pnl) => pnl < 0);
+  const monthAvgWin = winningDays.length > 0
+    ? winningDays.reduce((sum, pnl) => sum + pnl, 0) / winningDays.length
+    : null;
+  const monthAvgLoss = losingDays.length > 0
+    ? losingDays.reduce((sum, pnl) => sum + pnl, 0) / losingDays.length
+    : null;
   const monthVolume = currentMonthData?.volume ?? null;
 
   return (
@@ -147,7 +154,7 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = EMPTY_L
         <div className="insight-chip">
           <span className="insight-label">Best Day</span>
           <span className={`insight-value ${insights.bestDayPnL != null ? getToneClass(insights.bestDayPnL) : ""}`}>
-            {insights.bestDayPnL != null ? formatSignedCurrency(insights.bestDayPnL) : "N/A"}
+            {insights.bestDayPnL != null ? formatSignedCurrency(insights.bestDayPnL) : "-"}
           </span>
         </div>
 
@@ -156,7 +163,7 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = EMPTY_L
         <div className="insight-chip">
           <span className="insight-label">Worst Day</span>
           <span className={`insight-value ${insights.worstDayPnL != null ? getToneClass(insights.worstDayPnL) : ""}`}>
-            {insights.worstDayPnL != null ? formatSignedCurrency(insights.worstDayPnL) : "N/A"}
+            {insights.worstDayPnL != null ? formatSignedCurrency(insights.worstDayPnL) : "-"}
           </span>
         </div>
 
@@ -288,33 +295,33 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = EMPTY_L
         <div className="monthly-summary-item">
           <span className="monthly-summary-label">Monthly Realized PnL</span>
           <span className={`monthly-summary-value ${currentMonthData ? getToneClass(monthPnl) : ""}`}>
-            {currentMonthData ? formatSignedCurrency(monthPnl) : "N/A"}
+            {currentMonthData ? formatSignedCurrency(monthPnl) : "-"}
           </span>
         </div>
         <div className="monthly-summary-item">
-          <span className="monthly-summary-label">Winning Positions</span>
-          <span className="monthly-summary-value tone-positive">{currentMonthData ? monthWins : "N/A"}</span>
+          <span className="monthly-summary-label">Winning Days</span>
+          <span className="monthly-summary-value tone-positive">{currentMonthData ? winningDays.length : "-"}</span>
         </div>
         <div className="monthly-summary-item">
-          <span className="monthly-summary-label">Losing Positions</span>
-          <span className="monthly-summary-value tone-negative">{currentMonthData ? monthLosses : "N/A"}</span>
+          <span className="monthly-summary-label">Losing Days</span>
+          <span className="monthly-summary-value tone-negative">{currentMonthData ? losingDays.length : "-"}</span>
         </div>
         <div className="monthly-summary-item">
-          <span className="monthly-summary-label">Average Win</span>
+          <span className="monthly-summary-label">Avg Winning Day</span>
           <span className={`monthly-summary-value ${monthAvgWin != null ? "tone-positive" : ""}`}>
-            {monthAvgWin != null ? formatSignedCurrency(monthAvgWin) : "N/A"}
+            {monthAvgWin != null ? formatSignedCurrency(monthAvgWin) : "-"}
           </span>
         </div>
         <div className="monthly-summary-item">
-          <span className="monthly-summary-label">Average Loss</span>
+          <span className="monthly-summary-label">Avg Losing Day</span>
           <span className={`monthly-summary-value ${monthAvgLoss != null ? "tone-negative" : ""}`}>
-            {monthAvgLoss != null ? formatSignedCurrency(monthAvgLoss) : "N/A"}
+            {monthAvgLoss != null ? formatSignedCurrency(monthAvgLoss) : "-"}
           </span>
         </div>
         <div className="monthly-summary-item">
           <span className="monthly-summary-label">Trading Volume</span>
           <span className="monthly-summary-value">
-            {monthVolume != null ? formatCompactCurrency(monthVolume) : "N/A"}
+            {monthVolume != null ? formatCompactCurrency(monthVolume) : "-"}
           </span>
         </div>
       </div>

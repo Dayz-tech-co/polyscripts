@@ -6,7 +6,7 @@ import { getToneClass, getValueState } from "../utils/states";
 const ICON = { size: 15, strokeWidth: 1.75 };
 
 /**
- * Hierarchical account KPI — flat Polymarket-mature layout.
+ * Hierarchical account KPI - flat Polymarket-mature layout.
  * Hero Total prefers the ALL Performance chart change when provided.
  */
 export default function ProfileStats({ stats, headlinePnl = null, loading, detailsLoading = false }) {
@@ -41,7 +41,7 @@ export default function ProfileStats({ stats, headlinePnl = null, loading, detai
       </div>
 
       <div className="account-kpi-featured">
-        <article className="account-kpi-card account-kpi-card-feature">
+        <article className="account-kpi-card account-kpi-card-feature is-portfolio">
           <div className="account-kpi-card-icon" aria-hidden="true">
             <Wallet {...ICON} />
           </div>
@@ -63,7 +63,7 @@ export default function ProfileStats({ stats, headlinePnl = null, loading, detai
           </div>
         </article>
 
-        <article className="account-kpi-card account-kpi-card-feature">
+        <article className="account-kpi-card account-kpi-card-feature is-volume">
           <div className="account-kpi-card-icon" aria-hidden="true">
             <BarChart3 {...ICON} />
           </div>
@@ -78,7 +78,7 @@ export default function ProfileStats({ stats, headlinePnl = null, loading, detai
       </div>
 
       <div className="account-kpi-secondary">
-        <div className="account-kpi-chip">
+        <div className="account-kpi-chip is-markets">
           <Layers3 {...ICON} className="account-kpi-chip-icon" aria-hidden="true" />
           <div>
             <span className="account-kpi-chip-label">Markets traded</span>
@@ -87,7 +87,7 @@ export default function ProfileStats({ stats, headlinePnl = null, loading, detai
             </span>
           </div>
         </div>
-        <div className="account-kpi-chip">
+        <div className="account-kpi-chip is-win-rate">
           <Percent {...ICON} className="account-kpi-chip-icon" aria-hidden="true" />
           <div>
             <span className="account-kpi-chip-label">Win rate</span>
@@ -96,7 +96,7 @@ export default function ProfileStats({ stats, headlinePnl = null, loading, detai
             </span>
           </div>
         </div>
-        <div className="account-kpi-chip">
+        <div className="account-kpi-chip is-open-positions">
           <CircleDot {...ICON} className="account-kpi-chip-icon" aria-hidden="true" />
           <div>
             <span className="account-kpi-chip-label">Open positions</span>

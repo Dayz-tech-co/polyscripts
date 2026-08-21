@@ -1,9 +1,9 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, LineChart, Search, Wrench } from "lucide-react";
+import { Compass, LayoutDashboard, Trophy, Wrench } from "lucide-react";
 
 const LINKS = [
-  { to: "/", label: "Explore", icon: Search, end: true },
-  { to: "/leaderboard", label: "Leaderboard", icon: LineChart },
+  { to: "/", label: "Explore", icon: Compass, end: true },
+  { to: "/leaderboard", label: "Leaderboard", icon: Trophy },
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/tools", label: "Tools", icon: Wrench },
 ];

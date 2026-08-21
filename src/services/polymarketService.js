@@ -102,7 +102,7 @@ export async function getAccountByUsername(username, { signal } = {}) {
   const exact = profiles.find((p) => (p.name || "").toLowerCase() === trimmed.toLowerCase());
   if (exact) {
     const partial = normalizeProfile(exact);
-    // Search omits live takerTier — hydrate from public-profile by address.
+    // Search omits live takerTier - hydrate from public-profile by address.
     if (partial?.address) {
       const full = await getAccountByAddress(partial.address, { signal });
       const account = full
