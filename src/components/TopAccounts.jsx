@@ -89,7 +89,7 @@ export default function TopAccounts({ title = "Top Accounts", limit = 8, showOrd
             <li key={account.address}>
               <button type="button" className="top-account-row" onClick={() => open(account)}>
                 <span className="top-account-rank">{account.rank ?? "-"}</span>
-                <Avatar account={account} size={30} radius={9} />
+                <Avatar account={account} size={30} />
                 <span className="top-account-identity">
                   <span className="top-account-name">{account.username || account.displayName || shortenAddress(account.address)}</span>
                   <span className="top-account-address">{shortenAddress(account.address)}</span>

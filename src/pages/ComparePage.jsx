@@ -150,7 +150,7 @@ export default function ComparePage() {
           <div className="compare-grid">
             <div className="compare-column">
               <div className="compare-account-head">
-                <Avatar account={result.a.account} size={40} radius={10} />
+                <Avatar account={result.a.account} size={40} />
                 <span className="account-cell-text">
                   <span className="account-cell-name">{result.a.account.username || result.a.account.displayName || shortenAddress(result.a.account.address)}</span>
                   <span className="account-cell-address">{shortenAddress(result.a.account.address)}</span>
@@ -159,7 +159,7 @@ export default function ComparePage() {
             </div>
             <div className="compare-column">
               <div className="compare-account-head">
-                <Avatar account={result.b.account} size={40} radius={10} />
+                <Avatar account={result.b.account} size={40} />
                 <span className="account-cell-text">
                   <span className="account-cell-name">{result.b.account.username || result.b.account.displayName || shortenAddress(result.b.account.address)}</span>
                   <span className="account-cell-address">{shortenAddress(result.b.account.address)}</span>

@@ -140,7 +140,7 @@ export default function DashboardPage() {
                 <li key={account.address}>
                   <button type="button" className="top-account-row" onClick={() => open(account)}>
                     <span className="top-account-rank">{account.rank ?? "-"}</span>
-                    <Avatar account={account} size={30} radius={9} />
+                    <Avatar account={account} size={30} />
                     <span className="top-account-identity">
                       <span className="top-account-name">{account.username || account.displayName || shortenAddress(account.address)}</span>
                       <span className="top-account-address">{shortenAddress(account.address)}</span>
@@ -171,7 +171,7 @@ export default function DashboardPage() {
               {feed.map((item) => (
                 <li key={item.id}>
                   <button type="button" className="feed-row" onClick={() => open(item.account)}>
-                    <Avatar account={item.account} size={26} radius={8} />
+                    <Avatar account={item.account} size={26} />
                     <div className="feed-body">
                       <span className="feed-title">
                         <ActivityTypeBadge type={item.type} />

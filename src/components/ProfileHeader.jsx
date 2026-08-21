@@ -94,7 +94,7 @@ export default function ProfileHeader({ account, loading }) {
     <section className="profile-header" aria-label="Profile">
       <div className="container profile-header-inner">
         <div className="profile-identity">
-          <Avatar account={account} size={44} radius={0} />
+          <Avatar account={account} size={44} />
           <div className="profile-identity-text">
             <div className="profile-name-row">
               <h1 className="profile-name">{primary}</h1>

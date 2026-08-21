@@ -22,7 +22,7 @@ export default function SearchResultItem({ account, active, id, onSelect, onMous
       }}
       onMouseEnter={onMouseEnter}
     >
-      <Avatar account={account} size={32} radius={9} />
+      <Avatar account={account} size={32} />
       <div className="search-result-text">
         <span className="search-result-primary">
           {primary}

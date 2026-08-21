@@ -61,7 +61,7 @@ export default function CompareSelect({ label, value, onSelect }) {
       >
         {value ? (
           <>
-            <Avatar account={value} size={30} radius={9} />
+            <Avatar account={value} size={30} />
             <span className="account-cell-text">
               <span className="account-cell-name">{value.username || value.displayName || shortenAddress(value.address)}</span>
               <span className="account-cell-address">{shortenAddress(value.address)}</span>
@@ -107,7 +107,7 @@ export default function CompareSelect({ label, value, onSelect }) {
                       setQuery("");
                     }}
                   >
-                    <Avatar account={account} size={28} radius={8} />
+                    <Avatar account={account} size={28} />
                     <span className="account-cell-text">
                       <span className="account-cell-name">{account.username || account.displayName || shortenAddress(account.address)}</span>
                       <span className="account-cell-address">{shortenAddress(account.address)}</span>

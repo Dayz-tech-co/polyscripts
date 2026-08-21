@@ -4,7 +4,7 @@ import { getAvatarColor, getInitials, isValidImageUrl } from "../utils/avatar";
 /**
  * Account avatar or flat solid-color initials fallback (no gradients).
  */
-export default function Avatar({ account, size = 40, radius = 0 }) {
+export default function Avatar({ account, size = 40 }) {
   const [failed, setFailed] = useState(false);
   const url = account?.avatar;
   const showImage = !failed && isValidImageUrl(url);
@@ -17,7 +17,7 @@ export default function Avatar({ account, size = 40, radius = 0 }) {
         width={size}
         height={size}
         className="account-avatar"
-        style={{ width: size, height: size, borderRadius: radius, objectFit: "cover" }}
+        style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover" }}
         onError={() => setFailed(true)}
       />
     );
@@ -32,7 +32,7 @@ export default function Avatar({ account, size = 40, radius = 0 }) {
       style={{
         width: size,
         height: size,
-        borderRadius: radius,
+        borderRadius: "50%",
         background: color,
         fontSize: Math.max(11, Math.round(size * 0.34)),
       }}

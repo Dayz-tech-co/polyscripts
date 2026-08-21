@@ -134,7 +134,7 @@ export default function LeaderboardPage() {
                       </td>
                       <td className="account-cell">
                         <button type="button" className="account-cell-btn" onClick={() => open(row)}>
-                          <Avatar account={row} size={30} radius="50%" />
+                          <Avatar account={row} size={30} />
                           <span className="account-cell-text">
                             <span className="account-cell-name">{row.username || row.displayName || shortenAddress(row.address)}</span>
                             <span className="account-cell-address">{shortenAddress(row.address)}</span>
@@ -162,7 +162,7 @@ export default function LeaderboardPage() {
                 <button type="button" key={row.address} className="leaderboard-card-mobile" onClick={() => open(row)}>
                   <div className="leaderboard-card-mobile-top">
                     <RankBadge rank={row.rank} />
-                    <Avatar account={row} size={32} radius="50%" />
+                    <Avatar account={row} size={32} />
                     <span className="account-cell-text">
                       <span className="account-cell-name">{row.username || row.displayName || shortenAddress(row.address)}</span>
                       <span className="account-cell-address">{shortenAddress(row.address)}</span>

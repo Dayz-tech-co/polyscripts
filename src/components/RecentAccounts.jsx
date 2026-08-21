@@ -44,7 +44,7 @@ export default function RecentAccounts() {
         {accounts.map((account) => (
           <li key={account.address}>
             <button type="button" className="top-account-row" onClick={() => open(account)}>
-              <Avatar account={account} size={30} radius={9} />
+              <Avatar account={account} size={30} />
               <span className="top-account-identity">
                 <span className="top-account-name">{account.username || account.displayName || shortenAddress(account.address)}</span>
                 <span className="top-account-address">{shortenAddress(account.address)}</span>

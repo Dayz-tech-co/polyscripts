@@ -1438,6 +1438,8 @@ h3 {
 .watchlist-avatar {
   flex: 0 0 auto;
   border: 1px solid var(--border-default);
+  border-radius: 50%;
+  overflow: hidden;
 }
 
 .watchlist-open:hover .top-account-name {

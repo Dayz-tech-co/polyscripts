@@ -39,7 +39,7 @@ export default function WatchlistSection() {
                 className="watchlist-open"
                 onClick={() => navigate(`/profile/${encodeURIComponent(account.username || account.address)}`)}
               >
-                <span className="watchlist-avatar"><Avatar account={account} size={38} radius={0} /></span>
+                <span className="watchlist-avatar"><Avatar account={account} size={38} /></span>
                 <span className="top-account-identity">
                   <span className="top-account-name">{account.username || account.displayName || shortenAddress(account.address)}</span>
                   <span className="top-account-address">{shortenAddress(account.address)}</span>

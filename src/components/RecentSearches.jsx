@@ -23,7 +23,7 @@ export default function RecentSearches({ accounts, onSelect, onClear }) {
               onSelect(account);
             }}
           >
-            <Avatar account={account} size={32} radius={9} />
+            <Avatar account={account} size={32} />
             <div className="search-result-text">
               <span className="search-result-primary">{account.username || shortenAddress(account.address)}</span>
               <span className="search-result-secondary">
