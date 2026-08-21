@@ -20,7 +20,7 @@ export default function PositionCardMobile({ position, variant = "open" }) {
               : `Closes ${formatDate(position.closeDate)}`}
           </span>
         </div>
-        <span className={`side-badge side-${position.side.toLowerCase()}`}>{position.side}</span>
+        <span className={`side-badge side-${position.side.toLowerCase().replace(/\s+/g, "-")}`} title={position.side}>{position.side}</span>
       </div>
       <div className="position-card-mobile-grid">
         {variant === "open" ? (

@@ -24,7 +24,7 @@ export default function PositionRow({ position, variant = "open" }) {
         </div>
       </td>
       <td>
-        <span className={`side-badge side-${position.side.toLowerCase()}`}>{position.side}</span>
+        <span className={`side-badge side-${position.side.toLowerCase().replace(/\s+/g, "-")}`} title={position.side}>{position.side}</span>
       </td>
       {variant === "open" ? (
         <>

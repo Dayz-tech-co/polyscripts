@@ -85,7 +85,7 @@ function UnifiedRow({ position, expanded, onToggle }) {
           </div>
         </td>
         <td>
-          <span className={`side-badge side-${position.side.toLowerCase()}`}>{position.side}</span>
+          <span className={`side-badge side-${position.side.toLowerCase().replace(/\s+/g, "-")}`} title={position.side}>{position.side}</span>
         </td>
         <td className="num-cell">{formatPrice(position.averagePrice)}</td>
         <td className="num-cell">{isOpen ? formatPrice(position.currentPrice) : formatPrice(closedPrice)}</td>
@@ -233,7 +233,7 @@ export default function PositionsTab({ openPositions, resolvedPositions, loading
               <thead>
                 <tr>
                   <th>Market</th>
-                  <th>Side</th>
+                  <th>Outcome</th>
                   <th>Entry</th>
                   <th>Current</th>
                   <th>Value</th>

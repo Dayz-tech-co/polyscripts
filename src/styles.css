@@ -900,8 +900,15 @@ h3 {
 .profile-tabs {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 0;
   border-bottom: 1px solid var(--border-default);
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior-inline: contain;
+}
+
+.profile-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .profile-data-actions {
@@ -922,11 +929,27 @@ h3 {
 
 .tab-btn {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 0 0 auto;
   padding: var(--space-4) var(--space-5);
   font-size: 14px;
   font-weight: 500;
   color: var(--text-secondary);
   transition: color var(--t-fast) var(--ease);
+  white-space: nowrap;
+}
+
+.tab-count {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.tab-btn.is-active .tab-count {
+  color: var(--text-secondary);
 }
 
 .tab-btn:hover {
@@ -1761,7 +1784,7 @@ h3 {
   align-items: center;
   justify-content: center;
   min-width: 38px;
-  max-width: 96px;
+  max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1880,6 +1903,42 @@ h3 {
 .position-detail-value {
   font-size: 13px;
   font-weight: 600;
+}
+
+.watchlist-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 28px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.watchlist-toggle:hover {
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.watchlist-toggle.is-active {
+  color: var(--brand);
+  border-color: rgba(46, 92, 255, 0.4);
+  background: rgba(46, 92, 255, 0.08);
+}
+
+.watchlist-view-link {
+  color: var(--brand);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.watchlist-view-link:hover {
+  color: var(--text-primary);
 }
 
 .position-market-link {
@@ -4340,6 +4399,7 @@ h3 {
   align-items: center;
   gap: 8px;
   margin-top: 4px;
+  flex-wrap: wrap;
 }
 .address-pill {
   font-family: var(--font-mono, monospace);
@@ -4567,6 +4627,10 @@ h3 {
 
   .account-kpi-hero-value {
     font-size: 30px;
+  }
+
+  .tab-btn {
+    padding-inline: var(--space-4);
   }
 }
 

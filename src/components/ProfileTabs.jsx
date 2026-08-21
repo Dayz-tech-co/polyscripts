@@ -1,4 +1,5 @@
 const TABS = ["Overview", "Positions", "Activity", "History"];
+const COUNT_FORMATTER = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
 
 export default function ProfileTabs({ active, onChange, counts = {} }) {
   function handleKeyDown(event, currentIndex) {
@@ -30,7 +31,11 @@ export default function ProfileTabs({ active, onChange, counts = {} }) {
           onKeyDown={(event) => handleKeyDown(event, index)}
         >
           <span>{tab}</span>
-          {counts[tab] != null && <span className="section-count">{counts[tab].toLocaleString()}</span>}
+          {counts[tab] != null && (
+            <span className="tab-count" title={`${counts[tab].toLocaleString()} items`}>
+              {COUNT_FORMATTER.format(counts[tab])}
+            </span>
+          )}
         </button>
       ))}
     </div>

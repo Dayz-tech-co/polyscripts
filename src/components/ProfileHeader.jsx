@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Award, BadgeCheck, Bookmark, BookmarkCheck, Check, Copy, Crown, Gem, Hexagon, Shield, Share2, Zap } from "lucide-react";
 import Avatar from "./Avatar";
 import Tooltip from "./Tooltip";
@@ -6,7 +7,7 @@ import PolymarketIcon from "./PolymarketIcon";
 import { ProfileHeaderSkeleton } from "./Skeleton";
 import { shortenAddress } from "../utils/address";
 import { useToast } from "../context/ToastContext";
-import { isAccountWatched, toggleWatchlistAccount } from "../utils/watchlist";
+import { isAccountWatched, subscribeToWatchlist, toggleWatchlistAccount } from "../utils/watchlist";
 
 const TIER_ICONS = {
   "Tier 0": Award,
@@ -31,6 +32,7 @@ export default function ProfileHeader({ account, loading }) {
 
   useEffect(() => {
     setWatched(isAccountWatched(account?.address));
+    return subscribeToWatchlist(() => setWatched(isAccountWatched(account?.address)));
   }, [account?.address]);
 
   if (loading || !account) {
@@ -85,7 +87,7 @@ export default function ProfileHeader({ account, loading }) {
   function handleWatchlist() {
     const next = toggleWatchlistAccount(account);
     setWatched(next);
-    showToast(next ? "Added to watchlist" : "Removed from watchlist");
+    showToast(next ? "Added to watchlist. Find it on Dashboard." : "Removed from watchlist");
   }
 
   return (
@@ -125,17 +127,17 @@ export default function ProfileHeader({ account, loading }) {
                   <Share2 size={13} aria-hidden="true" />
                 </button>
               </Tooltip>
-              <Tooltip label={watched ? "Remove from watchlist" : "Add to watchlist"} position="bottom">
-                <button
-                  type="button"
-                  className={`icon-btn icon-btn-sm ${watched ? "is-active" : ""}`}
-                  aria-label={watched ? "Remove from watchlist" : "Add to watchlist"}
-                  aria-pressed={watched}
-                  onClick={handleWatchlist}
-                >
-                  {watched ? <BookmarkCheck size={13} aria-hidden="true" /> : <Bookmark size={13} aria-hidden="true" />}
-                </button>
-              </Tooltip>
+              <button
+                type="button"
+                className={`watchlist-toggle ${watched ? "is-active" : ""}`}
+                aria-label={watched ? "Remove from watchlist" : "Add to watchlist"}
+                aria-pressed={watched}
+                onClick={handleWatchlist}
+              >
+                {watched ? <BookmarkCheck size={13} aria-hidden="true" /> : <Bookmark size={13} aria-hidden="true" />}
+                <span>{watched ? "Watching" : "Watch"}</span>
+              </button>
+              {watched && <Link className="watchlist-view-link" to="/dashboard">View list</Link>}
               <Tooltip label="Open on Polymarket" position="bottom">
                 <a
                   className="icon-btn icon-btn-sm polymarket-link-btn"

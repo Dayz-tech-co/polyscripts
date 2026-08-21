@@ -78,7 +78,7 @@ function OverviewRow({ position, expanded, onToggle }) {
           </div>
         </td>
         <td>
-          <span className={`side-badge side-${position.side.toLowerCase()}`}>{position.side}</span>
+          <span className={`side-badge side-${position.side.toLowerCase().replace(/\s+/g, "-")}`} title={position.side}>{position.side}</span>
         </td>
         <td className="num-cell">{formatPrice(position.averagePrice)}</td>
         <td className="num-cell">{formatPrice(position.currentPrice)}</td>
@@ -127,7 +127,7 @@ function OverviewCardMobile({ position, expanded, onToggle }) {
             {`Closes ${formatDate(position.closeDate)}`}
           </span>
         </div>
-        <span className={`side-badge side-${position.side.toLowerCase()}`}>{position.side}</span>
+        <span className={`side-badge side-${position.side.toLowerCase().replace(/\s+/g, "-")}`} title={position.side}>{position.side}</span>
         <span className={`expand-chevron ${expanded ? "is-open" : ""}`} aria-hidden="true">
           <ChevronDown size={14} />
         </span>
@@ -212,7 +212,7 @@ export default function PositionsSection({ positions, loading, limit }) {
               <thead>
                 <tr>
                   <th>Market</th>
-                  <th>Side</th>
+                  <th>Outcome</th>
                   <th>Entry</th>
                   <th>Current</th>
                   <th>Shares</th>
