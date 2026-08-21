@@ -4,8 +4,8 @@ import PerformanceChart from "./PerformanceChart";
 import Tooltip from "./Tooltip";
 import { ChartSkeleton } from "./Skeleton";
 import { usePerformanceRange } from "../hooks/usePerformanceRange";
-import { getPerformanceSummary } from "../services/profileService";
-import { formatCompactCurrency, formatSignedCurrency } from "../utils/formatters";
+import { getPerformanceRange } from "../services/profileService";
+import { formatCompactCurrency, formatPercentage, formatSignedCurrency } from "../utils/formatters";
 import { getToneClass } from "../utils/states";
 
 const RANGES = ["1D", "1W", "1M", "3M", "ALL"];
@@ -24,42 +24,60 @@ const METRICS = [
   { key: "volume", label: "Volume" },
 ];
 
-function useRangeSummary(identifier, metric, enabled) {
+const SERIES_DEFS = [
+  { key: "total", label: "Total", color: "#E5A125" },
+  { key: "trade", label: "Trade", color: "#FF7A00" },
+  { key: "lp", label: "LP", color: "#3888FF" },
+  { key: "maker", label: "Maker", color: "#00D2FF" },
+  { key: "fees", label: "Fees", color: "#8899A6" },
+  { key: "taker", label: "Taker", color: "#50B4FF" },
+];
+
+function useRangeSummary(identifier, metric) {
   const [summary, setSummary] = useState({ loading: false, data: {} });
 
   useEffect(() => {
-    if (!identifier || !enabled) {
+    if (!identifier) {
       setSummary({ loading: false, data: {} });
       return undefined;
     }
     let cancelled = false;
     setSummary((prev) => ({ ...prev, loading: true }));
 
-    getPerformanceSummary(identifier, { metric })
-      .then((data) => {
-        if (cancelled) return;
-        setSummary({ loading: false, data: data || {} });
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setSummary({ loading: false, data: {} });
-      });
+    Promise.all(
+      SUMMARY_RANGES.map(({ range }) =>
+        getPerformanceRange(identifier, { range, metric }).then((data) => [range, data]).catch(() => [range, null]),
+      ),
+    ).then((entries) => {
+      if (cancelled) return;
+      const data = Object.fromEntries(entries);
+      setSummary({ loading: false, data });
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [identifier, metric, enabled]);
+  }, [identifier, metric]);
 
   return summary;
 }
 
-export default function PerformanceCard({ identifier, onHeadlineChange, onAllTimeSeriesChange }) {
+export default function PerformanceCard({ identifier, stats }) {
   const [range, setRange] = useState("ALL");
   const [metric, setMetric] = useState("performance");
   const [resetKey, setResetKey] = useState(0);
 
+  const [activeSeries, setActiveSeries] = useState({
+    total: true,
+    trade: true,
+    lp: true,
+    maker: true,
+    fees: false,
+    taker: false,
+  });
+
   const { status, data } = usePerformanceRange(identifier, range, metric);
-  const { loading: summaryLoading, data: summary } = useRangeSummary(identifier, metric, status === "ready");
+  const { loading: summaryLoading, data: summary } = useRangeSummary(identifier, metric);
 
   const hasIdentifier = Boolean(identifier);
   const loading = status === "loading" || !hasIdentifier;
@@ -67,21 +85,6 @@ export default function PerformanceCard({ identifier, onHeadlineChange, onAllTim
   const hasChart = Boolean(perf && perf.points && perf.points.length > 0);
   const isVolume = metric === "volume";
   const headlineTone = isVolume || !perf ? "" : getToneClass(perf.change);
-
-  useEffect(() => {
-    if (!onHeadlineChange) return;
-    if (metric !== "performance" || range !== "ALL") return;
-    if (perf?.change != null && Number.isFinite(perf.change)) {
-      onHeadlineChange(perf.change);
-    }
-  }, [onHeadlineChange, metric, range, perf?.change]);
-
-  useEffect(() => {
-    if (!onAllTimeSeriesChange || metric !== "performance" || range !== "ALL") return;
-    if (Array.isArray(perf?.points) && perf.points.length > 0) {
-      onAllTimeSeriesChange(perf.points);
-    }
-  }, [onAllTimeSeriesChange, metric, range, perf?.points]);
 
   function handleMetric(next) {
     if (next === metric) return;
@@ -94,6 +97,10 @@ export default function PerformanceCard({ identifier, onHeadlineChange, onAllTim
 
   function handleResetView() {
     setResetKey((k) => k + 1);
+  }
+
+  function toggleSeries(key) {
+    setActiveSeries((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
   return (
@@ -115,6 +122,28 @@ export default function PerformanceCard({ identifier, onHeadlineChange, onAllTim
                 : "N/A"}
             </span>
           </div>
+          {stats && (
+            <div className="performance-secondary-strip">
+              {stats.portfolioValue != null && (
+                <div className="sec-stat-col">
+                  <span className="sec-stat-label">Portfolio</span>
+                  <span className="sec-stat-val">{formatCompactCurrency(stats.portfolioValue)}</span>
+                </div>
+              )}
+              {stats.volume != null && (
+                <div className="sec-stat-col">
+                  <span className="sec-stat-label">Volume</span>
+                  <span className="sec-stat-val">{formatCompactCurrency(stats.volume)}</span>
+                </div>
+              )}
+              {stats.winRate != null && (
+                <div className="sec-stat-col">
+                  <span className="sec-stat-label">Win Rate</span>
+                  <span className="sec-stat-val">{formatPercentage(stats.winRate)}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="performance-controls-row">
@@ -169,6 +198,7 @@ export default function PerformanceCard({ identifier, onHeadlineChange, onAllTim
               data={perf.points}
               metric={metric}
               range={range}
+              activeSeries={activeSeries}
               startValue={perf.startValue ?? 0}
             />
             {loading && (
@@ -182,9 +212,28 @@ export default function PerformanceCard({ identifier, onHeadlineChange, onAllTim
           <ChartSkeleton />
         ) : (
           <div className="chart-empty">
-            {isVolume ? "No trading activity in this period" : "No PnL data in this period"}
+            {isVolume ? "No trading activity in this period" : "No resolved positions in this period"}
           </div>
         )}
+      </div>
+
+      {/* Series Breakdown Legend Chips Strip */}
+      <div className="series-legend-strip" role="group" aria-label="Chart series breakdown toggles">
+        {SERIES_DEFS.map(({ key, label, color }) => {
+          const active = activeSeries[key];
+          return (
+            <button
+              key={key}
+              type="button"
+              className={`legend-pill ${active ? "is-active" : ""}`}
+              onClick={() => toggleSeries(key)}
+              aria-pressed={active}
+            >
+              <span className="legend-dot" style={{ backgroundColor: color }} />
+              <span>{label}</span>
+            </button>
+          );
+        })}
       </div>
 
       <div className={`timeframe-shared-strip ${summaryLoading ? "is-loading" : ""}`} role="group" aria-label="Timeframe result cells">

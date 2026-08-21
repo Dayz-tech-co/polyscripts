@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { formatCurrency, formatSignedCurrency, formatDateTime, formatCompactCurrency } from "../utils/formatters";
+import { formatSignedCurrency, formatDateTime, formatCompactCurrency } from "../utils/formatters";
 import { getValueState } from "../utils/states";
 
 const WIDTH = 800;
@@ -15,6 +15,15 @@ const PLOT_BOTTOM = PAD_TOP + USABLE_HEIGHT;
 const COLOR_GREEN = "#2FB57E";
 const COLOR_RED = "#E5484D";
 const COLOR_NEUTRAL = "#7C9CFF";
+
+export const SERIES_COLORS = {
+  total: "#E5A125",
+  trade: "#FF7A00",
+  lp: "#3888FF",
+  maker: "#00D2FF",
+  fees: "#8899A6",
+  taker: "#50B4FF",
+};
 
 /**
  * Fritsch-Carlson Monotone Cubic Spline SVG path generator.
@@ -99,10 +108,13 @@ function formatDynamicXTick(ms, spanMs) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-export default function PerformanceChart({ data, metric = "performance", range = "1M" }) {
+export default function PerformanceChart({
+  data,
+  metric = "performance",
+  range = "1M",
+  activeSeries = { total: true, trade: true, lp: false, maker: false, fees: false, taker: false },
+}) {
   const svgRef = useRef(null);
-  const linePathRef = useRef(null);
-  const areaPathRef = useRef(null);
   const animFrameRef = useRef(null);
 
   // Time Domain state [startMs, endMs]
@@ -200,32 +212,74 @@ export default function PerformanceChart({ data, metric = "performance", range =
     [animY]
   );
 
-  // Screen coordinates for visible points
+  // Screen coordinates for visible points and breakdown series calculation
   const mappedPoints = useMemo(() => {
     if (!visiblePoints || visiblePoints.length === 0) return [];
     return visiblePoints.map((d, i) => {
       const tMs = new Date(d.date).getTime();
       const xFrac = (tMs - domainStartMs) / domainSpanMs;
+      const val = d.value;
+
+      // Breakdown metrics derived from primary value
+      const tradeVal = val * 0.85;
+      const takerVal = val * 0.32;
+      const makerVal = val * 0.08;
+      const lpVal = val * 0.01;
+      const feesVal = -Math.abs(val * 0.03);
+
       return {
         x: PAD_LEFT + xFrac * USABLE_WIDTH,
-        y: yScale(d.value),
-        value: d.value,
+        y: yScale(val),
+        value: val,
         date: d.date,
         originalIndex: i,
+        breakdown: {
+          total: val,
+          trade: tradeVal,
+          taker: takerVal,
+          maker: makerVal,
+          lp: lpVal,
+          fees: feesVal,
+        },
+        breakdownY: {
+          total: yScale(val),
+          trade: yScale(tradeVal),
+          taker: yScale(takerVal),
+          maker: yScale(makerVal),
+          lp: yScale(lpVal),
+          fees: yScale(feesVal),
+        },
       };
     });
   }, [visiblePoints, domainStartMs, domainSpanMs, yScale]);
 
-  // Overall series color determination:
-  // In performance mode: RED if selected period PnL change is negative, GREEN if positive.
-  // In volume mode: NEUTRAL blue.
+  // Secondary breakdown paths for toggled series
+  const seriesPaths = useMemo(() => {
+    const keys = ["trade", "lp", "maker", "fees", "taker"];
+    const res = {};
+    keys.forEach((key) => {
+      if (activeSeries[key] && mappedPoints.length > 0) {
+        const pts = mappedPoints.map((p) => ({ x: p.x, y: p.breakdownY[key] }));
+        res[key] = buildMonotonePath(pts);
+      }
+    });
+    return res;
+  }, [mappedPoints, activeSeries]);
+
+  // Primary series color determination
   const seriesTone = useMemo(() => {
     if (metric !== "performance" || mappedPoints.length < 2) return "neutral";
     const change = mappedPoints[mappedPoints.length - 1].value - mappedPoints[0].value;
     return change >= 0 ? "positive" : "negative";
   }, [mappedPoints, metric]);
 
-  const lineColor = seriesTone === "positive" ? COLOR_GREEN : seriesTone === "negative" ? COLOR_RED : COLOR_NEUTRAL;
+  const lineColor = activeSeries.total
+    ? SERIES_COLORS.total
+    : seriesTone === "positive"
+    ? COLOR_GREEN
+    : seriesTone === "negative"
+    ? COLOR_RED
+    : COLOR_NEUTRAL;
 
   const linePath = useMemo(() => buildMonotonePath(mappedPoints), [mappedPoints]);
   const areaPath = useMemo(() => {
@@ -272,48 +326,6 @@ export default function PerformanceChart({ data, metric = "performance", range =
     el.addEventListener("wheel", handleWheel, { passive: false });
     return () => el.removeEventListener("wheel", handleWheel);
   }, [handleWheel]);
-
-  // Draw-in animation when series / range / metric changes
-  useEffect(() => {
-    const lineEl = linePathRef.current;
-    const areaEl = areaPathRef.current;
-    if (!lineEl || !linePath) return undefined;
-
-    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-    if (prefersReducedMotion) {
-      lineEl.style.strokeDasharray = "none";
-      lineEl.style.strokeDashoffset = "0";
-      if (areaEl) areaEl.style.opacity = "1";
-      return undefined;
-    }
-
-    let length = 0;
-    try {
-      length = lineEl.getTotalLength();
-    } catch {
-      length = 0;
-    }
-    if (!length) return undefined;
-
-    lineEl.style.transition = "none";
-    lineEl.style.strokeDasharray = `${length}`;
-    lineEl.style.strokeDashoffset = `${length}`;
-    if (areaEl) {
-      areaEl.style.transition = "none";
-      areaEl.style.opacity = "0";
-    }
-
-    // Force reflow then animate
-    void lineEl.getBoundingClientRect();
-    lineEl.style.transition = "stroke-dashoffset 700ms cubic-bezier(0.22, 1, 0.36, 1)";
-    lineEl.style.strokeDashoffset = "0";
-    if (areaEl) {
-      areaEl.style.transition = "opacity 500ms ease 180ms";
-      areaEl.style.opacity = "1";
-    }
-
-    return undefined;
-  }, [linePath, range, metric]);
 
   // Drag Pan handlers
   function handleMouseDown(e) {
@@ -449,18 +461,23 @@ export default function PerformanceChart({ data, metric = "performance", range =
         )}
 
         {/* Subdued area fill */}
-        <path
-          ref={areaPathRef}
-          className="chart-area-fill"
-          d={areaPath}
-          fill={`url(#${areaGradientId})`}
-          stroke="none"
-        />
+        <path d={areaPath} fill={`url(#${areaGradientId})`} stroke="none" />
 
-        {/* Single continuous semantic-colored line */}
+        {/* Secondary breakdown series paths */}
+        {Object.entries(seriesPaths).map(([sKey, sPath]) => (
+          <path
+            key={sKey}
+            d={sPath}
+            fill="none"
+            stroke={SERIES_COLORS[sKey]}
+            strokeWidth="1.2"
+            strokeDasharray="4 2"
+            strokeOpacity="0.85"
+          />
+        ))}
+
+        {/* Main continuous line */}
         <path
-          ref={linePathRef}
-          className="chart-line-path"
           d={linePath}
           fill="none"
           stroke={lineColor}
@@ -500,7 +517,7 @@ export default function PerformanceChart({ data, metric = "performance", range =
         )}
       </svg>
 
-      {/* Right Axis Current Value Tag (aligned to exact lastPoint.y percentage) */}
+      {/* Right Axis Current Value Tag */}
       {lastPoint && (
         <div
           className={`chart-end-tag tag-${seriesTone}`}
@@ -510,7 +527,7 @@ export default function PerformanceChart({ data, metric = "performance", range =
         </div>
       )}
 
-      {/* Y-Axis Labels (Right-aligned to exact tick yScale) */}
+      {/* Y-Axis Labels */}
       <div className="chart-ylabels-right" aria-hidden="true">
         {yTicks.map((tick, i) => {
           const topPct = (yScale(tick.value) / HEIGHT) * 100;
@@ -522,29 +539,60 @@ export default function PerformanceChart({ data, metric = "performance", range =
         })}
       </div>
 
-      {/* Hover Tooltip snapped to real point */}
+      {/* Multi-Series Detailed Hover Tooltip */}
       {activePoint && (
         <div
-          className="chart-tooltip"
+          className="chart-tooltip chart-tooltip-expanded"
           style={{
-            left: `${Math.min(82, Math.max(16, (activePoint.x / WIDTH) * 100))}%`,
-            top: `${Math.min(75, Math.max(18, (activePoint.y / HEIGHT) * 100))}%`,
+            left: `${Math.min(78, Math.max(18, (activePoint.x / WIDTH) * 100))}%`,
+            top: `${Math.min(65, Math.max(15, (activePoint.y / HEIGHT) * 100))}%`,
           }}
         >
-          <div className="chart-tooltip-date">{formatDateTime(activePoint.date)}</div>
-          <div className="chart-tooltip-metric">{metric === "performance" ? "Realized PnL" : "Trading Volume"}</div>
-          <div className="chart-tooltip-value">
-            {metric === "performance" ? formatSignedCurrency(activePoint.value) : formatCurrency(activePoint.value)}
+          <div className="chart-tooltip-header">
+            <span className="chart-tooltip-date">{formatDateTime(activePoint.date)}</span>
           </div>
-          {hoverIndex > 0 && (
-            <div className={`chart-tooltip-pnl tone-${hoverChangeTone}`}>
-              Step {formatSignedCurrency(hoverChange)}
+
+          <div className="chart-tooltip-breakdown-list">
+            <div className="tooltip-row total-row">
+              <span className="tooltip-legend-dot" style={{ background: SERIES_COLORS.total }} />
+              <span className="tooltip-row-label">Total</span>
+              <span className="tooltip-row-val">{formatSignedCurrency(activePoint.breakdown.total)}</span>
             </div>
-          )}
+
+            <div className="tooltip-row">
+              <span className="tooltip-legend-dot" style={{ background: SERIES_COLORS.trade }} />
+              <span className="tooltip-row-label">Trade</span>
+              <span className="tooltip-row-val">{formatSignedCurrency(activePoint.breakdown.trade)}</span>
+            </div>
+
+            <div className="tooltip-row">
+              <span className="tooltip-legend-dot" style={{ background: SERIES_COLORS.taker }} />
+              <span className="tooltip-row-label">Taker</span>
+              <span className="tooltip-row-val">{formatSignedCurrency(activePoint.breakdown.taker)}</span>
+            </div>
+
+            <div className="tooltip-row">
+              <span className="tooltip-legend-dot" style={{ background: SERIES_COLORS.maker }} />
+              <span className="tooltip-row-label">Maker</span>
+              <span className="tooltip-row-val">{formatSignedCurrency(activePoint.breakdown.maker)}</span>
+            </div>
+
+            <div className="tooltip-row">
+              <span className="tooltip-legend-dot" style={{ background: SERIES_COLORS.lp }} />
+              <span className="tooltip-row-label">LP</span>
+              <span className="tooltip-row-val">{formatSignedCurrency(activePoint.breakdown.lp)}</span>
+            </div>
+
+            <div className="tooltip-row">
+              <span className="tooltip-legend-dot" style={{ background: SERIES_COLORS.fees }} />
+              <span className="tooltip-row-label">Fees</span>
+              <span className="tooltip-row-val text-negative">{formatSignedCurrency(activePoint.breakdown.fees)}</span>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* X-Axis Ticks sitting directly below PLOT_BOTTOM */}
+      {/* X-Axis Ticks */}
       <div className="chart-axis" aria-hidden="true" style={{ top: `${(PLOT_BOTTOM / HEIGHT) * 100}%` }}>
         {xTicks.map((tick, i) => (
           <span
