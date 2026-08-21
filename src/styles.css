@@ -724,7 +724,7 @@ h3 {
   position: relative;
   border-bottom: 1px solid var(--border-default);
   background: var(--bg-secondary);
-  overflow: hidden;
+  overflow: visible;
   padding: var(--space-8) 0;
 }
 
@@ -1632,6 +1632,16 @@ h3 {
   background: var(--negative-bg);
 }
 
+.side-badge.side-up {
+  color: var(--positive);
+  background: var(--positive-bg);
+}
+
+.side-badge.side-down {
+  color: var(--negative);
+  background: var(--negative-bg);
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -1993,6 +2003,7 @@ h3 {
 .tooltip-wrap {
   position: relative;
   display: inline-flex;
+  vertical-align: middle;
 }
 
 .tooltip {
@@ -2012,12 +2023,46 @@ h3 {
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
-  z-index: 30;
+  z-index: 50;
+}
+
+.tooltip.tooltip-bottom {
+  bottom: auto;
+  top: calc(100% + var(--space-2));
+  transform: translateX(-50%) translateY(-2px);
 }
 
 .tooltip.is-visible {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+
+.tooltip.tooltip-bottom.is-visible {
+  transform: translateX(-50%) translateY(0);
+}
+
+.profile-badge-hit {
+  display: inline-flex;
+  align-items: center;
+  outline: none;
+}
+
+.profile-badge-hit:focus-visible {
+  outline: 1px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.polymarket-link-btn {
+  padding: 4px;
+}
+
+.polymarket-link-btn svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+.profile-persist-stack {
+  margin-bottom: var(--space-6);
 }
 
 /* ---------------------------------------------------------------------- */

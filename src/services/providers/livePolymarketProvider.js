@@ -184,25 +184,83 @@ async function getCachedPositions(address, { signal } = {}) {
   return events;
 }
 
-async function fetchActivityHistory(address, { maxEvents = MAX_ACTIVITY, signal } = {}) {
+async function fetchActivityPage(address, { offset, type, signal } = {}) {
+  const params = new URLSearchParams({
+    user: address,
+    limit: String(ACTIVITY_PAGE_SIZE),
+    offset: String(offset),
+    sortBy: "TIMESTAMP",
+    sortDirection: "DESC",
+    excludeDepositsWithdrawals: "false",
+  });
+  if (type) params.set("type", type);
+  const data = await getJson(`${DATA_BASE}/activity?${params}`, { signal });
+  return Array.isArray(data) ? data : [];
+}
+
+async function fetchActivityByType(address, type, { maxPages = 5, signal } = {}) {
   const out = [];
   let offset = 0;
-  while (out.length < maxEvents) {
-    const params = new URLSearchParams({
-      user: address,
-      limit: String(ACTIVITY_PAGE_SIZE),
-      offset: String(offset),
-      sortBy: "TIMESTAMP",
-      sortDirection: "DESC",
-      excludeDepositsWithdrawals: "false",
-    });
-    const data = await getJson(`${DATA_BASE}/activity?${params}`, { signal });
-    if (!Array.isArray(data) || data.length === 0) break;
-    out.push(...data);
-    if (data.length < ACTIVITY_PAGE_SIZE) break;
+  for (let page = 0; page < maxPages; page += 1) {
+    const batch = await fetchActivityPage(address, { offset, type, signal });
+    if (batch.length === 0) break;
+    out.push(...batch);
+    if (batch.length < ACTIVITY_PAGE_SIZE) break;
     offset += ACTIVITY_PAGE_SIZE;
   }
-  return out.slice(0, maxEvents);
+  return out;
+}
+
+function activityDedupeKey(event) {
+  return [
+    event.transactionHash || "",
+    event.timestamp ?? "",
+    event.type || "",
+    event.conditionId || event.asset || "",
+    event.usdcSize ?? "",
+    event.side || "",
+  ].join(":");
+}
+
+/** Sparse types often miss the mixed feed's first pages — fetch + merge (Betmoar). */
+const SPARSE_ACTIVITY_TYPES = [
+  { type: "MAKER_REBATE", maxPages: 5 },
+  { type: "TAKER_REBATE", maxPages: 5 },
+  { type: "REFERRAL_REWARD", maxPages: 5 },
+  { type: "REWARD", maxPages: 5 },
+  { type: "YIELD", maxPages: 5 },
+  { type: "DEPOSIT", maxPages: 20 },
+  { type: "WITHDRAWAL", maxPages: 20 },
+];
+
+async function fetchActivityHistory(address, { maxEvents = MAX_ACTIVITY, signal } = {}) {
+  const mixed = [];
+  let offset = 0;
+  while (mixed.length < maxEvents) {
+    const batch = await fetchActivityPage(address, { offset, signal });
+    if (batch.length === 0) break;
+    mixed.push(...batch);
+    if (batch.length < ACTIVITY_PAGE_SIZE) break;
+    offset += ACTIVITY_PAGE_SIZE;
+  }
+
+  const sparseBatches = await Promise.all(
+    SPARSE_ACTIVITY_TYPES.map(({ type, maxPages }) =>
+      fetchActivityByType(address, type, { maxPages, signal }).catch((err) => {
+        if (err?.name === "AbortError") throw err;
+        return [];
+      }),
+    ),
+  );
+
+  const byKey = new Map();
+  for (const event of [...mixed, ...sparseBatches.flat()]) {
+    byKey.set(activityDedupeKey(event), event);
+  }
+
+  return [...byKey.values()]
+    .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+    .slice(0, maxEvents);
 }
 
 async function getCachedActivity(address, { signal } = {}) {

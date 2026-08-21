@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Award, BadgeCheck, Check, Copy, ExternalLink, Gem, Shield, Share2, Zap } from "lucide-react";
+import { Award, BadgeCheck, Check, Copy, Gem, Shield, Share2, Zap } from "lucide-react";
 import Avatar from "./Avatar";
 import Tooltip from "./Tooltip";
+import PolymarketIcon from "./PolymarketIcon";
 import { ProfileHeaderSkeleton } from "./Skeleton";
 import { shortenAddress } from "../utils/address";
 import { useToast } from "../context/ToastContext";
@@ -12,6 +13,8 @@ const TIER_ICONS = {
   Silver: Shield,
   Bronze: Award,
 };
+
+const NAMED_TIERS = new Set(["Diamond", "Gold", "Silver", "Bronze"]);
 
 export default function ProfileHeader({ account, loading }) {
   const { showToast } = useToast();
@@ -31,10 +34,9 @@ export default function ProfileHeader({ account, loading }) {
   const primary = hasUsername ? account.username : account.displayName || shortenAddress(account.address);
   const secondary = hasUsername || account.displayName ? shortenAddress(account.address) : "Public account";
   const profileUrl = `https://polymarket.com/profile/${hasUsername ? account.username : account.address}`;
-  const tierName = account.tierName;
-  const TierIcon = tierName && TIER_ICONS[tierName] ? TIER_ICONS[tierName] : Award;
+  const tierName = account.tierName && NAMED_TIERS.has(account.tierName) ? account.tierName : null;
+  const TierIcon = tierName ? TIER_ICONS[tierName] : Award;
 
-  // Clean bio of legacy "tier trader" text if present
   const cleanBio = account.bio ? account.bio.replace(/([A-Z][a-z]+)\s+tier\s+trader\.?/i, "").trim() : "";
 
   async function handleCopy() {
@@ -55,7 +57,7 @@ export default function ProfileHeader({ account, loading }) {
         await navigator.share({ title: `${primary} | PolyScripts`, url });
         return;
       } catch {
-        // user cancelled or share failed
+        // cancelled
       }
     }
     try {
@@ -70,18 +72,23 @@ export default function ProfileHeader({ account, loading }) {
     <section className="profile-header" aria-label="Profile">
       <div className="container profile-header-inner">
         <div className="profile-identity">
-          <Avatar account={account} size={44} radius={10} />
+          <Avatar account={account} size={44} radius={0} />
           <div className="profile-identity-text">
             <div className="profile-name-row">
               <h1 className="profile-name">{primary}</h1>
               {account.verified && (
-                <Tooltip label="Verified profile">
-                  <BadgeCheck size={14} className="verified-badge" aria-label="Verified profile" />
+                <Tooltip label="Verified profile" position="bottom">
+                  <span className="profile-badge-hit" tabIndex={0} aria-label="Verified profile">
+                    <BadgeCheck size={14} className="verified-badge" aria-hidden="true" />
+                  </span>
                 </Tooltip>
               )}
               {tierName && (
-                <Tooltip label={`${tierName} tier trader`}>
-                  <span className={`tier-badge tier-${tierName.toLowerCase()}`}>
+                <Tooltip label={`${tierName} tier`} position="bottom">
+                  <span
+                    className={`tier-badge tier-${tierName.toLowerCase()} profile-badge-hit`}
+                    tabIndex={0}
+                  >
                     <TierIcon size={11} aria-hidden="true" />
                     <span>{tierName}</span>
                   </span>
@@ -91,34 +98,30 @@ export default function ProfileHeader({ account, loading }) {
 
             <div className="profile-address-row">
               <span className="address-pill">{secondary}</span>
-              <Tooltip label={copied ? "Copied" : "Copy address"}>
+              <Tooltip label={copied ? "Copied" : "Copy address"} position="bottom">
                 <button type="button" className="icon-btn icon-btn-sm" aria-label="Copy wallet address" onClick={handleCopy}>
                   {copied ? <Check size={13} aria-hidden="true" /> : <Copy size={13} aria-hidden="true" />}
                 </button>
               </Tooltip>
-              <Tooltip label="Share profile">
+              <Tooltip label="Share profile" position="bottom">
                 <button type="button" className="icon-btn icon-btn-sm" aria-label="Share profile" onClick={handleShare}>
                   <Share2 size={13} aria-hidden="true" />
                 </button>
               </Tooltip>
-              <Tooltip label="Open on Polymarket">
+              <Tooltip label="Open on Polymarket" position="bottom">
                 <a
-                  className="icon-btn icon-btn-sm"
+                  className="icon-btn icon-btn-sm polymarket-link-btn"
                   href={profileUrl}
                   target="_blank"
                   rel="noreferrer noopener"
                   aria-label="Open public Polymarket profile"
                 >
-                  <ExternalLink size={13} aria-hidden="true" />
+                  <PolymarketIcon size={14} />
                 </a>
               </Tooltip>
             </div>
 
-            {cleanBio && (
-              <p className="profile-description-secondary">
-                {cleanBio}
-              </p>
-            )}
+            {cleanBio && <p className="profile-description-secondary">{cleanBio}</p>}
           </div>
         </div>
       </div>

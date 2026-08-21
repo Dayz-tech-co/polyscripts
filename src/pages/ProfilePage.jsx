@@ -13,6 +13,7 @@ import HistoryTab from "../components/HistoryTab";
 import ErrorState from "../components/ErrorState";
 import AccountSearch from "../components/AccountSearch";
 import { useProfile } from "../hooks/useProfile";
+import { getPerformanceRange } from "../services/profileService";
 import { shortenAddress } from "../utils/address";
 import { validateProfileData, logDataIntegrity } from "../utils/dataIntegrity";
 
@@ -21,11 +22,31 @@ export default function ProfilePage() {
   const { status, data, retry } = useProfile(identifier);
   const [activeTab, setActiveTab] = useState("Overview");
   const [positionsQuery, setPositionsQuery] = useState("");
+  const [chartPnl, setChartPnl] = useState(null);
 
   useEffect(() => {
     setActiveTab("Overview");
     setPositionsQuery("");
+    setChartPnl(null);
   }, [identifier]);
+
+  // Hero Total uses the same ALL performance change as the chart (display only).
+  useEffect(() => {
+    const address = data?.account?.address;
+    if (status !== "success" || !address) return undefined;
+    let cancelled = false;
+    getPerformanceRange(address, { range: "ALL", metric: "performance" })
+      .then((perf) => {
+        if (cancelled) return;
+        setChartPnl(perf?.change != null && Number.isFinite(perf.change) ? perf.change : null);
+      })
+      .catch(() => {
+        if (!cancelled) setChartPnl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [status, data?.account?.address]);
 
   useEffect(() => {
     if (import.meta.env.DEV && status === "success" && data) {
@@ -88,27 +109,30 @@ export default function ProfilePage() {
   const loading = status === "loading";
   const account = data?.account ?? null;
   const stats = data?.stats ?? null;
+  const chartKey = account?.address || identifier;
 
   return (
     <>
       <ProfileHeader account={account} loading={loading} />
 
       <main id="main-content" className="container main-content">
-        <ProfileStats stats={stats} loading={loading} />
+        <ProfileStats stats={stats} headlinePnl={chartPnl} loading={loading} />
+
+        {/* Chart + calendar stay visible; tabs only swap the tables below. */}
+        <div className="overview-stack profile-persist-stack">
+          <PerformanceCard key={chartKey} identifier={chartKey} />
+          <MonthlyPerformanceCalendar
+            resolvedPositions={data?.resolvedPositions}
+            activity={data?.activity}
+            loading={loading}
+          />
+        </div>
 
         <ProfileTabs active={activeTab} onChange={setActiveTab} />
 
         {activeTab === "Overview" && (
           <div className="tab-panel" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
             <div className="overview-stack">
-              <PerformanceCard key={account?.address || identifier} identifier={account?.address || identifier} />
-
-              <MonthlyPerformanceCalendar
-                resolvedPositions={data?.resolvedPositions}
-                activity={data?.activity}
-                loading={loading}
-              />
-
               <PositionsSection positions={data?.positions} loading={loading} limit={6} />
               <ActivitySection activity={data?.activity} loading={loading} limit={8} />
             </div>

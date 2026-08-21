@@ -88,33 +88,77 @@ const ACTIVITY_TYPE_LABELS = {
   MERGE: "Merged",
   SPLIT: "Split",
   REWARD: "Reward",
+  REFERRAL_REWARD: "Referral reward",
+  MAKER_REBATE: "Maker rebate",
+  TAKER_REBATE: "Taker rebate",
   CONVERSION: "Converted",
-  DEPOSIT: "Deposited",
-  WITHDRAWAL: "Withdrew",
+  DEPOSIT: "Deposit",
+  WITHDRAWAL: "Withdrawal",
+  YIELD: "Yield",
 };
 
 function activityTypeLabel(type, side) {
   if (type === "TRADE") return side === "SELL" ? "Sold" : "Bought";
-  return ACTIVITY_TYPE_LABELS[type] || (type ? type.charAt(0) + type.slice(1).toLowerCase() : "Activity");
+  if (ACTIVITY_TYPE_LABELS[type]) return ACTIVITY_TYPE_LABELS[type];
+  if (!type) return "Activity";
+  return type
+    .toLowerCase()
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+/** Market column label — never "Unknown market" for non-market events. */
+function activityMarketLabel(raw) {
+  if (raw.title && String(raw.title).trim()) return raw.title;
+  switch (raw.type) {
+    case "DEPOSIT":
+      return "Deposit";
+    case "WITHDRAWAL":
+      return "Withdrawal";
+    case "REFERRAL_REWARD":
+      return "Referral reward";
+    case "MAKER_REBATE":
+      return "Maker rebate";
+    case "TAKER_REBATE":
+      return "Taker rebate";
+    case "REWARD":
+      return "Reward";
+    case "YIELD":
+      return "Yield";
+    case "CONVERSION":
+      return "Conversion";
+    case "MERGE":
+      return "Merge";
+    case "SPLIT":
+      return "Split";
+    case "REDEEM":
+      return "Redeem";
+    default:
+      return "Account activity";
+  }
 }
 
 /** One entry from GET /activity */
 export function normalizeActivity(raw) {
+  const rawType = raw.type || null;
+  const isTrade = rawType === "TRADE";
   return {
     id: raw.transactionHash
       ? `${raw.transactionHash}-${raw.asset || raw.conditionId || "event"}-${raw.side || "x"}-${raw.timestamp ?? ""}`
       : `${raw.conditionId || "event"}-${raw.timestamp}-${raw.side || "x"}`,
-    type: activityTypeLabel(raw.type, raw.side),
-    rawType: raw.type,
-    market: raw.title || "Unknown market",
+    type: activityTypeLabel(rawType, raw.side),
+    rawType,
+    market: activityMarketLabel(raw),
     category: raw.category ?? null,
-    side: sideFromOutcome(raw.outcome),
+    side: isTrade || raw.outcome ? sideFromOutcome(raw.outcome) : "—",
     amount: raw.usdcSize ?? null,
-    price: raw.price ?? null,
+    price: isTrade ? (raw.price ?? null) : null,
     shares: raw.size ?? null,
     timestamp: raw.timestamp ? raw.timestamp * 1000 : null,
     slug: raw.slug ?? null,
     icon: raw.icon ?? null,
+    tag: null,
   };
 }
 

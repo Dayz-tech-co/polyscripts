@@ -6,13 +6,27 @@ import ActivityCardMobile from "./ActivityCardMobile";
 import EmptyState from "./EmptyState";
 import { TableSkeleton } from "./Skeleton";
 
-const TYPE_FILTERS = ["All", "Buy", "Sell", "Other"];
+const TYPE_FILTERS = ["All", "Buy", "Sell", "Deposit", "Withdrawal", "Other"];
+
+const TRADE_TYPES = new Set(["Bought", "Sold"]);
+const DEPOSIT_TYPES = new Set(["Deposit", "Deposited"]);
+const WITHDRAWAL_TYPES = new Set(["Withdrawal", "Withdrew"]);
 
 function matchesFilter(activity, filter) {
   if (filter === "All") return true;
   if (filter === "Buy") return activity.type === "Bought";
   if (filter === "Sell") return activity.type === "Sold";
-  if (filter === "Other") return activity.type !== "Bought" && activity.type !== "Sold";
+  if (filter === "Deposit") return DEPOSIT_TYPES.has(activity.type) || activity.rawType === "DEPOSIT";
+  if (filter === "Withdrawal") return WITHDRAWAL_TYPES.has(activity.type) || activity.rawType === "WITHDRAWAL";
+  if (filter === "Other") {
+    return (
+      !TRADE_TYPES.has(activity.type) &&
+      !DEPOSIT_TYPES.has(activity.type) &&
+      !WITHDRAWAL_TYPES.has(activity.type) &&
+      activity.rawType !== "DEPOSIT" &&
+      activity.rawType !== "WITHDRAWAL"
+    );
+  }
   return true;
 }
 

@@ -7,13 +7,15 @@ const ICON = { size: 15, strokeWidth: 1.75 };
 
 /**
  * Hierarchical account KPI — flat Polymarket-mature layout.
- * Hero P/L (left accent), featured Portfolio + Volume, secondary chips.
+ * Hero Total prefers the ALL Performance chart change when provided.
  */
-export default function ProfileStats({ stats, loading }) {
+export default function ProfileStats({ stats, headlinePnl = null, loading }) {
   if (loading || !stats) return <StatsSkeleton />;
 
-  const pnlTone = getValueState(stats.pnl);
-  const pnlClass = getToneClass(stats.pnl);
+  const displayPnl = headlinePnl != null && Number.isFinite(headlinePnl) ? headlinePnl : stats.pnl;
+  const pnlTone = getValueState(displayPnl);
+  const pnlClass = getToneClass(displayPnl);
+  const usingChart = headlinePnl != null && Number.isFinite(headlinePnl);
 
   return (
     <section className="account-kpi" role="region" aria-label="Account overview">
@@ -28,9 +30,11 @@ export default function ProfileStats({ stats, loading }) {
           )}
         </div>
         <p className={`account-kpi-hero-value ${pnlClass}`}>
-          {stats.pnl != null ? formatSignedCurrency(stats.pnl) : "N/A"}
+          {displayPnl != null ? formatSignedCurrency(displayPnl) : "N/A"}
         </p>
-        <p className="account-kpi-hero-hint">Realized + unrealized · this account</p>
+        <p className="account-kpi-hero-hint">
+          {usingChart ? "Available history · matches Performance chart" : "Realized + unrealized · this account"}
+        </p>
       </div>
 
       <div className="account-kpi-featured">
