@@ -88,12 +88,12 @@ table {
   --negative-bg: rgba(234, 57, 67, 0.12);
   --neutral: #8a93a6;
 
-  /* Radius — tighter, mature */
-  --radius-lg: 10px;
-  --radius-md: 8px;
-  --radius-sm: 8px;
-  --radius-xs: 6px;
-  --radius-pill: 999px;
+  /* Radius — sharp edges */
+  --radius-lg: 0;
+  --radius-md: 0;
+  --radius-sm: 0;
+  --radius-xs: 0;
+  --radius-pill: 0;
 
   /* Spacing */
   --space-1: 4px;
@@ -2170,7 +2170,9 @@ h3 {
 
 .home-hero {
   max-width: 560px;
-  padding: var(--space-9) 0 var(--space-8);
+  margin: 0 auto;
+  padding: var(--space-10) 0 var(--space-9);
+  text-align: center;
 }
 
 .home-brand {
@@ -2183,7 +2185,7 @@ h3 {
 }
 
 .home-lede {
-  margin-top: var(--space-4);
+  margin: var(--space-4) auto 0;
   font-size: 15px;
   line-height: 1.45;
   color: var(--text-secondary);
@@ -2191,8 +2193,9 @@ h3 {
 }
 
 .home-search {
-  margin-top: var(--space-7);
+  margin: var(--space-7) auto 0;
   max-width: 480px;
+  text-align: left;
 }
 
 .home-examples {
@@ -3970,21 +3973,18 @@ h3 {
   justify-content: center;
   gap: 8px;
   padding: 20px 22px;
-  border-radius: var(--radius-lg);
+  border-radius: 0;
   border: 1px solid var(--border-default);
-  border-left: 3px solid var(--brand);
   background: var(--bg-card);
   position: relative;
   min-height: 156px;
 }
 
 .account-kpi-hero.tone-positive {
-  border-left-color: var(--positive);
   background: var(--bg-card);
 }
 
 .account-kpi-hero.tone-negative {
-  border-left-color: var(--negative);
   background: var(--bg-card);
 }
 
@@ -4176,47 +4176,11 @@ h3 {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Performance Card — Polymarket-inspired chart engine                    */
+/* Taller Professional Financial Chart Engine (restored form)             */
 /* ---------------------------------------------------------------------- */
 
 .performance-card {
-  --pm-blue: #2e5cff;
-  --pm-yes: #16c784;
-  --pm-no: #ea3943;
-  --pm-border: rgba(255, 255, 255, 0.08);
-  --pm-surface: rgba(255, 255, 255, 0.02);
-  padding: 20px 22px;
-  background: #0d1118;
-  border: 1px solid var(--pm-border);
-  box-shadow: none;
-  gap: 16px;
-}
-
-.performance-card .tone-positive {
-  color: var(--pm-yes);
-}
-
-.performance-card .tone-negative {
-  color: var(--pm-no);
-}
-
-.performance-card .card-label {
-  font-size: 14px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-}
-
-.performance-value {
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-
-.performance-value-suffix {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-muted);
+  padding: 24px;
 }
 
 .performance-controls-row {
@@ -4226,83 +4190,10 @@ h3 {
   flex-wrap: wrap;
 }
 
-.performance-card .metric-toggle,
-.performance-card .range-controls {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid var(--pm-border);
-  border-radius: 999px;
-  padding: 3px;
-}
-
-.performance-card .metric-btn,
-.performance-card .range-btn {
-  padding: 5px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  border-radius: 999px;
-  box-shadow: none;
-  transition: color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
-}
-
-.performance-card .metric-btn.is-active,
-.performance-card .range-btn.is-active {
-  background: var(--pm-blue);
-  color: #fff;
-  font-weight: 650;
-  box-shadow: none;
-}
-
-.performance-secondary-strip {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  margin-top: 8px;
-}
-
-.sec-stat-col {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.sec-stat-label {
-  font-size: 10px;
-  color: var(--text-muted);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.sec-stat-val {
-  font-size: 14px;
-  font-weight: 650;
-  color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-.reset-view-btn {
-  margin-left: 2px;
-  opacity: 0.7;
-  border: 1px solid var(--pm-border);
-  border-radius: 999px;
-  transition: opacity var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
-}
-.reset-view-btn:hover {
-  opacity: 1;
-  border-color: rgba(46, 92, 255, 0.45);
-}
-
 .chart-area-hero {
   height: clamp(330px, 40vh, 410px);
   position: relative;
   overflow: hidden;
-  border: 1px solid var(--pm-border);
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.2);
 }
 
 .chart-wrap-tall {
@@ -4319,17 +4210,13 @@ h3 {
   cursor: grabbing;
 }
 
-.performance-card .chart-grid-line {
-  stroke: rgba(255, 255, 255, 0.045);
-}
-
 .chart-zero-line {
-  stroke: rgba(255, 255, 255, 0.16);
+  stroke: rgba(255, 255, 255, 0.14);
   stroke-dasharray: 4 4;
 }
 
 .chart-grid-line-vert {
-  stroke: rgba(255, 255, 255, 0.025);
+  stroke: rgba(255, 255, 255, 0.03);
 }
 
 .chart-ylabels-right {
@@ -4343,11 +4230,9 @@ h3 {
 .chart-ylabels-right .chart-ylabel {
   position: absolute;
   transform: translateY(-50%);
-  font-size: 10px;
+  font-size: 10.5px;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
-  background: transparent;
-  padding: 0;
 }
 
 .chart-end-tag {
@@ -4355,42 +4240,59 @@ h3 {
   right: 8px;
   transform: translateY(-50%);
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 600;
   padding: 3px 8px;
-  border-radius: 999px;
-  background: rgba(13, 17, 24, 0.94);
-  border: 1px solid var(--pm-border);
+  border-radius: 0;
+  background: rgba(13, 18, 28, 0.92);
+  border: 1px solid var(--border-default);
   z-index: 5;
   font-variant-numeric: tabular-nums;
 }
 .chart-end-tag.tag-positive {
-  color: var(--pm-yes);
-  border-color: rgba(22, 199, 132, 0.45);
+  color: #2fb57e;
+  border-color: rgba(47, 181, 126, 0.4);
 }
 .chart-end-tag.tag-negative {
-  color: var(--pm-no);
-  border-color: rgba(234, 57, 67, 0.45);
+  color: #e5484d;
+  border-color: rgba(229, 72, 77, 0.4);
 }
 .chart-end-tag.tag-neutral {
-  color: var(--pm-blue);
-  border-color: rgba(46, 92, 255, 0.45);
+  color: #7c9cff;
+  border-color: rgba(124, 156, 255, 0.4);
 }
 
-.performance-card .chart-tooltip {
-  background: #121820;
-  border: 1px solid var(--pm-border);
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+.performance-secondary-strip {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-top: 6px;
 }
 
-.performance-card .chart-dot.tone-positive {
-  stroke: var(--pm-yes);
+.sec-stat-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
-.performance-card .chart-dot.tone-negative {
-  stroke: var(--pm-no);
+
+.sec-stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
 }
-.performance-card .chart-dot.tone-neutral {
-  stroke: var(--pm-blue);
+
+.sec-stat-val {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.reset-view-btn {
+  margin-left: 4px;
+  opacity: 0.75;
+  transition: opacity var(--t-fast) var(--ease);
+}
+.reset-view-btn:hover {
+  opacity: 1;
 }
 
 .chart-line-path {
@@ -4409,33 +4311,31 @@ h3 {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Timeframe Shared Strip — Polymarket                                    */
+/* Timeframe Shared Strip                                                 */
 /* ---------------------------------------------------------------------- */
 
 .timeframe-shared-strip {
   display: flex;
-  align-items: stretch;
-  background: var(--pm-surface);
-  border: 1px solid var(--pm-border);
-  border-radius: 10px;
-  padding: 6px;
-  margin-top: 4px;
-  min-height: 68px;
+  align-items: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: 0;
+  padding: 4px 6px;
+  margin-top: 18px;
+  min-height: 60px;
   height: auto;
 }
 
 .timeframe-cell-wrap {
   flex: 1;
   display: flex;
-  align-items: stretch;
+  align-items: center;
 }
 
 .timeframe-cell-divider {
   width: 1px;
-  align-self: center;
-  height: 28px;
-  background: var(--pm-border);
-  flex-shrink: 0;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .timeframe-cell-btn {
@@ -4443,32 +4343,25 @@ h3 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 6px;
-  padding: 10px 12px;
-  border-radius: 8px;
+  padding: 8px 12px;
+  border-radius: 0;
   transition: background var(--t-fast) var(--ease);
 }
-
 .timeframe-cell-btn.is-active {
-  background: rgba(46, 92, 255, 0.14);
-  box-shadow: inset 0 0 0 1px rgba(46, 92, 255, 0.35);
+  background: var(--bg-card-elevated);
 }
 
 .timeframe-cell-label {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  line-height: 1.2;
+  font-weight: 500;
 }
 
 .timeframe-cell-value {
   font-size: 13px;
-  font-weight: 650;
-  line-height: 1.25;
-  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -4501,4 +4394,11 @@ h3 {
     flex-wrap: wrap;
     gap: 12px;
   }
+}
+
+/* Sharp corners everywhere */
+*,
+*::before,
+*::after {
+  border-radius: 0 !important;
 }

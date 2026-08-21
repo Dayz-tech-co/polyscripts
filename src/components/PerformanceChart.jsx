@@ -12,9 +12,9 @@ const USABLE_WIDTH = WIDTH - PAD_LEFT - PAD_RIGHT;
 const USABLE_HEIGHT = HEIGHT - PAD_TOP - PAD_BOTTOM;
 const PLOT_BOTTOM = PAD_TOP + USABLE_HEIGHT;
 
-const COLOR_GREEN = "#16C784";
-const COLOR_RED = "#EA3943";
-const COLOR_NEUTRAL = "#2E5CFF";
+const COLOR_GREEN = "#2FB57E";
+const COLOR_RED = "#E5484D";
+const COLOR_NEUTRAL = "#7C9CFF";
 
 /**
  * Fritsch-Carlson Monotone Cubic Spline SVG path generator.
@@ -421,8 +421,7 @@ export default function PerformanceChart({ data, metric = "performance", range =
       >
         <defs>
           <linearGradient id={areaGradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={lineColor} stopOpacity="0.22" />
-            <stop offset="55%" stopColor={lineColor} stopOpacity="0.06" />
+            <stop offset="0%" stopColor={lineColor} stopOpacity="0.14" />
             <stop offset="100%" stopColor={lineColor} stopOpacity="0.0" />
           </linearGradient>
         </defs>
@@ -465,7 +464,7 @@ export default function PerformanceChart({ data, metric = "performance", range =
           d={linePath}
           fill="none"
           stroke={lineColor}
-          strokeWidth="2"
+          strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
         />

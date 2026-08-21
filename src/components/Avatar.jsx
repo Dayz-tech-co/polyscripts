@@ -4,7 +4,7 @@ import { getAvatarColor, getInitials, isValidImageUrl } from "../utils/avatar";
 /**
  * Account avatar or flat solid-color initials fallback (no gradients).
  */
-export default function Avatar({ account, size = 40, radius = 8 }) {
+export default function Avatar({ account, size = 40, radius = 0 }) {
   const [failed, setFailed] = useState(false);
   const url = account?.avatar;
   const showImage = !failed && isValidImageUrl(url);

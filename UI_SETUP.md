@@ -10,7 +10,7 @@ Design rules for a flat, adult trading-analytics UI. Inspired by Polymarket’s 
 4. **Hierarchy by type & weight**, not glow, shadows, or rainbow fills.
 5. **Missing data = `N/A`** — never `--`, never invent `0`.
 6. **Icons** — Lucide, 14–16px, `strokeWidth={1.75}` (or default), muted gray; no emoji; no oversized icon wells.
-7. **Corners** — 8px default, 10px cards. Avoid pill overload; pills only for toggles/ranks.
+7. **Corners** — sharp (`border-radius: 0`). No pills, no rounded cards.
 8. **Shadows** — none on default cards; optional single soft shadow on floating popovers only.
 9. **Copy** — short, factual, product-first. Brand name is the home hero signal.
 

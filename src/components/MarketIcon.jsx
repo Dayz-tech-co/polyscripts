@@ -8,7 +8,7 @@ const CATEGORY_COLORS = {
   Tech: "#6E7AE8",
 };
 
-export default function MarketIcon({ category, tag, size = 28, radius = 6 }) {
+export default function MarketIcon({ category, tag, size = 28, radius = 0 }) {
   const color = CATEGORY_COLORS[category] || "#6b7380";
   return (
     <span
