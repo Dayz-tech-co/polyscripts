@@ -11,21 +11,37 @@ import { ProviderError } from "../errors";
 import { GAMMA_BASE, DATA_BASE, USER_PNL_BASE, LB_BASE } from "./polymarketConfig";
 import { fetchCashBalance } from "./cashBalance";
 
+const REQUEST_TIMEOUT_MS = 12_000;
+
 async function getJson(url, { signal } = {}) {
-  let res;
+  const controller = new AbortController();
+  let timedOut = false;
+  const handleAbort = () => controller.abort();
+
+  if (signal?.aborted) controller.abort();
+  else signal?.addEventListener("abort", handleAbort, { once: true });
+
+  const timeoutId = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
+
   try {
-    res = await fetch(url, { signal, headers: { Accept: "application/json" } });
+    const res = await fetch(url, { signal: controller.signal, headers: { Accept: "application/json" } });
+    if (!res.ok) throw new ProviderError(`Request failed with status ${res.status}`);
+    try {
+      return await res.json();
+    } catch {
+      throw new ProviderError("Received an invalid response");
+    }
   } catch (err) {
+    if (err instanceof ProviderError) throw err;
+    if (timedOut) throw new ProviderError("Request timed out");
     if (err?.name === "AbortError") throw err;
     throw new ProviderError("Network request failed");
-  }
-  if (!res.ok) {
-    throw new ProviderError(`Request failed with status ${res.status}`);
-  }
-  try {
-    return await res.json();
-  } catch {
-    throw new ProviderError("Received an invalid response");
+  } finally {
+    clearTimeout(timeoutId);
+    signal?.removeEventListener("abort", handleAbort);
   }
 }
 
@@ -155,7 +171,6 @@ const userPnlCache = new Map();
 const activityInflight = new Map();
 const closedInflight = new Map();
 const positionsInflight = new Map();
-const userPnlInflight = new Map();
 
 function round2(value) {
   return Math.round(value * 100) / 100;
@@ -359,24 +374,17 @@ async function fetchUserPnlSeries(address, { interval, fidelity, signal } = {}) 
   if (hit && Date.now() - hit.fetchedAt < FEED_CACHE_TTL) {
     return hit.points;
   }
-  if (userPnlInflight.has(cacheKey)) return userPnlInflight.get(cacheKey);
+  const url = `${USER_PNL_BASE}/user-pnl?user_address=${encodeURIComponent(user)}&interval=${encodeURIComponent(interval)}&fidelity=${encodeURIComponent(fidelity)}`;
+  const data = await getJson(url, { signal });
+  const points = Array.isArray(data)
+    ? data
+        .filter((row) => row && Number.isFinite(row.t) && Number.isFinite(row.p))
+        .map((row) => ({ t: row.t, p: row.p }))
+        .sort((a, b) => a.t - b.t)
+    : [];
 
-  const pending = (async () => {
-    const url = `${USER_PNL_BASE}/user-pnl?user_address=${encodeURIComponent(user)}&interval=${encodeURIComponent(interval)}&fidelity=${encodeURIComponent(fidelity)}`;
-    const data = await getJson(url, { signal });
-    const points = Array.isArray(data)
-      ? data
-          .filter((row) => row && Number.isFinite(row.t) && Number.isFinite(row.p))
-          .map((row) => ({ t: row.t, p: row.p }))
-          .sort((a, b) => a.t - b.t)
-      : [];
-
-    userPnlCache.set(cacheKey, { points, fetchedAt: Date.now() });
-    return points;
-  })().finally(() => userPnlInflight.delete(cacheKey));
-
-  userPnlInflight.set(cacheKey, pending);
-  return pending;
+  userPnlCache.set(cacheKey, { points, fetchedAt: Date.now() });
+  return points;
 }
 
 /**
