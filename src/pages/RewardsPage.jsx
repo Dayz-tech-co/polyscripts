@@ -7,7 +7,7 @@ import { formatCompactCurrency, formatCurrency, formatNumber } from "../utils/fo
 
 const METRICS = [
   { key: "dailyRewards", label: "Daily rewards", note: "Current emission rate", icon: Coins, tone: "orange", money: true },
-  { key: "activeMarkets", label: "Reward markets", note: "Active configurations", icon: Activity, tone: "cyan" },
+  { key: "activeMarkets", label: "Reward markets", note: "Current official API page", icon: Activity, tone: "cyan" },
   { key: "configuredRewards", label: "Configured rewards", note: "Across active markets", icon: Gift, tone: "green", money: true },
   { key: "sponsoredDaily", label: "Sponsored / day", note: "Included in daily total", icon: Droplets, tone: "blue", money: true },
 ];
@@ -43,7 +43,7 @@ export default function RewardsPage() {
         </section>
 
         <section className="section rewards-markets" aria-labelledby="reward-markets-title">
-          <div className="section-header"><div><h2 className="section-title" id="reward-markets-title">Top active reward markets</h2><p className="card-description">Ranked by current daily reward rate from the Polymarket CLOB.</p></div><div className="rewards-native"><span>Native / day</span><strong>{formatCompactCurrency(data.nativeDaily)}</strong></div></div>
+          <div className="section-header"><div><h2 className="section-title" id="reward-markets-title">Top active reward markets</h2><p className="card-description">Ranked by daily rate across the current official API page{data.hasMore ? " (500 markets)" : ""}.</p></div><div className="rewards-native"><span>Native / day</span><strong>{formatCompactCurrency(data.nativeDaily)}</strong></div></div>
           <div className="rewards-market-list">{data.topMarkets.map((market, index) => <article className="rewards-market-row" key={market.condition_id}><span className="rewards-market-rank">{index + 1}</span><div className="rewards-market-name"><strong>{market.question || market.market_slug || compactId(market.condition_id)}</strong><span>{compactId(market.condition_id)}</span></div><div><span>Daily</span><strong>{formatCurrency(market.total_daily_rate)}</strong></div><div><span>Min size</span><strong>{formatCurrency(market.rewards_min_size, { decimals: 0 })}</strong></div><div><span>Max spread</span><strong>{market.rewards_max_spread != null ? `${market.rewards_max_spread}¢` : "N/A"}</strong></div></article>)}</div>
         </section>
 

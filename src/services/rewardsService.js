@@ -14,22 +14,22 @@ async function fetchActiveRewardMarkets({ signal } = {}) {
     const response = await fetch("/api/rewards", { signal, headers: { Accept: "application/json" } });
     if (!response.ok) throw new Error(`Rewards proxy ${response.status}`);
     const payload = await response.json();
-    return Array.isArray(payload?.data) ? payload.data : [];
+    return payload;
   }
 
-  const markets = [];
-  let cursor = null;
-  for (let page = 0; page < 10; page += 1) {
-    const params = new URLSearchParams();
-    if (cursor) params.set("next_cursor", cursor);
-    const response = await fetch(`${CLOB_BASE}/rewards/markets/current?${params}`, { signal, headers: { Accept: "application/json" } });
-    if (!response.ok) throw new Error(`Rewards API ${response.status}`);
-    const payload = await response.json();
-    markets.push(...(Array.isArray(payload?.data) ? payload.data : []));
-    cursor = payload?.next_cursor;
-    if (!cursor || cursor === "LTE=") break;
-  }
-  return markets;
+  const response = await fetch(`${CLOB_BASE}/rewards/markets/current`, { signal, headers: { Accept: "application/json" } });
+  if (!response.ok) throw new Error(`Rewards API ${response.status}`);
+  const payload = await response.json();
+  const markets = Array.isArray(payload?.data) ? payload.data : [];
+  return {
+    activeMarkets: markets.length,
+    configuredRewards: sum(markets.flatMap((market) => (market.rewards_config || []).map((config) => config.total_rewards))),
+    dailyRewards: sum(markets.map((market) => market.total_daily_rate)),
+    sponsoredDaily: sum(markets.map((market) => market.sponsored_daily_rate)),
+    nativeDaily: sum(markets.map((market) => market.native_daily_rate)),
+    topMarkets: [...markets].sort((a, b) => Number(b.total_daily_rate || 0) - Number(a.total_daily_rate || 0)).slice(0, 5),
+    hasMore: Boolean(payload?.next_cursor && payload.next_cursor !== "LTE="),
+  };
 }
 
 export function getAccountRewardStats(bundle) {
@@ -49,7 +49,7 @@ export function getAccountRewardStats(bundle) {
 }
 
 export async function getRewardsSnapshot({ accountLimit = 5, signal } = {}) {
-  const [markets, pusdSupply, leaders] = await Promise.all([
+  const [rewards, pusdSupply, leaders] = await Promise.all([
     fetchActiveRewardMarkets({ signal }),
     fetchPusdSupply({ signal }),
     getTopAccounts({ limit: accountLimit, metric: "volume", period: "ALL", signal }).catch(() => []),
@@ -60,12 +60,7 @@ export async function getRewardsSnapshot({ accountLimit = 5, signal } = {}) {
   const accounts = bundles.map(getAccountRewardStats).filter(Boolean);
   return {
     pusdSupply,
-    activeMarkets: markets.length,
-    configuredRewards: sum(markets.flatMap((market) => (market.rewards_config || []).map((config) => config.total_rewards))),
-    dailyRewards: sum(markets.map((market) => market.total_daily_rate)),
-    sponsoredDaily: sum(markets.map((market) => market.sponsored_daily_rate)),
-    nativeDaily: sum(markets.map((market) => market.native_daily_rate)),
-    topMarkets: [...markets].sort((a, b) => Number(b.total_daily_rate || 0) - Number(a.total_daily_rate || 0)).slice(0, 5),
+    ...rewards,
     accounts,
     updatedAt: Date.now(),
   };
