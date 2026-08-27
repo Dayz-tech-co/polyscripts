@@ -4,6 +4,7 @@
 import { POLYGON_RPC_URL, CASH_TOKENS, CASH_DECIMALS } from "./polymarketConfig";
 
 const BALANCE_OF_SELECTOR = "0x70a08231"; // balanceOf(address)
+const TOTAL_SUPPLY_SELECTOR = "0x18160ddd";
 
 function padAddress(address) {
   return address.toLowerCase().replace(/^0x/, "").padStart(64, "0");
@@ -53,6 +54,19 @@ export async function fetchCashBalance(wallet, { signal } = {}) {
     );
     const total = results.reduce((a, b) => a + b, 0);
     return Number.isFinite(total) ? Math.round(total * 100) / 100 : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Reads the live pUSD ERC-20 totalSupply directly from Polygon. */
+export async function fetchPusdSupply({ signal } = {}) {
+  const pusd = CASH_TOKENS.find((token) => token.symbol === "pUSD");
+  if (!pusd) return null;
+  try {
+    const raw = await ethCall(pusd.address, TOTAL_SUPPLY_SELECTOR, { signal });
+    const supply = Number(decodeUint256(raw)) / (10 ** CASH_DECIMALS);
+    return Number.isFinite(supply) ? supply : null;
   } catch {
     return null;
   }
