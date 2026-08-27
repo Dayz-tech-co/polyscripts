@@ -14,6 +14,7 @@ import ComparePage from "./pages/ComparePage";
 import EcosystemPage from "./pages/EcosystemPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import RewardsPage from "./pages/RewardsPage";
+import RewardCardPage from "./pages/RewardCardPage";
 
 function AppContent() {
   return (
@@ -35,6 +36,7 @@ function AppContent() {
         <Route path="/compare" element={<ComparePage />} />
         <Route path="/ecosystem" element={<EcosystemPage />} />
         <Route path="/rewards" element={<RewardsPage />} />
+        <Route path="/card/:stream/:identifier" element={<RewardCardPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
 
