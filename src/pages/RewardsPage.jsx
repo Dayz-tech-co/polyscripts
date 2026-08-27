@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Activity, Coins, Droplets, Gift, LoaderCircle, RefreshCw } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import RewardShareStudio from "../components/RewardShareStudio";
+import RewardCardSkeleton from "../components/RewardCardSkeleton";
 import { getRewardAccounts, getRewardsSnapshot } from "../services/rewardsService";
 import { formatCompactCurrency, formatCurrency, formatNumber } from "../utils/formatters";
 
@@ -57,7 +58,7 @@ export default function RewardsPage() {
           <div className="rewards-market-list">{data.topMarkets.map((market, index) => <article className="rewards-market-row" key={market.condition_id}><span className="rewards-market-rank">{index + 1}</span><div className="rewards-market-name"><strong>{market.question || market.market_slug || compactId(market.condition_id)}</strong><span>{compactId(market.condition_id)}</span></div><div><span>Daily</span><strong>{formatCurrency(market.total_daily_rate)}</strong></div><div><span>Min size</span><strong>{formatCurrency(market.rewards_min_size, { decimals: 0 })}</strong></div><div><span>Max spread</span><strong>{market.rewards_max_spread != null ? `${market.rewards_max_spread}¢` : "N/A"}</strong></div></article>)}</div>
         </section>
 
-        {traders.status === "loading" ? <section className="reward-studio reward-studio-loading"><LoaderCircle className="spin" size={18} /><span>Loading public trader rewards…</span></section> : traders.status === "ready" && traders.accounts.length > 0 ? <RewardShareStudio accounts={traders.accounts} /> : <section className="reward-studio reward-studio-loading"><span>Trader reward history is temporarily unavailable.</span></section>}
+        {traders.status === "loading" ? <div className="reward-studio"><RewardCardSkeleton /></div> : traders.status === "ready" && traders.accounts.length > 0 ? <RewardShareStudio accounts={traders.accounts} /> : <section className="reward-studio reward-studio-loading"><span>Trader reward history is temporarily unavailable.</span></section>}
         <p className="rewards-source-note">Market metrics: Polymarket CLOB current rewards endpoint · pUSD: Polygon ERC-20 totalSupply · trader cards: public Data API activity.</p>
       </>}
     </main>

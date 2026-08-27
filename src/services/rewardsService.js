@@ -1,6 +1,8 @@
 import { getTopAccounts } from "./ecosystemService";
-import { getAccountProfile } from "./profileService";
+import { getAccountProfile, getAccountProfileOverview } from "./profileService";
 import { fetchPusdSupply } from "./providers/cashBalance";
+import { DATA_BASE } from "./providers/polymarketConfig";
+import { normalizeActivity } from "../adapters/profileAdapter";
 
 const CLOB_BASE = import.meta.env.VITE_CLOB_API_URL || "https://clob.polymarket.com";
 const REWARD_TYPES = { REWARD: "lp", MAKER_REBATE: "maker", TAKER_REBATE: "taker", REFERRAL_REWARD: "referrals", YIELD: "yield" };
@@ -67,4 +69,22 @@ export async function getRewardAccounts({ limit = 4, signal } = {}) {
     try { return await getAccountProfile(account.address, { signal }); } catch { return null; }
   }));
   return bundles.map(getAccountRewardStats).filter(Boolean);
+}
+
+/** Fast card payload: identity overview + reward events only. */
+export async function getRewardCard(identifier, { signal } = {}) {
+  const overview = await getAccountProfileOverview(identifier, { signal });
+  const params = new URLSearchParams({
+    user: overview.account.address,
+    type: "REWARD,MAKER_REBATE,TAKER_REBATE,REFERRAL_REWARD,YIELD",
+    limit: "500",
+    offset: "0",
+    sortBy: "TIMESTAMP",
+    sortDirection: "DESC",
+  });
+  const response = await fetch(`${DATA_BASE}/activity?${params}`, { signal, headers: { Accept: "application/json" } });
+  if (!response.ok) throw new Error(`Activity API ${response.status}`);
+  const raw = await response.json();
+  const activity = Array.isArray(raw) ? raw.map(normalizeActivity) : [];
+  return getAccountRewardStats({ ...overview, activity });
 }
