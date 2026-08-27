@@ -20,6 +20,8 @@ the app.
   and win rate across Day / Week / Month / All Time
 - **Dashboard** (`/dashboard`) - ecosystem stats, activity trend, performance
   distribution, top movers, recent activity and category breakdown
+- **Rewards** (`/rewards`) - public reward/rebate activity for a clearly
+  labelled leaderboard sample and a customizable trader share-card studio
 - **Tools** (`/tools`) - account checker and compare tool
 - **Account Checker** (`/checker`) - quick PnL / volume / win-rate lookup by
   username or address

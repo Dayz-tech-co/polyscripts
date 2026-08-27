@@ -1,9 +1,16 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpRight, GitCompareArrows, LayoutGrid, LineChart, Search } from "lucide-react";
+import { ArrowUpRight, Gift, GitCompareArrows, LayoutGrid, LineChart, Search } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 
 const TOOLS = [
+  {
+    to: "/rewards",
+    icon: Gift,
+    title: "Rewards Studio",
+    description: "Explore public reward activity and create shareable trader cards.",
+    cta: "Open Rewards",
+  },
   {
     to: "/checker",
     icon: Search,
