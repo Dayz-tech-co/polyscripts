@@ -48,20 +48,23 @@ export function getAccountRewardStats(bundle) {
   return { account: bundle.account, rank: bundle.stats?.rank ?? null, streams, total, bestDay: daily.length ? Math.max(...daily) : null, averageDay: daily.length ? total / daily.length : null, eventCount: events.length };
 }
 
-export async function getRewardsSnapshot({ accountLimit = 5, signal } = {}) {
-  const [rewards, pusdSupply, leaders] = await Promise.all([
+export async function getRewardsSnapshot({ signal } = {}) {
+  const [rewards, pusdSupply] = await Promise.all([
     fetchActiveRewardMarkets({ signal }),
     fetchPusdSupply({ signal }),
-    getTopAccounts({ limit: accountLimit, metric: "volume", period: "ALL", signal }).catch(() => []),
   ]);
-  const bundles = await Promise.all((leaders || []).map(async (account) => {
-    try { return await getAccountProfile(account.address, { signal }); } catch { return null; }
-  }));
-  const accounts = bundles.map(getAccountRewardStats).filter(Boolean);
   return {
     pusdSupply,
     ...rewards,
-    accounts,
     updatedAt: Date.now(),
   };
+}
+
+/** Loaded after the dashboard so deep account history never blocks first paint. */
+export async function getRewardAccounts({ limit = 4, signal } = {}) {
+  const leaders = await getTopAccounts({ limit, metric: "volume", period: "ALL", signal }).catch(() => []);
+  const bundles = await Promise.all((leaders || []).map(async (account) => {
+    try { return await getAccountProfile(account.address, { signal }); } catch { return null; }
+  }));
+  return bundles.map(getAccountRewardStats).filter(Boolean);
 }

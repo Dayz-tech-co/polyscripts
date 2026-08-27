@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Check, RotateCcw, Share2 } from "lucide-react";
 import Avatar from "./Avatar";
+import LogoMark from "./Logo";
 import { formatCurrency } from "../utils/formatters";
 import { shortenAddress } from "../utils/address";
 import { useToast } from "../context/toast";
@@ -47,14 +48,14 @@ export default function RewardShareStudio({ accounts }) {
     <section className="reward-studio" aria-labelledby="reward-studio-title">
       <div className="section-header reward-studio-heading">
         <div><h2 className="section-title" id="reward-studio-title">Reward card studio</h2><p className="card-description">Customize and share verified account reward stats.</p></div>
-        <button type="button" className="btn btn-secondary" onClick={share}>{copied ? <Check size={14} /> : <Share2 size={14} />} Share</button>
+        <button type="button" className="reward-share-action" onClick={share}>{copied ? <Check size={15} /> : <Share2 size={15} />}<span>{copied ? "Copied" : "Share card"}</span></button>
       </div>
 
       <div className="reward-carousel">
         <button type="button" className="reward-arrow" onClick={() => setIndex((index - 1 + accounts.length) % accounts.length)} aria-label="Previous card">‹</button>
         <article className="reward-share-card">
           <div className="reward-share-backdrop" />
-          <div className="reward-share-top"><div className="reward-user"><Avatar account={item.account} size={48} /><div><strong>{name}</strong><span>{shortenAddress(item.account.address)}</span></div></div><span className="reward-brand">PolyScripts</span></div>
+          <div className="reward-share-top"><div className="reward-user"><Avatar account={item.account} size={48} /><div><strong>{name}</strong><span>{shortenAddress(item.account.address)}</span></div></div><span className="reward-brand"><LogoMark size={20} /><b>PolyScripts</b></span></div>
           <div className="reward-share-center"><strong style={{ fontFamily: FONTS[font], fontSize: `${size}px`, opacity: opacity / 100, color: color.startsWith("linear") ? "#ff8a3d" : color, textShadow }}>{formatCurrency(value, { decimals: 0 })}</strong><span>{metricName(index % 4)}</span></div>
           {showStats && <div className="reward-share-stats"><div><span>RANK</span><strong>{item.rank ? `#${item.rank}` : "N/A"}</strong></div><div><span>BEST DAY</span><strong>{formatCurrency(item.bestDay)}</strong></div><div><span>AVG / DAY</span><strong>{formatCurrency(item.averageDay)}</strong></div></div>}
         </article>

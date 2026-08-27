@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Activity, Coins, Droplets, Gift, LoaderCircle, RefreshCw } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import RewardShareStudio from "../components/RewardShareStudio";
-import { getRewardsSnapshot } from "../services/rewardsService";
+import { getRewardAccounts, getRewardsSnapshot } from "../services/rewardsService";
 import { formatCompactCurrency, formatCurrency, formatNumber } from "../utils/formatters";
 
 const METRICS = [
@@ -18,6 +18,7 @@ function compactId(value = "") {
 
 export default function RewardsPage() {
   const [state, setState] = useState({ status: "loading", data: null });
+  const [traders, setTraders] = useState({ status: "loading", accounts: [] });
   const [reload, setReload] = useState(0);
   useEffect(() => {
     document.title = "Rewards | PolyScripts";
@@ -26,6 +27,15 @@ export default function RewardsPage() {
     getRewardsSnapshot({ signal: controller.signal }).then((data) => setState({ status: "ready", data })).catch((error) => {
       if (error?.name !== "AbortError") setState({ status: "error", data: null });
     });
+    return () => controller.abort();
+  }, [reload]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setTraders({ status: "loading", accounts: [] });
+    getRewardAccounts({ signal: controller.signal })
+      .then((accounts) => setTraders({ status: "ready", accounts }))
+      .catch((error) => { if (error?.name !== "AbortError") setTraders({ status: "error", accounts: [] }); });
     return () => controller.abort();
   }, [reload]);
 
@@ -47,7 +57,7 @@ export default function RewardsPage() {
           <div className="rewards-market-list">{data.topMarkets.map((market, index) => <article className="rewards-market-row" key={market.condition_id}><span className="rewards-market-rank">{index + 1}</span><div className="rewards-market-name"><strong>{market.question || market.market_slug || compactId(market.condition_id)}</strong><span>{compactId(market.condition_id)}</span></div><div><span>Daily</span><strong>{formatCurrency(market.total_daily_rate)}</strong></div><div><span>Min size</span><strong>{formatCurrency(market.rewards_min_size, { decimals: 0 })}</strong></div><div><span>Max spread</span><strong>{market.rewards_max_spread != null ? `${market.rewards_max_spread}¢` : "N/A"}</strong></div></article>)}</div>
         </section>
 
-        <RewardShareStudio accounts={data.accounts} />
+        {traders.status === "loading" ? <section className="reward-studio reward-studio-loading"><LoaderCircle className="spin" size={18} /><span>Loading public trader rewards…</span></section> : traders.status === "ready" && traders.accounts.length > 0 ? <RewardShareStudio accounts={traders.accounts} /> : <section className="reward-studio reward-studio-loading"><span>Trader reward history is temporarily unavailable.</span></section>}
         <p className="rewards-source-note">Market metrics: Polymarket CLOB current rewards endpoint · pUSD: Polygon ERC-20 totalSupply · trader cards: public Data API activity.</p>
       </>}
     </main>
