@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Activity, Coins, Droplets, Gift, LoaderCircle, RefreshCw } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import RewardShareStudio from "../components/RewardShareStudio";
@@ -8,7 +9,7 @@ import { formatCompactCurrency, formatCurrency, formatNumber } from "../utils/fo
 
 const METRICS = [
   { key: "dailyRewards", label: "Daily rewards", note: "Current emission rate", icon: Coins, tone: "orange", money: true },
-  { key: "activeMarkets", label: "Reward markets", note: "Current official API page", icon: Activity, tone: "cyan" },
+  { key: "activeMarkets", label: "Reward markets", note: "Official rewards API", icon: Activity, tone: "cyan" },
   { key: "configuredRewards", label: "Configured rewards", note: "Across active markets", icon: Gift, tone: "green", money: true },
   { key: "sponsoredDaily", label: "Sponsored / day", note: "Included in daily total", icon: Droplets, tone: "blue", money: true },
 ];
@@ -50,12 +51,12 @@ export default function RewardsPage() {
       {state.status === "loading" && !data ? <div className="reward-loading"><LoaderCircle className="spin" /> Loading live Polymarket data…</div> : state.status === "error" ? <div className="reward-empty">Live rewards data could not be loaded. Try refreshing.</div> : data && <>
         <section className="rewards-overview" aria-label="Rewards overview">
           <div className="rewards-pusd"><div className="rewards-pusd-copy"><span>pUSD SUPPLY · POLYGON</span><strong>{formatCompactCurrency(data.pusdSupply)}</strong><p>Live ERC-20 total supply · backed by USDC</p></div><div className="rewards-live"><i />Live on-chain</div></div>
-          <div className="rewards-metrics">{METRICS.map(({ key, label, note, icon: Icon, tone, money }) => <article className={`rewards-kpi is-${tone}`} key={key}><div className="rewards-kpi-icon"><Icon size={16} /></div><div><span>{label}</span><strong>{money ? formatCompactCurrency(data[key]) : formatNumber(data[key])}</strong><small>{note}</small></div></article>)}</div>
+          <div className="rewards-metrics">{METRICS.map(({ key, label, note, icon: Icon, tone, money }) => <article className={`rewards-kpi is-${tone}`} key={key}><div className="rewards-kpi-icon"><Icon size={16} /></div><div><span>{label}</span><strong>{money ? formatCompactCurrency(data[key]) : formatNumber(data[key])}</strong><small>{data.hasMore && money ? "Partial - first API pages" : note}</small></div></article>)}</div>
         </section>
 
         <section className="section rewards-markets" aria-labelledby="reward-markets-title">
-          <div className="section-header"><div><h2 className="section-title" id="reward-markets-title">Top active reward markets</h2><p className="card-description">Ranked by daily rate across the current official API page{data.hasMore ? " (500 markets)" : ""}.</p></div><div className="rewards-native"><span>Native / day</span><strong>{formatCompactCurrency(data.nativeDaily)}</strong></div></div>
-          <div className="rewards-market-list">{data.topMarkets.map((market, index) => <article className="rewards-market-row" key={market.condition_id}><span className="rewards-market-rank">{index + 1}</span><div className="rewards-market-name"><strong>{market.question || market.market_slug || compactId(market.condition_id)}</strong><span>{compactId(market.condition_id)}</span></div><div><span>Daily</span><strong>{formatCurrency(market.total_daily_rate)}</strong></div><div><span>Min size</span><strong>{formatCurrency(market.rewards_min_size, { decimals: 0 })}</strong></div><div><span>Max spread</span><strong>{market.rewards_max_spread != null ? `${market.rewards_max_spread}¢` : "N/A"}</strong></div></article>)}</div>
+          <div className="section-header"><div><h2 className="section-title" id="reward-markets-title">Top active reward markets</h2><p className="card-description">Ranked by daily rate across {data.hasMore ? `the first ${formatNumber(data.activeMarkets)} markets returned by` : "all markets in"} the official rewards API.</p></div><div className="rewards-native"><span>Native / day</span><strong>{formatCompactCurrency(data.nativeDaily)}</strong></div></div>
+          <div className="rewards-market-list">{data.topMarkets.map((market, index) => <Link to={`/market/${encodeURIComponent(market.market_slug || market.condition_id)}`} className="rewards-market-row" key={market.condition_id}><span className="rewards-market-rank">{index + 1}</span><div className="rewards-market-name"><strong>{market.question || market.market_slug || compactId(market.condition_id)}</strong><span>{compactId(market.condition_id)}</span></div><div><span>Daily</span><strong>{formatCurrency(market.total_daily_rate)}</strong></div><div><span>Min size</span><strong>{formatCurrency(market.rewards_min_size, { decimals: 0 })}</strong></div><div><span>Max spread</span><strong>{market.rewards_max_spread != null ? `${market.rewards_max_spread}¢` : "N/A"}</strong></div></Link>)}</div>
         </section>
 
         {traders.status === "loading" ? <div className="reward-studio"><RewardCardSkeleton /></div> : traders.status === "ready" && traders.accounts.length > 0 ? <RewardShareStudio accounts={traders.accounts} /> : <section className="reward-studio reward-studio-loading"><span>Trader reward history is temporarily unavailable.</span></section>}

@@ -58,6 +58,7 @@ export function formatPercentage(value, options = {}) {
 export function formatPrice(value) {
   if (value === null || value === undefined || Number.isNaN(value)) return "N/A";
   if (value >= 1) return `$${value.toFixed(2)}`;
+  if (value > 0 && value < 0.005) return "<1¢";
   return `${Math.round(value * 100)}¢`;
 }
 
@@ -107,4 +108,23 @@ export function formatDateTime(timestamp) {
 export function formatNumber(value) {
   if (value === null || value === undefined || Number.isNaN(value)) return "N/A";
   return value.toLocaleString("en-US");
+}
+
+/** Probability move in cents: 0.034 -> "+3.4¢" */
+export function formatPriceChange(change) {
+  if (change === null || change === undefined || Number.isNaN(change)) return "N/A";
+  const pts = Math.round(change * 1000) / 10;
+  return `${pts > 0 ? "+" : ""}${pts}¢`;
+}
+
+/** Time until a market end date: "Ends in 5h" / "Ends in 3d" / "Awaiting result" */
+export function formatEndsIn(endDate) {
+  if (!endDate) return null;
+  const ms = new Date(endDate).getTime() - Date.now();
+  if (!Number.isFinite(ms)) return null;
+  if (ms <= 0) return "Awaiting result";
+  const hours = ms / 3_600_000;
+  if (hours < 1) return `Ends in ${Math.max(1, Math.round(ms / 60_000))}m`;
+  if (hours < 48) return `Ends in ${Math.round(hours)}h`;
+  return `Ends in ${Math.round(hours / 24)}d`;
 }

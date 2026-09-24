@@ -45,10 +45,11 @@ export default function RewardShareStudio({ accounts, metric = "total", standalo
 
   async function share() {
     const text = `${name} earned ${formatCurrency(value)} in Polymarket rewards — ${metricConfig.label}`;
+    const url = `${window.location.origin}/card/${metric}/${encodeURIComponent(item.account.address)}`;
     if (navigator.share) {
-      try { await navigator.share({ title: "PolyScripts Rewards", text, url: window.location.href }); return; } catch { /* cancelled */ }
+      try { await navigator.share({ title: "PolyScripts Rewards", text, url }); return; } catch { /* cancelled */ }
     }
-    try { await navigator.clipboard.writeText(text); setCopied(true); showToast("Share text copied"); setTimeout(() => setCopied(false), 1600); } catch { showToast("Unable to copy share text"); }
+    try { await navigator.clipboard.writeText(`${text}\n${url}`); setCopied(true); showToast("Share text copied"); setTimeout(() => setCopied(false), 1600); } catch { showToast("Unable to copy share text"); }
   }
 
   return (
@@ -66,7 +67,7 @@ export default function RewardShareStudio({ accounts, metric = "total", standalo
         <article className="reward-share-card is-clickable" role="link" tabIndex={0} aria-label={`Open ${name} profile`} onClick={() => navigate(`/profile/${encodeURIComponent(item.account.address)}`)} onKeyDown={(event) => { if (event.key === "Enter") navigate(`/profile/${encodeURIComponent(item.account.address)}`); }}>
           <div className="reward-share-backdrop" />
           <div className="reward-share-top"><div className="reward-user"><Avatar account={item.account} size={48} /><div><strong>{name}</strong><span>{shortenAddress(item.account.address)}</span></div></div><span className="reward-brand"><LogoMark size={20} /><b>PolyScripts</b></span></div>
-          <div className="reward-share-center"><strong style={{ fontFamily: FONTS[font], fontSize: `${size}px`, opacity: opacity / 100, color: color.startsWith("linear") ? "#ff8a3d" : color, textShadow }}>{formatCurrency(value, { decimals: 0 })}</strong><span>{metricConfig.label}</span></div>
+          <div className="reward-share-center"><strong style={{ fontFamily: FONTS[font], fontSize: `${size}px`, opacity: opacity / 100, textShadow, ...(color.startsWith("linear") ? { backgroundImage: color, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" } : { color }) }}>{formatCurrency(value, { decimals: 0 })}</strong><span>{metricConfig.label}</span>{item.complete === false && <small className="reward-partial">Latest 5,000 payouts</small>}</div>
           {showStats && <div className="reward-share-stats"><div><span>RANK</span><strong>{item.rank ? `#${item.rank}` : "N/A"}</strong></div><div><span>BEST DAY</span><strong>{formatCurrency(item.bestDay)}</strong></div><div><span>AVG / DAY</span><strong>{formatCurrency(item.averageDay)}</strong></div></div>}
         </article>
         <button type="button" className="reward-arrow" onClick={() => setIndex((index + 1) % accounts.length)} aria-label="Next card">›</button>

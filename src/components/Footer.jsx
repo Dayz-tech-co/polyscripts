@@ -6,15 +6,17 @@ export default function Footer() {
       <div className="container footer-inner">
         <span className="footer-brand">PolyScripts</span>
         <nav className="footer-links" aria-label="Footer">
+          <Link to="/markets">Markets</Link>
+          <Link to="/whales">Whales</Link>
           <Link to="/dashboard">Dashboard</Link>
           <Link to="/tools">Tools</Link>
           <Link to="/ecosystem">Ecosystem</Link>
-          <a href="#privacy">Privacy</a>
-          <a href="#terms">Terms</a>
+          <Link to="/privacy">Privacy</Link>
+          <Link to="/terms">Terms</Link>
         </nav>
       </div>
       <div className="container footer-note">
-        Read-only analytics. Data availability may vary. Not financial advice.
+        Independent read-only analytics, not affiliated with Polymarket. Signals are automated and may be wrong. Not financial advice.
       </div>
     </footer>
   );

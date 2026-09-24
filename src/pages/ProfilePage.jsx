@@ -14,6 +14,7 @@ import ActivitySection from "../components/ActivitySection";
 import PositionsTab from "../components/PositionsTab";
 import HistoryTab from "../components/HistoryTab";
 import ErrorState from "../components/ErrorState";
+import SmartScoreCard from "../components/SmartScoreCard";
 import AccountSearch from "../components/AccountSearch";
 import { useProfile } from "../hooks/useProfile";
 import { shortenAddress } from "../utils/address";
@@ -115,6 +116,8 @@ export default function ProfilePage() {
           loading={loading}
           detailsLoading={historyLoading}
         />
+
+        <SmartScoreCard key={`smart-${chartKey}`} data={data} loading={historyLoading} />
 
         <div className="overview-stack profile-persist-stack">
           <PerformanceCard

@@ -1,5 +1,6 @@
 import { BarChart3, CircleDot, Layers3, LoaderCircle, Percent, TrendingUp, Wallet } from "lucide-react";
 import { StatsSkeleton } from "./Skeleton";
+import AnimatedNumber from "./AnimatedNumber";
 import { formatCompactCurrency, formatCurrency, formatNumber, formatPercentage, formatSignedCurrency } from "../utils/formatters";
 import { getToneClass, getValueState } from "../utils/states";
 
@@ -29,7 +30,7 @@ export default function ProfileStats({ stats, headlinePnl = null, loading, detai
           )}
         </div>
         <p className={`account-kpi-hero-value ${pnlClass}`}>
-          {displayPnl != null ? formatSignedCurrency(displayPnl) : "N/A"}
+          <AnimatedNumber value={displayPnl} format={(v) => (v != null ? formatSignedCurrency(v) : "N/A")} />
         </p>
         <p className="account-kpi-hero-hint">
           {usingChart
