@@ -1,12 +1,8 @@
-// Ecosystem-level analytics service: leaderboard, dashboard aggregates,
-// trending/top lists, comparison and curated resources. Every analytics
-// function here is backed by the ACTIVE data provider (the live Polymarket
-// endpoints by default) so no surface displays invented numbers.
-//
-// Anything the public API does not expose - aggregate dashboard totals,
-// activity trends, win-rate distributions, category counts, a global
-// activity feed - resolves to null, and the pages render an explicit
-// "unavailable" state instead of fabricating a value.
+// Ecosystem-level analytics service: leaderboard, trending/top lists,
+// comparison and curated resources. Every analytics function here is backed
+// by the ACTIVE data provider (the live Polymarket endpoints by default) so
+// no surface displays invented numbers. Market-wide aggregates live in
+// marketService.
 //
 // Compare is built from real profile bundles (positions, activity, value)
 // resolved through profileService for the two chosen addresses.
@@ -36,11 +32,11 @@ const METRIC_ORDER = { pnl: "PNL", volume: "VOL" };
  * provider. Returns null when the requested metric has no genuine source
  * (e.g. win rate - the public API only orders by PNL or VOL).
  */
-export async function getLeaderboard({ metric = "pnl", period = "ALL", limit = 25, signal } = {}) {
+export async function getLeaderboard({ metric = "pnl", period = "ALL", category = "OVERALL", limit = 25, signal } = {}) {
   const orderBy = METRIC_ORDER[metric];
   if (!orderBy) return null;
   const timePeriod = PERIOD_MAP[period] || "ALL";
-  const raw = await provider.getLeaderboard({ category: "OVERALL", timePeriod, orderBy, limit, signal });
+  const raw = await provider.getLeaderboard({ category, timePeriod, orderBy, limit, signal });
   return raw.map(normalizeLeaderboardEntry).filter((a) => a.address).slice(0, limit);
 }
 
@@ -56,34 +52,6 @@ export async function getTrendingAccounts({ limit = 5, signal } = {}) {
 /** Real leaderboard rows ordered by PnL over the last month. */
 export async function getRecentAccounts({ limit = 5, signal } = {}) {
   return getLeaderboard({ metric: "pnl", period: "MONTH", limit, signal });
-}
-
-/**
- * Aggregate dashboard totals have no genuine public source, so this is
- * null rather than an estimated number. The dashboard marks it unavailable.
- */
-export async function getDashboardStats() {
-  return null;
-}
-
-/** No public aggregate activity-trend endpoint exists - returns null. */
-export async function getActivityTrend() {
-  return null;
-}
-
-/** No public performance-distribution endpoint exists - returns null. */
-export async function getPerformanceDistribution() {
-  return null;
-}
-
-/** No public category-market-count endpoint exists - returns null. */
-export async function getCategoryBreakdown() {
-  return null;
-}
-
-/** No public global activity feed exists - returns null. */
-export async function getRecentActivityFeed() {
-  return null;
 }
 
 function metricsFromBundle(bundle) {

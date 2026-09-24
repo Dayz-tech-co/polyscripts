@@ -1,11 +1,15 @@
 import { NavLink } from "react-router-dom";
-import { Compass, Gift, LayoutDashboard, Trophy, Wrench } from "lucide-react";
+import { Bookmark, CandlestickChart, Compass, Gift, LayoutDashboard, Scale, Trophy, Waves, Wrench } from "lucide-react";
 
 const LINKS = [
   { to: "/", label: "Explore", icon: Compass, end: true },
+  { to: "/markets", label: "Markets", icon: CandlestickChart },
+  { to: "/whales", label: "Whales", icon: Waves },
+  { to: "/arbitrage", label: "Arbitrage", icon: Scale },
   { to: "/leaderboard", label: "Leaderboard", icon: Trophy },
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/rewards", label: "Rewards", icon: Gift },
+  { to: "/watchlist", label: "Watchlist", icon: Bookmark },
   { to: "/tools", label: "Tools", icon: Wrench },
 ];
 

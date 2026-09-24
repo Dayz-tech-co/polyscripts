@@ -1,18 +1,27 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { Compass, Gift, LayoutDashboard, Menu, Search, Trophy, Wrench, X } from "lucide-react";
+import { Bookmark, CandlestickChart, Compass, Gift, LayoutDashboard, Menu, Search, Trophy, Waves, Wrench, X } from "lucide-react";
 import LogoMark from "./Logo";
-import AccountSearch from "./AccountSearch";
 import MobileMenu from "./MobileMenu";
+import { openPalette } from "../utils/palette";
+
+const NAV = [
+  { to: "/", label: "Explore", icon: Compass, end: true },
+  { to: "/markets", label: "Markets", icon: CandlestickChart },
+  { to: "/whales", label: "Whales", icon: Waves },
+  { to: "/leaderboard", label: "Leaderboard", icon: Trophy },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/rewards", label: "Rewards", icon: Gift },
+  { to: "/watchlist", label: "Watchlist", icon: Bookmark },
+  { to: "/tools", label: "Tools", icon: Wrench },
+];
 
 export default function Header() {
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     function handleKey(e) {
       if (e.key === "Escape") {
-        setMobileSearchOpen(false);
         setMobileMenuOpen(false);
       }
     }
@@ -29,42 +38,29 @@ export default function Header() {
             <span className="brand-word">PolyScripts</span>
           </Link>
           <nav className="nav" aria-label="Primary">
-            <NavLink to="/" end className={({ isActive }) => `nav-link ${isActive ? "is-active" : ""}`}>
-              <Compass size={14} aria-hidden="true" />
-              <span>Explore</span>
-            </NavLink>
-            <NavLink to="/leaderboard" className={({ isActive }) => `nav-link ${isActive ? "is-active" : ""}`}>
-              <Trophy size={14} aria-hidden="true" />
-              <span>Leaderboard</span>
-            </NavLink>
-            <NavLink to="/dashboard" className={({ isActive }) => `nav-link ${isActive ? "is-active" : ""}`}>
-              <LayoutDashboard size={14} aria-hidden="true" />
-              <span>Dashboard</span>
-            </NavLink>
-            <NavLink to="/rewards" className={({ isActive }) => `nav-link ${isActive ? "is-active" : ""}`}>
-              <Gift size={14} aria-hidden="true" />
-              <span>Rewards</span>
-            </NavLink>
-            <NavLink to="/tools" className={({ isActive }) => `nav-link ${isActive ? "is-active" : ""}`}>
-              <Wrench size={14} aria-hidden="true" />
-              <span>Tools</span>
-            </NavLink>
+            {NAV.map(({ to, label, icon: Icon, end }) => (
+              <NavLink key={to} to={to} end={end} className={({ isActive }) => `nav-link ${isActive ? "is-active" : ""}`} title={label}>
+                <Icon size={14} aria-hidden="true" />
+                <span>{label}</span>
+              </NavLink>
+            ))}
           </nav>
         </div>
 
         <div className="header-right">
-          <div className="header-search-desktop">
-            <AccountSearch variant="compact" />
-          </div>
+          <button type="button" className="palette-trigger" onClick={openPalette} aria-label="Open command palette">
+            <Search size={14} aria-hidden="true" />
+            <span>Search anything</span>
+            <kbd>⌘K</kbd>
+          </button>
 
           <button
             type="button"
             className="icon-btn search-toggle"
-            aria-label="Search accounts"
-            aria-expanded={mobileSearchOpen}
+            aria-label="Search"
             onClick={() => {
-              setMobileSearchOpen((v) => !v);
               setMobileMenuOpen(false);
+              openPalette();
             }}
           >
             <Search size={16} aria-hidden="true" />
@@ -77,25 +73,12 @@ export default function Header() {
             aria-expanded={mobileMenuOpen}
             onClick={() => {
               setMobileMenuOpen((v) => !v);
-              setMobileSearchOpen(false);
-            }}
+                  }}
           >
             {mobileMenuOpen ? <X size={18} aria-hidden="true" /> : <Menu size={18} aria-hidden="true" />}
           </button>
         </div>
       </div>
-
-      {mobileSearchOpen && (
-        <div className="mobile-search-panel">
-          <div className="container">
-            <AccountSearch
-              variant="mobile"
-              autoFocus
-              onNavigate={() => setMobileSearchOpen(false)}
-            />
-          </div>
-        </div>
-      )}
 
       <MobileMenu open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
     </header>

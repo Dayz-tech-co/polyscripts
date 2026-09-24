@@ -1,9 +1,37 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpRight, Gift, GitCompareArrows, LayoutGrid, LineChart, Search } from "lucide-react";
+import { ArrowUpRight, Bookmark, CandlestickChart, Gift, GitCompareArrows, LayoutGrid, LineChart, Scale, Search, Waves } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 
 const TOOLS = [
+  {
+    to: "/whales",
+    icon: Waves,
+    title: "Whale Tracker",
+    description: "Live feed of large trades with fresh-wallet, long-shot and insider signals.",
+    cta: "Track whales",
+  },
+  {
+    to: "/arbitrage",
+    icon: Scale,
+    title: "Arbitrage Scanner",
+    description: "Multi-outcome events whose prices don't add up to $1, rescanned every 30 seconds.",
+    cta: "Scan now",
+  },
+  {
+    to: "/markets",
+    icon: CandlestickChart,
+    title: "Market Explorer",
+    description: "Live odds, biggest movers, price history and the smart-money lean on every market.",
+    cta: "Explore markets",
+  },
+  {
+    to: "/watchlist",
+    icon: Bookmark,
+    title: "Watchlist Feed",
+    description: "One timeline of trades from every wallet you follow, with browser alerts.",
+    cta: "Open feed",
+  },
   {
     to: "/rewards",
     icon: Gift,

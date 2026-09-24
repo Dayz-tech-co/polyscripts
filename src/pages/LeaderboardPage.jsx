@@ -16,7 +16,19 @@ import { getToneClass } from "../utils/states";
 const METRICS = [
   { label: "PnL", value: "pnl" },
   { label: "Volume", value: "volume" },
-  { label: "Win Rate", value: "winRate" },
+];
+
+const CATEGORIES = [
+  { label: "All", value: "OVERALL" },
+  { label: "Politics", value: "POLITICS" },
+  { label: "Sports", value: "SPORTS" },
+  { label: "Crypto", value: "CRYPTO" },
+  { label: "Economics", value: "ECONOMICS" },
+  { label: "Finance", value: "FINANCE" },
+  { label: "Tech", value: "TECH" },
+  { label: "Culture", value: "CULTURE" },
+  { label: "Weather", value: "WEATHER" },
+  { label: "Mentions", value: "MENTIONS" },
 ];
 
 const PERIODS = [
@@ -43,9 +55,9 @@ function RankBadge({ rank }) {
 export default function LeaderboardPage() {
   const [metric, setMetric] = useState("pnl");
   const [period, setPeriod] = useState("ALL");
+  const [category, setCategory] = useState("OVERALL");
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState(null);
-  const [unavailable, setUnavailable] = useState(false);
   const [error, setError] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
   const navigate = useNavigate();
@@ -57,19 +69,17 @@ export default function LeaderboardPage() {
   useEffect(() => {
     let active = true;
     setRows(null);
-    setUnavailable(false);
     setError(false);
-    getLeaderboard({ metric, period, limit: 25 })
+    getLeaderboard({ metric, period, category, limit: 50 })
       .then((list) => {
         if (!active) return;
-        setRows(list);
-        setUnavailable(list === null);
+        setRows(list || []);
       })
       .catch(() => active && setError(true));
     return () => {
       active = false;
     };
-  }, [metric, period, reloadToken]);
+  }, [metric, period, category, reloadToken]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -89,7 +99,11 @@ export default function LeaderboardPage() {
 
   return (
     <main id="main-content" className="container main-content">
-      <PageHeader title="Leaderboard" description="Explore top public accounts by performance." />
+      <PageHeader title="Leaderboard" description="Top Polymarket traders overall and by category - find the specialists." />
+
+      <div className="leaderboard-categories">
+        <Filters options={CATEGORIES.map((c) => c.label)} active={CATEGORIES.find((c) => c.value === category)?.label} onChange={(label) => setCategory(CATEGORIES.find((c) => c.label === label)?.value || "OVERALL")} ariaLabel="Leaderboard category" />
+      </div>
 
       <div className="tab-controls-row leaderboard-controls">
         <Filters options={METRICS.map((m) => m.label)} active={metricLabel} onChange={(label) => setMetric(METRICS.find((m) => m.label === label)?.value || "pnl")} ariaLabel="Leaderboard metric" />
@@ -101,14 +115,8 @@ export default function LeaderboardPage() {
 
       {error ? (
         <ErrorState title="Unable to load the leaderboard" description="Please try again." onRetry={() => setReloadToken((t) => t + 1)} />
-      ) : rows === null && !unavailable ? (
+      ) : rows === null ? (
         <TableSkeleton rows={10} />
-      ) : unavailable ? (
-        <EmptyState
-          icon={SearchX}
-          title="Win-rate rankings unavailable"
-          description="The public leaderboard API only ranks accounts by PnL or volume, so a win-rate ranking cannot be shown accurately."
-        />
       ) : visible.length === 0 ? (
         <EmptyState icon={SearchX} title="No leaderboard results" description="Try a different metric, period or search." />
       ) : (

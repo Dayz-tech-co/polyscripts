@@ -418,3 +418,36 @@ const DEMO_MARKETS = [
 function demoMarket(index) {
   return DEMO_MARKETS[index % DEMO_MARKETS.length];
 }
+// Market-wide feeds have no offline dataset; they resolve empty so pages
+// render their honest empty states in mock mode.
+export async function getTrades() {
+  return [];
+}
+
+export async function getMarkets() {
+  return [];
+}
+
+export async function getMarket() {
+  return null;
+}
+
+export async function searchMarkets() {
+  return [];
+}
+
+export async function getHolders() {
+  return [];
+}
+
+export async function getPriceHistory() {
+  return [];
+}
+
+export async function getOrderBook() {
+  return null;
+}
+
+export async function getEvent() {
+  return null;
+}

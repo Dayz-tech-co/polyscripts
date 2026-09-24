@@ -1,8 +1,9 @@
 import { getTopAccounts } from "./ecosystemService";
-import { getAccountProfile, getAccountProfileOverview } from "./profileService";
+import { getAccountProfileOverview } from "./profileService";
 import { fetchPusdSupply } from "./providers/cashBalance";
 import { DATA_BASE } from "./providers/polymarketConfig";
 import { normalizeActivity } from "../adapters/profileAdapter";
+import { getMarketDetail } from "./marketService";
 
 const CLOB_BASE = import.meta.env.VITE_CLOB_API_URL || "https://clob.polymarket.com";
 const REWARD_TYPES = { REWARD: "lp", MAKER_REBATE: "maker", TAKER_REBATE: "taker", REFERRAL_REWARD: "referrals", YIELD: "yield" };
@@ -19,6 +20,9 @@ async function fetchActiveRewardMarkets({ signal } = {}) {
     return payload;
   }
 
+  // Dev has no serverless proxy. The full rewards list is ~30+ pages, so dev
+  // reads the first page only and reports hasMore; production totals come
+  // from the fully paginated api/rewards.js.
   const response = await fetch(`${CLOB_BASE}/rewards/markets/current`, { signal, headers: { Accept: "application/json" } });
   if (!response.ok) throw new Error(`Rewards API ${response.status}`);
   const payload = await response.json();
@@ -50,41 +54,72 @@ export function getAccountRewardStats(bundle) {
   return { account: bundle.account, rank: bundle.stats?.rank ?? null, streams, total, bestDay: daily.length ? Math.max(...daily) : null, averageDay: daily.length ? total / daily.length : null, eventCount: events.length };
 }
 
+/** The rewards API only returns condition ids; attach each top market's title + slug. */
+async function nameTopMarkets(markets = [], { signal } = {}) {
+  return Promise.all(markets.map(async (market) => {
+    try {
+      const detail = await getMarketDetail(market.condition_id, { signal });
+      return detail ? { ...market, question: market.question || detail.question, market_slug: detail.slug } : market;
+    } catch (error) {
+      if (error?.name === "AbortError") throw error;
+      return market;
+    }
+  }));
+}
+
 export async function getRewardsSnapshot({ signal } = {}) {
   const [rewards, pusdSupply] = await Promise.all([
     fetchActiveRewardMarkets({ signal }),
     fetchPusdSupply({ signal }),
   ]);
+  const topMarkets = await nameTopMarkets(rewards.topMarkets, { signal });
   return {
     pusdSupply,
     ...rewards,
+    topMarkets,
     updatedAt: Date.now(),
   };
 }
 
-/** Loaded after the dashboard so deep account history never blocks first paint. */
-export async function getRewardAccounts({ limit = 4, signal } = {}) {
-  const leaders = await getTopAccounts({ limit, metric: "volume", period: "ALL", signal }).catch(() => []);
-  const bundles = await Promise.all((leaders || []).map(async (account) => {
-    try { return await getAccountProfile(account.address, { signal }); } catch { return null; }
-  }));
-  return bundles.map(getAccountRewardStats).filter(Boolean);
+const REWARD_EVENT_TYPES = "REWARD,MAKER_REBATE,TAKER_REBATE,REFERRAL_REWARD,YIELD";
+const REWARD_PAGE = 500;
+const MAX_REWARD_PAGES = 10;
+
+/** Every reward-type activity event for a wallet, up to 5,000 payouts. */
+async function fetchRewardEvents(address, { signal } = {}) {
+  const out = [];
+  for (let page = 0; page < MAX_REWARD_PAGES; page += 1) {
+    const params = new URLSearchParams({
+      user: address,
+      type: REWARD_EVENT_TYPES,
+      limit: String(REWARD_PAGE),
+      offset: String(page * REWARD_PAGE),
+      sortBy: "TIMESTAMP",
+      sortDirection: "DESC",
+    });
+    const response = await fetch(`${DATA_BASE}/activity?${params}`, { signal, headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error(`Activity API ${response.status}`);
+    const raw = await response.json();
+    const rows = Array.isArray(raw) ? raw : [];
+    out.push(...rows);
+    if (rows.length < REWARD_PAGE) return { events: out, complete: true };
+  }
+  return { events: out, complete: false };
 }
 
-/** Fast card payload: identity overview + reward events only. */
+/** Loaded after the dashboard so reward history never blocks first paint. */
+export async function getRewardAccounts({ limit = 4, signal } = {}) {
+  const leaders = await getTopAccounts({ limit, metric: "volume", period: "ALL", signal }).catch(() => []);
+  const cards = await Promise.all((leaders || []).map(async (account) => {
+    try { return await getRewardCard(account.address, { signal }); } catch { return null; }
+  }));
+  return cards.filter(Boolean);
+}
+
+/** Fast card payload: identity overview + the wallet's complete reward events. */
 export async function getRewardCard(identifier, { signal } = {}) {
   const overview = await getAccountProfileOverview(identifier, { signal });
-  const params = new URLSearchParams({
-    user: overview.account.address,
-    type: "REWARD,MAKER_REBATE,TAKER_REBATE,REFERRAL_REWARD,YIELD",
-    limit: "500",
-    offset: "0",
-    sortBy: "TIMESTAMP",
-    sortDirection: "DESC",
-  });
-  const response = await fetch(`${DATA_BASE}/activity?${params}`, { signal, headers: { Accept: "application/json" } });
-  if (!response.ok) throw new Error(`Activity API ${response.status}`);
-  const raw = await response.json();
-  const activity = Array.isArray(raw) ? raw.map(normalizeActivity) : [];
-  return getAccountRewardStats({ ...overview, activity });
+  const { events, complete } = await fetchRewardEvents(overview.account.address, { signal });
+  const stats = getAccountRewardStats({ ...overview, activity: events.map(normalizeActivity) });
+  return { ...stats, complete };
 }

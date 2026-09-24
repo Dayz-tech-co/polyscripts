@@ -608,3 +608,77 @@ export async function getPerformanceRange(address, { range = "ALL", metric = "pe
 
   return getPerformanceFromClosed(address, { rangeKey, signal });
 }
+
+// ---------------------------------------------------------------------------
+// Market-wide feeds: trades, markets, holders, price history.
+// ---------------------------------------------------------------------------
+
+const CLOB_BASE = import.meta.env.VITE_CLOB_API_URL || "https://clob.polymarket.com";
+
+/**
+ * Public trade tape. `minCash` filters to trades whose USDC notional is at
+ * least that amount; `market` (conditionId) and `user` scope the feed.
+ */
+export async function getTrades({ minCash, market, user, side, limit = 100, offset = 0, signal } = {}) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset), takerOnly: "true" });
+  if (minCash) {
+    params.set("filterType", "CASH");
+    params.set("filterAmount", String(minCash));
+  }
+  if (market) params.set("market", market);
+  if (user) params.set("user", user);
+  if (side) params.set("side", side);
+  const data = await getJson(`${DATA_BASE}/trades?${params}`, { signal });
+  return Array.isArray(data) ? data : [];
+}
+
+/** Active markets from gamma, ordered by a gamma sort field. */
+export async function getMarkets({ order = "volume24hr", ascending = false, limit = 50, offset = 0, signal } = {}) {
+  const params = new URLSearchParams({
+    active: "true",
+    closed: "false",
+    order,
+    ascending: String(ascending),
+    limit: String(limit),
+    offset: String(offset),
+  });
+  const data = await getJson(`${GAMMA_BASE}/markets?${params}`, { signal });
+  return Array.isArray(data) ? data : [];
+}
+
+/** One market by slug, falling back to a conditionId lookup. */
+export async function getMarket(identifier, { signal } = {}) {
+  const key = /^0x[a-f0-9]{64}$/i.test(identifier) ? "condition_ids" : "slug";
+  const data = await getJson(`${GAMMA_BASE}/markets?${key}=${encodeURIComponent(identifier)}`, { signal });
+  return Array.isArray(data) && data[0] ? data[0] : null;
+}
+
+/** Market search via gamma public-search (events carry their markets). */
+export async function searchMarkets(query, { limit = 10, signal } = {}) {
+  const url = `${GAMMA_BASE}/public-search?q=${encodeURIComponent(query)}&limit_per_type=${limit}&events_status=active`;
+  const data = await getJson(url, { signal });
+  return Array.isArray(data?.events) ? data.events : [];
+}
+
+/** Largest holders per outcome token for a market. */
+export async function getHolders(conditionId, { limit = 20, signal } = {}) {
+  const data = await getJson(`${DATA_BASE}/holders?market=${encodeURIComponent(conditionId)}&limit=${limit}`, { signal });
+  return Array.isArray(data) ? data : [];
+}
+
+/** CLOB price history for one outcome token: [{ t, p }]. */
+export async function getPriceHistory(tokenId, { interval = "1w", fidelity = 60, signal } = {}) {
+  const params = new URLSearchParams({ market: tokenId, interval, fidelity: String(fidelity) });
+  const data = await getJson(`${CLOB_BASE}/prices-history?${params}`, { signal });
+  return Array.isArray(data?.history) ? data.history : [];
+}
+
+/** Live CLOB order book for one outcome token. */
+export async function getOrderBook(tokenId, { signal } = {}) {
+  return getJson(`${CLOB_BASE}/book?token_id=${encodeURIComponent(tokenId)}`, { signal });
+}
+
+/** One event with all of its markets. (Event list pages run 10-20 MB, so fetch by id.) */
+export async function getEvent(id, { signal } = {}) {
+  return getJson(`${GAMMA_BASE}/events/${encodeURIComponent(id)}`, { signal });
+}

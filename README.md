@@ -14,12 +14,26 @@ the app.
 
 - **Explore** (`/`) - hero search, recently viewed accounts, top accounts and
   trending accounts
-- **Profile** (`/profile/:identifier`) - Overview, Positions, Activity and
-  History tabs for any username or wallet address
-- **Leaderboard** (`/leaderboard`) - ranked accounts, sortable by PnL, volume
-  and win rate across Day / Week / Month / All Time
-- **Dashboard** (`/dashboard`) - ecosystem stats, activity trend, performance
-  distribution, top movers, recent activity and category breakdown
+- **Markets** (`/markets`) - every active market sorted by 24h volume,
+  biggest movers, liquidity, ending soon or rewards, with search
+- **Market** (`/market/:slug`) - live odds, price history, top holders per
+  outcome with a smart-money lean, recent trades and reward terms
+- **Whale Tracker** (`/whales`) - live large-trade feed with fresh-wallet,
+  long-shot, mega-trade and insider signals, plus browser alerts
+- **Arbitrage Scanner** (`/arbitrage`) - multi-outcome events whose YES
+  prices sum away from $1 (buy-all or sell-all baskets), rescanned every 30s
+- **Command palette** - press Ctrl/⌘+K or `/` anywhere to jump to any page,
+  trader or market
+- **Watchlist feed** (`/watchlist`) - one timeline of trades from followed
+  wallets, with browser alerts while the tab is open
+- **Profile** (`/profile/:identifier`) - Smart Score, behaviour badges, edge
+  by category, then Overview, Positions, Activity and History tabs for any
+  username or wallet address
+- **Leaderboard** (`/leaderboard`) - ranked accounts by PnL or volume across
+  Day / Week / Month / All Time, overall or per category (Politics, Sports,
+  Crypto, ...)
+- **Dashboard** (`/dashboard`) - live market pulse: 24h volume, liquidity,
+  whale flow, biggest movers, volume by category and top weekly traders
 - **Rewards** (`/rewards`) - public reward/rebate activity for a clearly
   labelled leaderboard sample and a customizable trader share-card studio
 - **Tools** (`/tools`) - account checker and compare tool
@@ -64,6 +78,12 @@ the direct lookups conclusively return no usable public data.
 - `data-api.polymarket.com/activity` - trade/redeem activity feed
 - `data-api.polymarket.com/value` - current total position value
 - `data-api.polymarket.com/traded` - count of markets traded
+- `data-api.polymarket.com/trades` - public trade tape (whale feed, market trades)
+- `data-api.polymarket.com/holders` - top holders per market outcome
+- `gamma-api.polymarket.com/markets` - active markets, odds and rewards config
+- `clob.polymarket.com/prices-history` - outcome price history
+- `clob.polymarket.com/rewards/markets/current` - reward programs (paginated
+  server-side by `api/rewards.js`)
 
 Switch the provider with:
 
