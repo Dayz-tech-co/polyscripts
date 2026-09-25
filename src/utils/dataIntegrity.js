@@ -3,8 +3,8 @@
 // two surfaces, impossible win rates, counts that disagree with the actual
 // arrays). In production they do nothing.
 //
-// Total PnL is defined as Realized + Unrealized from the same fetched
-// positions data, so the summary card is always internally consistent.
+// Total PnL is Polymarket's settled PnL history plus live unrealized PnL on
+// open positions, so it is checked against those two parts.
 
 const PNL_TOLERANCE = 0.01;
 
@@ -13,17 +13,16 @@ export function validateProfileData({ stats, positions, resolvedPositions }) {
 
   if (!stats) return issues;
 
-  const realized = stats.realizedPnl;
+  const settled = stats.settledPnl;
   const unrealized = stats.unrealizedPnl;
   const total = stats.pnl;
 
-  if (total != null && realized != null && unrealized != null) {
-    const parts = realized + unrealized;
+  if (total != null && settled != null) {
+    const parts = settled + (unrealized ?? 0);
     if (Math.abs(total - parts) > PNL_TOLERANCE) {
-      const diff = Math.abs(total - parts);
       issues.push({
-        level: "info",
-        message: `Total PnL (${total}) differs from Realized + Unrealized (${parts}) by ${diff}. Expected with truncated API history.`,
+        level: "error",
+        message: `Total PnL (${total}) != settled history (${settled}) + unrealized (${unrealized}).`,
       });
     }
   }
@@ -43,7 +42,7 @@ export function validateProfileData({ stats, positions, resolvedPositions }) {
   }
 
   if (positions && stats.openPositionsCount != null) {
-    const count = positions.length;
+    const count = positions.filter((p) => p.isActive).length;
     if (count > 0 && count !== stats.openPositionsCount) {
       issues.push({
         level: "info",

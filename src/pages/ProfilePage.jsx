@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Home, SearchX } from "lucide-react";
 import ProfileHeader from "../components/ProfileHeader";
@@ -26,19 +26,13 @@ export default function ProfilePage() {
   const { status, data, detailsStatus, retry } = useProfile(identifier);
   const [activeTab, setActiveTab] = useState("Overview");
   const [positionsQuery, setPositionsQuery] = useState("");
-  const [chartPnl, setChartPnl] = useState(null);
-  const [allTimePnlSeries, setAllTimePnlSeries] = useState([]);
 
   useEffect(() => {
     setActiveTab("Overview");
     setPositionsQuery("");
-    setChartPnl(null);
-    setAllTimePnlSeries([]);
   }, [identifier]);
 
-  const handleHeadlineChange = useCallback((value) => {
-    setChartPnl(value != null && Number.isFinite(value) ? value : null);
-  }, []);
+  const activePositions = useMemo(() => (data?.positions ? data.positions.filter((p) => p.isActive) : null), [data?.positions]);
 
   useEffect(() => {
     if (import.meta.env.DEV && status === "success" && data) {
@@ -112,7 +106,6 @@ export default function ProfilePage() {
       <main id="main-content" className="container main-content">
         <ProfileStats
           stats={stats}
-          headlinePnl={chartPnl}
           loading={loading}
           detailsLoading={historyLoading}
         />
@@ -123,14 +116,12 @@ export default function ProfilePage() {
           <PerformanceCard
             key={chartKey}
             identifier={chartKey}
-            onHeadlineChange={handleHeadlineChange}
-            onAllTimeSeriesChange={setAllTimePnlSeries}
           />
           <MonthlyPerformanceCalendar
             key={`calendar-${chartKey}`}
             resolvedPositions={data?.resolvedPositions}
             activity={data?.activity}
-            performanceSeries={allTimePnlSeries}
+            performanceSeries={data?.pnlSeries || undefined}
             loading={historyLoading}
           />
         </div>
@@ -141,7 +132,7 @@ export default function ProfilePage() {
           active={activeTab}
           onChange={setActiveTab}
           counts={{
-            Positions: data?.positions?.length ?? null,
+            Positions: historyLoading ? null : (activePositions?.length ?? null),
             Activity: historyLoading ? null : (data?.activity?.length ?? 0),
             History: historyLoading ? null : (data?.resolvedPositions?.length ?? 0),
           }}
@@ -151,12 +142,12 @@ export default function ProfilePage() {
           <div className="tab-panel" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
             <div className="overview-grid">
               <div className="overview-stack">
-                <PositionsSection positions={data?.positions} loading={loading} limit={6} />
+                <PositionsSection positions={activePositions} loading={historyLoading} limit={6} />
                 <ActivitySection activity={data?.activity} loading={historyLoading} limit={8} />
               </div>
               <div className="overview-stack">
                 <PortfolioSummary stats={stats} loading={historyLoading} />
-                <MarketExposure positions={data?.positions} loading={loading} />
+                <MarketExposure positions={activePositions} loading={historyLoading} />
               </div>
             </div>
           </div>

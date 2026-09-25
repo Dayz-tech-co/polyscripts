@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { formatSignedCurrency, formatDateTime, formatCompactCurrency } from "../utils/formatters";
+import { formatCurrency, formatSignedCurrency, formatDateTime, formatCompactCurrency } from "../utils/formatters";
 import { getValueState } from "../utils/states";
 
 const WIDTH = 800;
@@ -15,15 +15,6 @@ const PLOT_BOTTOM = PAD_TOP + USABLE_HEIGHT;
 const COLOR_GREEN = "#2FB57E";
 const COLOR_RED = "#E5484D";
 const COLOR_NEUTRAL = "#7C9CFF";
-
-export const SERIES_COLORS = {
-  total: "#E5A125",
-  trade: "#FF7A00",
-  lp: "#3888FF",
-  maker: "#00D2FF",
-  fees: "#8899A6",
-  taker: "#50B4FF",
-};
 
 /**
  * Fritsch-Carlson Monotone Cubic Spline SVG path generator.
@@ -112,7 +103,6 @@ export default function PerformanceChart({
   data,
   metric = "performance",
   range = "1M",
-  activeSeries = { total: true, trade: true, lp: false, maker: false, fees: false, taker: false },
 }) {
   const svgRef = useRef(null);
   const animFrameRef = useRef(null);
@@ -157,22 +147,11 @@ export default function PerformanceChart({
   }, [data, domainStartMs, domainEndMs]);
 
   // Tight Y-min and Y-max calculation (7% padding top and bottom)
-  // Includes values from all active breakdown series so they fit within the chart
   const targetY = useMemo(() => {
     const pts = visiblePoints.length > 0 ? visiblePoints : data || [];
     if (pts.length === 0) return { min: -1, max: 1 };
 
-    const allValues = [];
-    pts.forEach((d) => {
-      const val = d.value;
-      allValues.push(val);
-      // Include breakdown values for every active series
-      if (activeSeries.trade) allValues.push(val * 0.85);
-      if (activeSeries.taker) allValues.push(val * 0.32);
-      if (activeSeries.maker) allValues.push(val * 0.08);
-      if (activeSeries.lp) allValues.push(val * 0.01);
-      if (activeSeries.fees) allValues.push(-Math.abs(val * 0.03));
-    });
+    const allValues = pts.map((d) => d.value);
 
     const minVal = Math.min(...allValues);
     const maxVal = Math.max(...allValues);
@@ -181,7 +160,7 @@ export default function PerformanceChart({
       min: minVal - spread * 0.07,
       max: maxVal + spread * 0.07,
     };
-  }, [visiblePoints, data, activeSeries]);
+  }, [visiblePoints, data]);
 
   // Smooth Y-axis interpolation animation
   useEffect(() => {
@@ -225,7 +204,7 @@ export default function PerformanceChart({
     [animY]
   );
 
-  // Screen coordinates for visible points and breakdown series calculation
+  // Screen coordinates for visible points
   const mappedPoints = useMemo(() => {
     if (!visiblePoints || visiblePoints.length === 0) return [];
     return visiblePoints.map((d, i) => {
@@ -233,51 +212,15 @@ export default function PerformanceChart({
       const xFrac = (tMs - domainStartMs) / domainSpanMs;
       const val = d.value;
 
-      // Breakdown metrics derived from primary value
-      const tradeVal = val * 0.85;
-      const takerVal = val * 0.32;
-      const makerVal = val * 0.08;
-      const lpVal = val * 0.01;
-      const feesVal = -Math.abs(val * 0.03);
-
       return {
         x: PAD_LEFT + xFrac * USABLE_WIDTH,
         y: yScale(val),
         value: val,
         date: d.date,
         originalIndex: i,
-        breakdown: {
-          total: val,
-          trade: tradeVal,
-          taker: takerVal,
-          maker: makerVal,
-          lp: lpVal,
-          fees: feesVal,
-        },
-        breakdownY: {
-          total: yScale(val),
-          trade: yScale(tradeVal),
-          taker: yScale(takerVal),
-          maker: yScale(makerVal),
-          lp: yScale(lpVal),
-          fees: yScale(feesVal),
-        },
       };
     });
   }, [visiblePoints, domainStartMs, domainSpanMs, yScale]);
-
-  // Secondary breakdown paths for toggled series
-  const seriesPaths = useMemo(() => {
-    const keys = ["trade", "lp", "maker", "fees", "taker"];
-    const res = {};
-    keys.forEach((key) => {
-      if (activeSeries[key] && mappedPoints.length > 0) {
-        const pts = mappedPoints.map((p) => ({ x: p.x, y: p.breakdownY[key] }));
-        res[key] = buildMonotonePath(pts);
-      }
-    });
-    return res;
-  }, [mappedPoints, activeSeries]);
 
   // Primary series color determination — always semantic green/red
   const seriesTone = useMemo(() => {
@@ -473,20 +416,6 @@ export default function PerformanceChart({
         {/* Subdued area fill */}
         <path d={areaPath} fill={`url(#${areaGradientId})`} stroke="none" />
 
-        {/* Secondary breakdown series paths */}
-        {Object.entries(seriesPaths).map(([sKey, sPath]) => (
-          <path
-            key={sKey}
-            d={sPath}
-            fill="none"
-            stroke={SERIES_COLORS[sKey]}
-            strokeWidth="1.2"
-            strokeDasharray="4 2"
-            strokeOpacity="0.7"
-          />
-        ))}
-
-
         {/* Main continuous line */}
         <path
           d={linePath}
@@ -550,7 +479,7 @@ export default function PerformanceChart({
         })}
       </div>
 
-      {/* Multi-Series Detailed Hover Tooltip */}
+      {/* Hover tooltip */}
       {activePoint && (
         <div
           className="chart-tooltip chart-tooltip-expanded"
@@ -565,39 +494,9 @@ export default function PerformanceChart({
 
           <div className="chart-tooltip-breakdown-list">
             <div className="tooltip-row total-row">
-              <span className="tooltip-legend-dot" style={{ background: SERIES_COLORS.total }} />
-              <span className="tooltip-row-label">Total</span>
-              <span className="tooltip-row-val">{formatSignedCurrency(activePoint.breakdown.total)}</span>
-            </div>
-
-            <div className="tooltip-row">
-              <span className="tooltip-legend-dot" style={{ background: SERIES_COLORS.trade }} />
-              <span className="tooltip-row-label">Trade</span>
-              <span className="tooltip-row-val">{formatSignedCurrency(activePoint.breakdown.trade)}</span>
-            </div>
-
-            <div className="tooltip-row">
-              <span className="tooltip-legend-dot" style={{ background: SERIES_COLORS.taker }} />
-              <span className="tooltip-row-label">Taker</span>
-              <span className="tooltip-row-val">{formatSignedCurrency(activePoint.breakdown.taker)}</span>
-            </div>
-
-            <div className="tooltip-row">
-              <span className="tooltip-legend-dot" style={{ background: SERIES_COLORS.maker }} />
-              <span className="tooltip-row-label">Maker</span>
-              <span className="tooltip-row-val">{formatSignedCurrency(activePoint.breakdown.maker)}</span>
-            </div>
-
-            <div className="tooltip-row">
-              <span className="tooltip-legend-dot" style={{ background: SERIES_COLORS.lp }} />
-              <span className="tooltip-row-label">LP</span>
-              <span className="tooltip-row-val">{formatSignedCurrency(activePoint.breakdown.lp)}</span>
-            </div>
-
-            <div className="tooltip-row">
-              <span className="tooltip-legend-dot" style={{ background: SERIES_COLORS.fees }} />
-              <span className="tooltip-row-label">Fees</span>
-              <span className="tooltip-row-val text-negative">{formatSignedCurrency(activePoint.breakdown.fees)}</span>
+              <span className="tooltip-legend-dot" style={{ background: lineColor }} />
+              <span className="tooltip-row-label">{metric === "volume" ? "Cumulative volume" : "Profit / loss"}</span>
+              <span className="tooltip-row-val">{metric === "volume" ? formatCurrency(activePoint.value) : formatSignedCurrency(activePoint.value)}</span>
             </div>
           </div>
         </div>

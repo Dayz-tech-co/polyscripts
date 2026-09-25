@@ -1,36 +1,24 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Brain } from "lucide-react";
 import Badge from "./Badge";
 import AnimatedNumber from "./AnimatedNumber";
 import { Skeleton } from "./Skeleton";
 import { categoryEdge, computeBadges, computeSmartScore } from "../utils/traderInsights";
-import { getPerformanceRange } from "../services/profileService";
 import { formatPercentage, formatSignedCurrency } from "../utils/formatters";
 import { getToneClass } from "../utils/states";
 
 /** Smart Score, behaviour badges and per-category edge for one profile. */
 export default function SmartScoreCard({ data, loading }) {
-  const address = data?.account?.address;
-  const [series, setSeries] = useState(null);
-
-  // Official all-time PnL history (cached; the Performance chart shares it).
-  useEffect(() => {
-    if (!address) return undefined;
-    const controller = new AbortController();
-    getPerformanceRange(address, { range: "ALL", metric: "performance", signal: controller.signal })
-      .then((result) => setSeries(result?.points || []))
-      .catch((error) => error?.name !== "AbortError" && setSeries([]));
-    return () => controller.abort();
-  }, [address]);
+  const series = data?.pnlSeries;
 
   const insights = useMemo(() => {
-    if (!data || series === null) return null;
+    if (!data?.resolvedPositions) return null;
     const input = {
       stats: data.stats,
       account: data.account,
       resolvedPositions: data.resolvedPositions || [],
       activity: data.activity || [],
-      pnlSeries: series,
+      pnlSeries: series || [],
     };
     return {
       smart: computeSmartScore(input),
@@ -58,7 +46,7 @@ export default function SmartScoreCard({ data, loading }) {
         <span className="card-label" id="smart-card-title">
           <Brain size={14} aria-hidden="true" /> Smart Score
         </span>
-        <span className="smart-card-sample">All-time PnL history · last {smart.sample} resolved positions</span>
+        <span className="smart-card-sample">All-time PnL · last {smart.sample.toLocaleString("en-US")} resolved positions</span>
       </div>
 
       <div className="smart-card-body">

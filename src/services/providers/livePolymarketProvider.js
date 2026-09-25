@@ -153,11 +153,13 @@ const USER_PNL_PARAMS = {
 const VALID_PERF_METRICS = new Set(["performance", "volume"]);
 
 const POSITIONS_PAGE_SIZE = 100;
-const CLOSED_PAGE_SIZE = 100;
+/** closed-positions caps pages at 50 rows regardless of `limit`. */
+const CLOSED_PAGE_SIZE = 50;
+const CLOSED_PARALLEL_PAGES = 8;
 const ACTIVITY_PAGE_SIZE = 100;
 const MAX_POSITIONS = 2000;
-/** Cap closed history for first paint - enough for win-rate/calendar, far fewer round-trips. */
-const MAX_CLOSED = 1500;
+/** Cap closed history (the API stops paging a few thousand rows back). */
+const MAX_CLOSED = 2000;
 /** Cap recent activity for first paint; sparse types fill gaps in parallel. */
 const MAX_ACTIVITY = 600;
 const MAX_MIXED_ACTIVITY_PAGES = 6;
@@ -320,22 +322,39 @@ async function getCachedActivity(address, { signal } = {}) {
   return pending;
 }
 
+function fetchClosedPage(address, offset, { signal } = {}) {
+  const params = new URLSearchParams({
+    user: address,
+    limit: String(CLOSED_PAGE_SIZE),
+    offset: String(offset),
+    sortBy: "TIMESTAMP",
+    sortDirection: "DESC",
+  });
+  return getJson(`${DATA_BASE}/closed-positions?${params}`, { signal });
+}
+
+/** Walks closed positions in parallel batches of pages until a short page. */
 async function fetchClosedHistory(address, { maxEvents = MAX_CLOSED, signal } = {}) {
   const out = [];
-  let offset = 0;
-  while (out.length < maxEvents) {
-    const params = new URLSearchParams({
-      user: address,
-      limit: String(CLOSED_PAGE_SIZE),
-      offset: String(offset),
-      sortBy: "TIMESTAMP",
-      sortDirection: "DESC",
-    });
-    const data = await getJson(`${DATA_BASE}/closed-positions?${params}`, { signal });
-    if (!Array.isArray(data) || data.length === 0) break;
-    out.push(...data);
-    if (data.length < CLOSED_PAGE_SIZE) break;
-    offset += CLOSED_PAGE_SIZE;
+  for (let offset = 0; offset < maxEvents; offset += CLOSED_PAGE_SIZE * CLOSED_PARALLEL_PAGES) {
+    const offsets = [];
+    for (let i = 0; i < CLOSED_PARALLEL_PAGES && offset + i * CLOSED_PAGE_SIZE < maxEvents; i += 1) {
+      offsets.push(offset + i * CLOSED_PAGE_SIZE);
+    }
+    const pages = await Promise.all(offsets.map((o) => fetchClosedPage(address, o, { signal })));
+    let done = false;
+    for (const page of pages) {
+      if (!Array.isArray(page) || page.length === 0) {
+        done = true;
+        break;
+      }
+      out.push(...page);
+      if (page.length < CLOSED_PAGE_SIZE) {
+        done = true;
+        break;
+      }
+    }
+    if (done) break;
   }
   return out.slice(0, maxEvents);
 }

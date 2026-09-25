@@ -26,7 +26,7 @@ export default function ProfileStats({ stats, headlinePnl = null, loading, detai
             Total profit / loss
           </span>
           {stats.rank != null && (
-            <span className="account-kpi-rank">Rank #{formatNumber(stats.rank)}</span>
+            <span className="account-kpi-rank" title="All-time rank on the Polymarket PnL leaderboard">PnL rank #{formatNumber(stats.rank)}</span>
           )}
         </div>
         <p className={`account-kpi-hero-value ${pnlClass}`}>
@@ -34,10 +34,14 @@ export default function ProfileStats({ stats, headlinePnl = null, loading, detai
         </p>
         <p className="account-kpi-hero-hint">
           {usingChart
-            ? "Available history · matches Performance chart"
+            ? "Settled PnL history + open positions"
             : detailsLoading
               ? "Loading complete account history..."
-              : "Realized + unrealized · this account"}
+              : stats.pnlSource === "history"
+                ? "All time · settled PnL history + open positions, as on Polymarket"
+                : stats.pnlSource === "leaderboard"
+                  ? "All time · Polymarket leaderboard PnL"
+                  : "PnL history unavailable for this account"}
         </p>
       </div>
 
@@ -93,8 +97,11 @@ export default function ProfileStats({ stats, headlinePnl = null, loading, detai
           <div>
             <span className="account-kpi-chip-label">Win rate</span>
             <span className="account-kpi-chip-value">
-              {stats.winRate != null ? formatPercentage(stats.winRate) : "N/A"}
+              {detailsLoading ? "…" : stats.winRate != null ? formatPercentage(stats.winRate) : "N/A"}
             </span>
+            {!detailsLoading && stats.resolvedPositionsCount ? (
+              <span className="account-kpi-chip-meta">last {formatNumber(stats.resolvedPositionsCount)} resolved</span>
+            ) : null}
           </div>
         </div>
         <div className="account-kpi-chip is-open-positions">
@@ -102,8 +109,13 @@ export default function ProfileStats({ stats, headlinePnl = null, loading, detai
           <div>
             <span className="account-kpi-chip-label">Open positions</span>
             <span className="account-kpi-chip-value">
-              {stats.openPositionsCount != null ? formatNumber(stats.openPositionsCount) : "N/A"}
+              {detailsLoading ? "…" : stats.openPositionsCount != null ? formatNumber(stats.openPositionsCount) : "N/A"}
             </span>
+            {!detailsLoading && stats.unredeemedCount ? (
+              <span className="account-kpi-chip-meta" title="Resolved positions still held in the wallet (lost, or won and not yet claimed)">
+                +{formatNumber(stats.unredeemedCount)} resolved, unredeemed
+              </span>
+            ) : null}
           </div>
         </div>
       </div>
