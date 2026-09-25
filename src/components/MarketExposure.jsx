@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { PieChart } from "lucide-react";
 import { formatCompactCurrency, formatPercentage } from "../utils/formatters";
+import { classifyMarket } from "../utils/traderInsights";
 
 function buildExposure(positions) {
   const totals = new Map();
@@ -8,7 +9,7 @@ function buildExposure(positions) {
   for (const position of positions || []) {
     const value = Number.isFinite(position.currentValue) ? Math.max(0, position.currentValue) : 0;
     if (value === 0) continue;
-    const category = position.category || "Other";
+    const category = position.category || classifyMarket(position.market);
     totals.set(category, (totals.get(category) || 0) + value);
     total += value;
   }

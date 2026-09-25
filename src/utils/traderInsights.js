@@ -4,7 +4,8 @@
 // the UI can show its working instead of a black-box number.
 
 const CATEGORY_RULES = [
-  { key: "Sports", pattern: /\b(vs\.?|win on|spread|o\/u|over\/under|nfl|nba|mlb|nhl|ufc|fc\b|premier league|champions league|la liga|serie a|tennis|grand prix|f1|world cup|super bowl|playoffs|mvp)\b/i },
+  { key: "Esports", pattern: /\b(counter-strike|cs2|lol|league of legends|dota|valorant|esports)\b/i },
+  { key: "Sports", pattern: /\b(vs\.?|win on|spread|o\/u|over\/under|halftime|exact score|both teams to score|clean sheet|1st half|first half|goalscorer|corners|total goals|innings|touchdowns?|nfl|nba|mlb|nhl|ufc|fc\b|premier league|champions league|la liga|serie a|tennis|grand prix|f1|world cup|super bowl|playoffs|mvp)\b/i },
   { key: "Crypto", pattern: /\b(bitcoin|btc|ethereum|eth|solana|sol|xrp|doge|crypto|up or down|hyperliquid|memecoin|token|fdv|airdrop)\b/i },
   { key: "Politics", pattern: /\b(election|president|trump|biden|senate|house|democrat|republican|nominee|governor|mayor|parliament|prime minister|vote|primary|cabinet|impeach)\b/i },
   { key: "Economics", pattern: /\b(fed|interest rate|cpi|inflation|gdp|recession|unemployment|jobs report|rate cut|rate hike|treasury|tariff)\b/i },
@@ -13,6 +14,8 @@ const CATEGORY_RULES = [
 ];
 
 export function classifyMarket(title = "") {
+  // Parlay markets join several legs with " AND ".
+  if (/ AND /.test(title)) return "Combos";
   for (const rule of CATEGORY_RULES) {
     if (rule.pattern.test(title)) return rule.key;
   }
@@ -60,8 +63,9 @@ const GRADES = [
   { min: -Infinity, label: "Poor" },
 ];
 
-/** Best available all-time PnL: official leaderboard, then PnL series, then realized. */
+/** Best available all-time PnL: the profile's official total, then leaderboard, then series. */
 export function allTimePnl({ stats, account, pnlSeries = [] }) {
+  if (Number.isFinite(stats?.pnl)) return stats.pnl;
   if (Number.isFinite(account?.pnl)) return account.pnl;
   const last = pnlSeries[pnlSeries.length - 1];
   if (last && Number.isFinite(last.value)) return last.value;
@@ -108,7 +112,7 @@ export function computeSmartScore({ stats, account, resolvedPositions = [], pnlS
       label: "Win rate",
       max: 25,
       value: winRate != null ? clamp((winRate - 0.5) * 100, -25, 25) * confidence : 0,
-      note: winRate != null ? `${Math.round(winRate * 100)}% over the last ${n} resolved positions` : "No resolved positions",
+      note: winRate != null ? `${Math.round(winRate * 100)}% over the last ${n.toLocaleString("en-US")} resolved positions` : "No resolved positions",
     },
     {
       key: "consistency",

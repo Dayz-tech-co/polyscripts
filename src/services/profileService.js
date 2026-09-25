@@ -50,7 +50,7 @@ async function settle(promise) {
   }
 }
 
-function buildBundle({ account, rawPositions, positions: normalizedPositions, rawClosed, rawActivity, value, traded, rankEntry, cashBalance }) {
+function buildBundle({ account, rawPositions, positions: normalizedPositions, rawClosed, rawActivity, value, traded, rankEntry, cashBalance, pnlSeries = null }) {
   const positions = Array.isArray(rawPositions) ? rawPositions.map(normalizePosition) : (normalizedPositions ?? null);
   const resolvedPositions = Array.isArray(rawClosed) ? rawClosed.map(normalizeClosedPosition) : null;
   const activity = Array.isArray(rawActivity)
@@ -68,11 +68,19 @@ function buildBundle({ account, rawPositions, positions: normalizedPositions, ra
       publicProfile: account,
       account,
       cashBalance,
+      pnlSeries,
     }),
     positions,
     resolvedPositions,
     activity,
+    pnlSeries,
   };
+}
+
+/** Official all-time PnL history points ([{ date, value }]), or null. */
+async function loadPnlSeries(address, { signal } = {}) {
+  const series = await settle(getPerformanceRange(address, { range: "ALL", metric: "performance", signal }));
+  return series?.source === "user-pnl-api" && Array.isArray(series.points) ? series.points : null;
 }
 
 /**
@@ -139,11 +147,12 @@ export async function hydrateAccountProfile(overview, { signal } = {}) {
   const cached = cacheGet(cacheKey);
   if (cached) return cached;
 
-  const [rawPositions, rawClosed, rawActivity, cashBalance] = await Promise.all([
+  const [rawPositions, rawClosed, rawActivity, cashBalance, pnlSeries] = await Promise.all([
     settle(provider.getPositions(address, { signal })),
     settle(provider.getClosedPositions(address, { signal })),
     settle(provider.getActivity(address, { signal })),
     settle(provider.getCashBalance?.(address, { signal }) ?? Promise.resolve(null)),
+    loadPnlSeries(address, { signal }),
   ]);
 
   const bundle = buildBundle({
@@ -159,6 +168,7 @@ export async function hydrateAccountProfile(overview, { signal } = {}) {
       volume: overview.stats?.volume,
     },
     cashBalance: cashBalance ?? overview.stats?.cashBalance,
+    pnlSeries,
   });
   cacheSet(cacheKey, bundle, BUNDLE_TTL);
   return bundle;
@@ -177,7 +187,7 @@ export async function getAccountProfile(identifier, { signal } = {}) {
   const cached = cacheGet(cacheKey);
   if (cached) return cached;
 
-  const [rawPositions, rawClosed, rawActivity, value, traded, rankEntry, publicProfileAccount, cashBalance] =
+  const [rawPositions, rawClosed, rawActivity, value, traded, rankEntry, publicProfileAccount, cashBalance, pnlSeries] =
     await Promise.all([
       settle(provider.getPositions(address, { signal })),
       settle(provider.getClosedPositions(address, { signal })),
@@ -187,6 +197,7 @@ export async function getAccountProfile(identifier, { signal } = {}) {
       getLeaderboardEntryForAddress(address, { timePeriod: "ALL", signal }),
       settle(getAccountByAddress(address, { signal })),
       settle(provider.getCashBalance?.(address, { signal }) ?? Promise.resolve(null)),
+      loadPnlSeries(address, { signal }),
     ]);
 
   // Merge precedence: the leaderboard row is authoritative for volume, PnL
@@ -228,6 +239,7 @@ export async function getAccountProfile(identifier, { signal } = {}) {
     publicProfile: enrichedAccount,
     account: enrichedAccount,
     cashBalance,
+    pnlSeries,
   });
 
   const bundle = {
@@ -236,6 +248,7 @@ export async function getAccountProfile(identifier, { signal } = {}) {
     positions,
     resolvedPositions,
     activity,
+    pnlSeries,
   };
 
   cacheSet(cacheKey, bundle, BUNDLE_TTL);

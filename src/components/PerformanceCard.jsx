@@ -9,28 +9,19 @@ import { formatCompactCurrency, formatPercentage, formatSignedCurrency } from ".
 import { getToneClass } from "../utils/states";
 
 const RANGES = ["1D", "1W", "1M", "3M", "ALL"];
-const RANGE_LABELS = { "1D": "Last 24 hours", "1W": "Last 7 days", "1M": "Last 30 days", "3M": "Last 90 days", ALL: "Available history" };
+const RANGE_LABELS = { "1D": "Last 24 hours", "1W": "Last 7 days", "1M": "Last 30 days", "3M": "Last 90 days", ALL: "All time" };
 
 const SUMMARY_RANGES = [
   { label: "1D", range: "1D" },
   { label: "7D", range: "1W" },
   { label: "30D", range: "1M" },
   { label: "90D", range: "3M" },
-  { label: "Available History", range: "ALL" },
+  { label: "All time", range: "ALL" },
 ];
 
 const METRICS = [
   { key: "performance", label: "Performance" },
   { key: "volume", label: "Volume" },
-];
-
-const SERIES_DEFS = [
-  { key: "total", label: "Total", color: "#E5A125", rgb: "229, 161, 37" },
-  { key: "trade", label: "Trade", color: "#FF7A00", rgb: "255, 122, 0" },
-  { key: "lp", label: "LP", color: "#3888FF", rgb: "56, 136, 255" },
-  { key: "maker", label: "Maker", color: "#00D2FF", rgb: "0, 210, 255" },
-  { key: "fees", label: "Fees", color: "#8899A6", rgb: "136, 153, 166" },
-  { key: "taker", label: "Taker", color: "#50B4FF", rgb: "80, 180, 255" },
 ];
 
 function useRangeSummary(identifier, metric) {
@@ -67,15 +58,6 @@ export default function PerformanceCard({ identifier, stats }) {
   const [metric, setMetric] = useState("performance");
   const [resetKey, setResetKey] = useState(0);
 
-  const [activeSeries, setActiveSeries] = useState({
-    total: true,
-    trade: true,
-    lp: true,
-    maker: true,
-    fees: false,
-    taker: true,
-  });
-
   const { status, data } = usePerformanceRange(identifier, range, metric);
   const { loading: summaryLoading, data: summary } = useRangeSummary(identifier, metric);
 
@@ -99,10 +81,6 @@ export default function PerformanceCard({ identifier, stats }) {
     setResetKey((k) => k + 1);
   }
 
-  function toggleSeries(key) {
-    setActiveSeries((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
-
   return (
     <div className={`card performance-card ${loading ? "is-loading" : ""}`}>
       <div className="performance-header">
@@ -110,7 +88,7 @@ export default function PerformanceCard({ identifier, stats }) {
           <div className="performance-title-row">
             <span className="card-label">Performance</span>
             <span className="performance-value-suffix">
-              {isVolume ? "Trading Volume" : "Realized PnL"} · {RANGE_LABELS[range]}
+              {isVolume ? "Trading volume (loaded activity)" : "Settled profit / loss"} · {RANGE_LABELS[range]}
             </span>
           </div>
           <div className="performance-value-row">
@@ -198,7 +176,6 @@ export default function PerformanceCard({ identifier, stats }) {
               data={perf.points}
               metric={metric}
               range={range}
-              activeSeries={activeSeries}
               startValue={perf.startValue ?? 0}
             />
             {loading && (
@@ -217,28 +194,11 @@ export default function PerformanceCard({ identifier, stats }) {
         )}
       </div>
 
-      {/* Series Breakdown Legend Chips Strip with High Enable/Disable Contrast */}
-      <div className="series-legend-strip" role="group" aria-label="Chart series breakdown toggles">
-        {SERIES_DEFS.map(({ key, label, color, rgb }) => {
-          const active = activeSeries[key];
-          return (
-            <button
-              key={key}
-              type="button"
-              className={`legend-pill ${active ? "is-active" : "is-disabled"}`}
-              style={{
-                "--pill-color": color,
-                "--pill-rgb": rgb,
-              }}
-              onClick={() => toggleSeries(key)}
-              aria-pressed={active}
-            >
-              <span className="legend-dot" style={{ backgroundColor: color }} />
-              <span className="legend-label">{label}</span>
-            </button>
-          );
-        })}
-      </div>
+      {!isVolume && (
+        <p className="performance-scope-note">
+          Polymarket&apos;s settled PnL history. Live gains or losses on open positions are added in the Total profit / loss above.
+        </p>
+      )}
 
       <div className={`timeframe-shared-strip ${summaryLoading ? "is-loading" : ""}`} role="group" aria-label="Timeframe result cells">
         {SUMMARY_RANGES.map(({ label, range: sumRange }, idx) => {
