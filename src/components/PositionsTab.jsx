@@ -8,9 +8,9 @@ import MarketLink from "./MarketLink";
 import EmptyState from "./EmptyState";
 import { TableSkeleton } from "./Skeleton";
 import { formatCurrency, formatDate, formatNumber, formatPercentage, formatPrice, formatSignedCurrency } from "../utils/formatters";
-import { getToneClass } from "../utils/states";
+import { getToneClass, getValueState } from "../utils/states";
 
-const STATUS_FILTERS = ["Active", "Closed"];
+const STATUS_FILTERS = ["Open", "Unredeemed", "Closed", "All"];
 const SORT_OPTIONS = ["Highest Value", "Highest PnL", "Lowest PnL", "Newest"];
 
 function sortPositions(positions, sort) {
@@ -29,6 +29,18 @@ function sortPositions(positions, sort) {
   }
 }
 
+const STATUS_LABELS = {
+  open: { label: "Open", className: "status-open" },
+  unredeemed: { label: "Unredeemed", className: "status-unredeemed" },
+  resolved: { label: "Closed", className: "status-resolved" },
+};
+
+function StatusPill({ position }) {
+  const status = STATUS_LABELS[position.status] || STATUS_LABELS.resolved;
+  const suffix = position.status === "unredeemed" ? (position.settledOutcome === "won" ? " · won" : " · lost") : "";
+  return <span className={`status-pill ${status.className}`}>{status.label}{suffix}</span>;
+}
+
 function UnifiedRow({ position, expanded, onToggle }) {
   const pnlTone = getToneClass(position.pnl);
   const isOpen = position.status === "open";
@@ -40,7 +52,7 @@ function UnifiedRow({ position, expanded, onToggle }) {
     {
       label: "Unrealized PnL",
       value: isOpen ? formatSignedCurrency(position.pnl) : "N/A",
-      tone: isOpen ? pnlTone : undefined,
+      tone: isOpen ? getValueState(position.pnl) : undefined,
     },
     {
       label: "Realized PnL",
@@ -50,7 +62,7 @@ function UnifiedRow({ position, expanded, onToggle }) {
             ? formatSignedCurrency(position.realizedPnl)
             : "N/A"
           : formatSignedCurrency(position.pnl),
-      tone: isOpen && position.realizedPnl != null ? getToneClass(position.realizedPnl) : pnlTone,
+      tone: isOpen && position.realizedPnl != null ? getValueState(position.realizedPnl) : getValueState(position.pnl),
     },
     { label: "Shares", value: position.shares != null ? formatNumber(position.shares) : "N/A" },
     { label: "Outcome", value: position.side },
@@ -93,9 +105,7 @@ function UnifiedRow({ position, expanded, onToggle }) {
         <td className={`num-cell ${pnlTone}`}>{formatSignedCurrency(position.pnl)}</td>
         <td className={`num-cell ${pnlTone}`}>{formatPercentage(position.pnlPercent, { signed: true })}</td>
         <td>
-          <span className={`status-pill ${isOpen ? "status-open" : "status-resolved"}`}>
-            {isOpen ? "Active" : "Closed"}
-          </span>
+          <StatusPill position={position} />
         </td>
         <td className="action-cell">
           <span className={`expand-chevron ${expanded ? "is-open" : ""}`} aria-hidden="true">
@@ -153,9 +163,7 @@ function UnifiedCardMobile({ position, expanded, onToggle }) {
         </div>
         <div className="position-card-stat">
           <span className="position-card-stat-label">Status</span>
-          <span className={`status-pill ${isOpen ? "status-open" : "status-resolved"}`}>
-            {isOpen ? "Active" : "Closed"}
-          </span>
+          <StatusPill position={position} />
         </div>
       </div>
       {expanded && (
@@ -180,7 +188,7 @@ function UnifiedCardMobile({ position, expanded, onToggle }) {
 }
 
 export default function PositionsTab({ openPositions, resolvedPositions, loading, query, onQueryChange }) {
-  const [status, setStatus] = useState("All");
+  const [status, setStatus] = useState("Open");
   const [sort, setSort] = useState("Highest Value");
   const [expandedId, setExpandedId] = useState(null);
 
@@ -192,7 +200,8 @@ export default function PositionsTab({ openPositions, resolvedPositions, loading
 
   const visible = useMemo(() => {
     let list = combined;
-    if (status === "Active") list = list.filter((p) => p.status === "open");
+    if (status === "Open") list = list.filter((p) => p.status === "open");
+    if (status === "Unredeemed") list = list.filter((p) => p.status === "unredeemed");
     if (status === "Closed") list = list.filter((p) => p.status === "resolved");
     if (query.trim()) {
       const q = query.trim().toLowerCase();
@@ -210,7 +219,7 @@ export default function PositionsTab({ openPositions, resolvedPositions, loading
       <div className="section-header">
         <div className="section-title-group">
           <h2 className="section-title">Positions</h2>
-          {!loading && <span className="section-count">{combined.length}</span>}
+          {!loading && <span className="section-count">{visible.length}</span>}
         </div>
       </div>
 
@@ -225,7 +234,11 @@ export default function PositionsTab({ openPositions, resolvedPositions, loading
       {loading ? (
         <TableSkeleton rows={6} />
       ) : visible.length === 0 ? (
-        <EmptyState icon={Layers3} title="No positions found" description="Try adjusting your filters." />
+        <EmptyState
+          icon={Layers3}
+          title={status === "Open" ? "No open positions" : "No positions found"}
+          description={status === "Open" ? "This account has no active bets right now. Check Unredeemed or Closed." : "Try adjusting your filters."}
+        />
       ) : (
         <>
           <div className="table-wrap positions-scroll">

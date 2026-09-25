@@ -6438,3 +6438,33 @@ kbd {
   .ticker-track { animation-duration: 400s; }
   .motion-ready [data-reveal]:not(.is-revealed) { opacity: 1; transform: none; }
 }
+
+/* Profile accuracy labels --------------------------------------------------- */
+.account-kpi-chip-meta {
+  display: block;
+  margin-top: 2px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.summary-heading {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-default);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.status-pill.status-unredeemed {
+  color: #f5c451;
+  border-color: rgba(245, 189, 53, 0.3);
+  background: rgba(245, 189, 53, 0.08);
+  white-space: nowrap;
+}
+.performance-scope-note {
+  margin: var(--space-4) 0 var(--space-3);
+  font-size: 11.5px;
+  color: var(--text-muted);
+}

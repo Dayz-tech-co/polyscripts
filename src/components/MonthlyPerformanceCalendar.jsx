@@ -25,6 +25,8 @@ function getHeatmapClass(pnl, maxMag) {
   }
 }
 
+const ACTIVITY_CAP = 600;
+
 export default function MonthlyPerformanceCalendar({ resolvedPositions = EMPTY_LIST, activity = EMPTY_LIST, performanceSeries = EMPTY_LIST, loading }) {
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [viewMode, setViewMode] = useState("daily"); // "daily" | "monthly"
@@ -128,6 +130,9 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = EMPTY_L
     ? losingDays.reduce((sum, pnl) => sum + pnl, 0) / losingDays.length
     : null;
   const monthVolume = currentMonthData?.volume ?? null;
+  // Activity is capped at the most recent events; heavy traders exceed it, so
+  // a monthly sum would silently undercount.
+  const activityTruncated = (activity?.length ?? 0) >= ACTIVITY_CAP;
 
   return (
     <div className={`card monthly-calendar-card ${loading ? "is-loading" : ""}`}>
@@ -293,7 +298,7 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = EMPTY_L
 
       <div className="monthly-summary-strip">
         <div className="monthly-summary-item">
-          <span className="monthly-summary-label">Monthly Realized PnL</span>
+          <span className="monthly-summary-label">{currentMonthData?.hasOfficialPnl ? "Monthly PnL" : "Monthly Realized PnL"}</span>
           <span className={`monthly-summary-value ${currentMonthData ? getToneClass(monthPnl) : ""}`}>
             {currentMonthData ? formatSignedCurrency(monthPnl) : "-"}
           </span>
@@ -320,8 +325,11 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = EMPTY_L
         </div>
         <div className="monthly-summary-item">
           <span className="monthly-summary-label">Trading Volume</span>
-          <span className="monthly-summary-value">
-            {monthVolume != null ? formatCompactCurrency(monthVolume) : "-"}
+          <span
+            className="monthly-summary-value"
+            title={activityTruncated ? "Only the most recent activity is loaded for this account, so monthly volume would be incomplete." : undefined}
+          >
+            {activityTruncated ? "N/A" : monthVolume != null ? formatCompactCurrency(monthVolume) : "-"}
           </span>
         </div>
       </div>

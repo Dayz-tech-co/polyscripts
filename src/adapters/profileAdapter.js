@@ -47,7 +47,10 @@ export function normalizePosition(raw) {
     realizedPnl: raw.realizedPnl ?? null,
     redeemable,
     isActive,
-    status: "open",
+    // Resolved positions the wallet still holds: "unredeemed" (lost at $0 or
+    // won and not yet claimed) - they are not open bets.
+    status: isActive ? "open" : "unredeemed",
+    settledOutcome: isActive ? null : currentValue != null && currentValue > 0 ? "won" : "lost",
     closeDate: raw.endDate ?? null,
     slug: raw.slug ?? null,
     icon: raw.icon ?? null,
@@ -182,21 +185,31 @@ function sumNotNull(values) {
  * profile fields or the leaderboard entry), those are preferred so the
  * profile never contradicts the leaderboard or comparison surfaces.
  */
-export function deriveStats({ positions, closedPositions, value, traded, rankEntry, publicProfile, account, cashBalance }) {
+export function deriveStats({ positions, closedPositions, value, traded, rankEntry, publicProfile, account, cashBalance, pnlSeries }) {
   const canonical = account || publicProfile || null;
   const hasPositions = Array.isArray(positions);
   const hasClosed = Array.isArray(closedPositions);
 
-  const derivedUnrealizedPnl = hasPositions ? sumNotNull(positions.map((p) => p.pnl)) : null;
+  const activeList = hasPositions ? positions.filter((p) => p.isActive) : [];
+  const unredeemedList = hasPositions ? positions.filter((p) => !p.isActive) : [];
+  // Unrealized = live PnL on positions that are still open. Resolved losers
+  // the wallet never redeemed are settled losses, not unrealized ones.
+  const derivedUnrealizedPnl = hasPositions ? (sumNotNull(activeList.map((p) => p.pnl)) ?? 0) : null;
+  const unredeemedPnl = hasPositions ? sumNotNull(unredeemedList.map((p) => p.pnl)) : null;
   const derivedRealizedPnl = hasClosed ? sumNotNull(closedPositions.map((p) => p.pnl)) : null;
 
   const unrealizedPnl = canonical?.unrealizedPnl ?? derivedUnrealizedPnl;
   const realizedPnl = canonical?.realizedPnl ?? derivedRealizedPnl;
-  // Total PnL is always the net of the same realized + unrealized windows so
-  // the summary is internally consistent (Total = Realized + Unrealized) and
-  // traces to the exact account's positions data. The leaderboard's all-time
-  // PnL is intentionally not used here - it reflects a different scope.
-  const pnl = unrealizedPnl != null || realizedPnl != null ? (unrealizedPnl ?? 0) + (realizedPnl ?? 0) : null;
+
+  // Total PnL matches Polymarket's profile: the official settled PnL history
+  // (user-pnl-api, last point) plus live PnL on open positions. Without the
+  // history series it is left unknown rather than estimated from a partial
+  // window of resolved positions.
+  const lastPoint = Array.isArray(pnlSeries) && pnlSeries.length ? pnlSeries[pnlSeries.length - 1] : null;
+  const settledPnl = lastPoint && Number.isFinite(lastPoint.value) ? lastPoint.value : null;
+  const leaderboardPnl = Number.isFinite(canonical?.pnl) ? canonical.pnl : null;
+  const pnl = settledPnl != null ? settledPnl + (unrealizedPnl ?? 0) : leaderboardPnl;
+  const pnlSource = settledPnl != null ? "history" : leaderboardPnl != null ? "leaderboard" : null;
 
   // Invested basis only counts records that carry a real cost, so pnlPercent
   // is never skewed by positions with missing numbers.
@@ -243,7 +256,7 @@ export function deriveStats({ positions, closedPositions, value, traded, rankEnt
       largestLoss = losses > 0 ? Math.min(...lossPnl) : null;
     }
   }
-  const derivedWinRate = wins != null || losses != null ? wins / (wins + losses) : null;
+  const derivedWinRate = wins != null && losses != null && wins + losses > 0 ? wins / (wins + losses) : null;
   const winRate = canonical?.winRate ?? derivedWinRate;
 
   const avgPositionSize = investedRecords.length > 0 && investedBasis != null ? investedBasis / investedRecords.length : null;
@@ -270,7 +283,12 @@ export function deriveStats({ positions, closedPositions, value, traded, rankEnt
     largestWin,
     largestLoss,
     avgPositionSize,
-    openPositionsCount: canonical?.openPositions ?? (hasPositions ? activePositions.length || positions.length : null),
+    openPositionsCount: canonical?.openPositions ?? (hasPositions ? activePositions.length : null),
+    unredeemedCount: hasPositions ? unredeemedList.length : null,
+    unredeemedPnl,
+    settledPnl,
+    pnlSource,
+    resolvedSampleOldest: hasClosed && closedPositions.length ? closedPositions[closedPositions.length - 1].closeDate : null,
     activityCount: canonical?.activityCount ?? null,
     resolvedPositionsCount: hasClosed ? closedPositions.length : null,
     realizedPnl,
