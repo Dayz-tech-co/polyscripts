@@ -2,14 +2,14 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { formatCompactCurrency, formatDateTime } from "../utils/formatters";
 
 const SIZES = {
-  board: { w: 960, h: 220, pad: { top: 18, right: 18, bottom: 28, left: 12 } },
-  compact: { w: 420, h: 148, pad: { top: 14, right: 14, bottom: 22, left: 8 } },
+  board: { w: 960, h: 210, pad: { top: 16, right: 52, bottom: 26, left: 8 } },
+  compact: { w: 420, h: 140, pad: { top: 12, right: 12, bottom: 20, left: 6 } },
 };
 
 const COLORS = {
-  positive: "#3DDC97",
-  negative: "#FF5C69",
-  neutral: "#8BA4FF",
+  positive: "#2FB57E",
+  negative: "#E5484D",
+  neutral: "#7C9CFF",
 };
 
 function buildMonotonePath(pts) {
@@ -57,14 +57,13 @@ function downsample(points, max = 160) {
   return out;
 }
 
-/**
- * Full-bleed hero PnL chart — monotone curve, guides, hover, live end marker.
- */
+/** Clean hero PnL chart — sharp line, soft fill, no glow. */
 export default function PnlSparkline({
   points = [],
   tone = "neutral",
   className = "",
   variant = "compact",
+  loading = false,
 }) {
   const uid = useId().replace(/:/g, "");
   const lineRef = useRef(null);
@@ -92,8 +91,8 @@ export default function PnlSparkline({
     const max = Math.max(...values);
     const floor = Math.max(Math.abs(max - min) * 0.08, Math.abs(max) * 0.05, Math.abs(min) * 0.05, 1);
     const spread = Math.max(max - min, floor);
-    const yMin = min - spread * 0.16;
-    const yMax = max + spread * 0.16;
+    const yMin = min - spread * 0.12;
+    const yMax = max + spread * 0.12;
     const yRange = yMax - yMin || 1;
 
     return series.map((p, i) => {
@@ -130,8 +129,7 @@ export default function PnlSparkline({
     const count = variant === "board" ? 5 : 3;
     const out = [];
     for (let i = 0; i < count; i++) {
-      const idx = Math.round((i / (count - 1)) * (mapped.length - 1));
-      out.push(mapped[idx]);
+      out.push(mapped[Math.round((i / (count - 1)) * (mapped.length - 1))]);
     }
     return out;
   }, [mapped, variant]);
@@ -139,11 +137,10 @@ export default function PnlSparkline({
   const yTicks = useMemo(() => {
     if (!mapped.length) return [];
     const { yMin, yMax } = mapped[0];
-    return [0.15, 0.5, 0.85].map((f) => {
-      const value = yMin + (yMax - yMin) * (1 - f);
-      const y = PAD.top + PLOT_H * f;
-      return { value, y };
-    });
+    return [0.18, 0.5, 0.82].map((f) => ({
+      value: yMin + (yMax - yMin) * (1 - f),
+      y: PAD.top + PLOT_H * f,
+    }));
   }, [mapped, PAD.top, PLOT_H]);
 
   useEffect(() => {
@@ -170,10 +167,10 @@ export default function PnlSparkline({
       line.style.strokeDashoffset = String(len);
       if (area) area.style.opacity = "0";
       f2 = requestAnimationFrame(() => {
-        line.style.transition = "stroke-dashoffset 900ms cubic-bezier(0.16, 1, 0.3, 1)";
+        line.style.transition = "stroke-dashoffset 720ms cubic-bezier(0.22, 1, 0.36, 1)";
         line.style.strokeDashoffset = "0";
         if (area) {
-          area.style.transition = "opacity 700ms 80ms cubic-bezier(0.16, 1, 0.3, 1)";
+          area.style.transition = "opacity 480ms 60ms ease";
           area.style.opacity = "1";
         }
       });
@@ -188,32 +185,24 @@ export default function PnlSparkline({
     if (mapped.length < 2) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    const idx = Math.round(frac * (mapped.length - 1));
-    setHover(mapped[idx] || null);
+    setHover(mapped[Math.round(frac * (mapped.length - 1))] || null);
   }
 
-  if (mapped.length < 2) {
+  if (loading || mapped.length < 2) {
     return (
       <div className={`pnl-sparkline-shell is-empty variant-${variant} ${className}`}>
-        <svg className="pnl-sparkline" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
-          <line
-            x1={PAD.left}
-            y1={H / 2}
-            x2={W - PAD.right}
-            y2={H / 2}
-            stroke="rgba(255,255,255,0.1)"
-            strokeWidth="1.5"
-            strokeDasharray="4 6"
-          />
-        </svg>
-        <span className="pnl-spark-empty">Waiting for PnL history</span>
+        <div className="pnl-spark-skeleton" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+        <span className="pnl-spark-empty">{loading ? "Loading chart…" : "Waiting for PnL history"}</span>
       </div>
     );
   }
 
   const active = hover || last;
   const fillId = `pnl-fill-${uid}`;
-  const glowId = `pnl-glow-${uid}`;
 
   return (
     <div className={`pnl-sparkline-shell tone-${tone} variant-${variant} ${className}`}>
@@ -237,28 +226,25 @@ export default function PnlSparkline({
       >
         <defs>
           <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={stroke} stopOpacity="0.38" />
-            <stop offset="45%" stopColor={stroke} stopOpacity="0.1" />
+            <stop offset="0%" stopColor={stroke} stopOpacity="0.18" />
+            <stop offset="70%" stopColor={stroke} stopOpacity="0.04" />
             <stop offset="100%" stopColor={stroke} stopOpacity="0" />
           </linearGradient>
-          <filter id={glowId} x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur stdDeviation="2.2" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
         </defs>
 
+        {/* Light grid */}
         {yTicks.map((tick, i) => (
-          <g key={i}>
-            <line x1={PAD.left} y1={tick.y} x2={W - PAD.right} y2={tick.y} className="pnl-spark-grid" />
-            {variant === "board" && (
-              <text x={W - PAD.right} y={tick.y - 4} textAnchor="end" className="pnl-spark-ylabel">
-                {formatCompactCurrency(tick.value)}
-              </text>
-            )}
-          </g>
+          <line key={`h-${i}`} x1={PAD.left} y1={tick.y} x2={W - PAD.right} y2={tick.y} className="pnl-spark-grid" />
+        ))}
+        {xTicks.map((tick, i) => (
+          <line
+            key={`v-${i}`}
+            x1={tick.x}
+            y1={PAD.top}
+            x2={tick.x}
+            y2={PAD.top + PLOT_H}
+            className="pnl-spark-grid-v"
+          />
         ))}
 
         {zeroY != null && (
@@ -267,49 +253,59 @@ export default function PnlSparkline({
             y1={zeroY}
             x2={W - PAD.right}
             y2={zeroY}
-            stroke="rgba(255,255,255,0.18)"
+            stroke={stroke}
+            strokeOpacity="0.35"
             strokeWidth="1"
-            strokeDasharray="4 5"
+            strokeDasharray="3 5"
           />
         )}
 
-        <path ref={areaRef} d={areaPath} fill={`url(#${fillId})`} className="pnl-spark-area" />
+        <path ref={areaRef} d={areaPath} fill={`url(#${fillId})`} />
         <path
           ref={lineRef}
           d={linePath}
           fill="none"
           stroke={stroke}
-          strokeWidth={variant === "board" ? 2.8 : 2.3}
+          strokeWidth={variant === "board" ? 1.9 : 1.7}
           strokeLinecap="round"
           strokeLinejoin="round"
-          filter={`url(#${glowId})`}
-          className="pnl-spark-line"
         />
 
+        {yTicks.map((tick, i) =>
+          variant === "board" ? (
+            <text key={`yl-${i}`} x={W - 6} y={tick.y + 3} textAnchor="end" className="pnl-spark-ylabel">
+              {formatCompactCurrency(tick.value)}
+            </text>
+          ) : null,
+        )}
+
         {last && !hover && (
-          <g className="pnl-spark-end" transform={`translate(${last.x}, ${last.y})`}>
-            <circle r="10" fill={stroke} opacity="0.18" className="pnl-spark-pulse" />
-            <circle r="4" fill={stroke} stroke="rgba(6,10,16,0.95)" strokeWidth="2" />
-          </g>
+          <circle
+            cx={last.x}
+            cy={last.y}
+            r="3.5"
+            fill={stroke}
+            stroke="rgba(8,12,18,0.95)"
+            strokeWidth="1.5"
+          />
         )}
 
         {hover && (
-          <g className="pnl-spark-hover">
+          <g>
             <line
               x1={hover.x}
               y1={PAD.top}
               x2={hover.x}
               y2={PAD.top + PLOT_H}
-              stroke="rgba(255,255,255,0.28)"
+              stroke="rgba(255,255,255,0.22)"
               strokeWidth="1"
-              strokeDasharray="3 4"
             />
-            <circle cx={hover.x} cy={hover.y} r="5" fill={stroke} stroke="rgba(6,10,16,0.95)" strokeWidth="2" />
+            <circle cx={hover.x} cy={hover.y} r="4" fill={stroke} stroke="rgba(8,12,18,0.95)" strokeWidth="1.5" />
             <g
-              transform={`translate(${Math.min(W - 96, Math.max(PAD.left, hover.x - 44))}, ${Math.max(6, hover.y - 32)})`}
+              transform={`translate(${Math.min(W - 90, Math.max(PAD.left, hover.x - 40))}, ${Math.max(4, hover.y - 28)})`}
             >
-              <rect width="88" height="22" rx="7" fill="rgba(8,12,18,0.94)" stroke="rgba(255,255,255,0.1)" />
-              <text x="44" y="15" textAnchor="middle" className="pnl-spark-tip">
+              <rect width="80" height="20" rx="5" fill="rgba(10,14,20,0.92)" />
+              <text x="40" y="13.5" textAnchor="middle" className="pnl-spark-tip">
                 {formatCompactCurrency(hover.value)}
               </text>
             </g>
@@ -318,9 +314,9 @@ export default function PnlSparkline({
 
         {xTicks.map((tick, i) => (
           <text
-            key={i}
+            key={`xl-${i}`}
             x={tick.x}
-            y={H - 8}
+            y={H - 7}
             textAnchor={i === 0 ? "start" : i === xTicks.length - 1 ? "end" : "middle"}
             className="pnl-spark-xlabel"
           >

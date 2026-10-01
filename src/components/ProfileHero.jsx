@@ -103,6 +103,8 @@ export default function ProfileHero({
     if (sparkPoints.length < 2) return getValueState(stats?.pnl);
     return getValueState(sparkPoints[sparkPoints.length - 1].value - sparkPoints[0].value);
   }, [sparkPoints, stats?.pnl]);
+  const chartReady = Array.isArray(pnlSeries) && pnlSeries.length >= 2;
+  const chartLoading = !chartReady && Boolean(detailsLoading);
 
   const split = useMemo(() => volumeSplit(activity), [activity]);
 
@@ -302,23 +304,30 @@ export default function ProfileHero({
                 </span>
               </div>
 
-              <div className="hero-range" role="group" aria-label="Chart range">
-                {SPARK_RANGES.map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    className={`hero-range-btn ${sparkRange === r ? "is-active" : ""}`}
-                    onClick={() => setSparkRange(r)}
-                  >
-                    {r === "ALL" ? "All" : r}
-                  </button>
-                ))}
-              </div>
+              {chartReady ? (
+                <div className="hero-range" role="group" aria-label="Chart range">
+                  {SPARK_RANGES.map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      className={`hero-range-btn ${sparkRange === r ? "is-active" : ""}`}
+                      onClick={() => setSparkRange(r)}
+                    >
+                      {r === "ALL" ? "All" : r}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </div>
 
           <div className="hero-board-chart">
-            <PnlSparkline points={sparkPoints} tone={sparkTone} variant="board" />
+            <PnlSparkline
+              points={sparkPoints}
+              tone={sparkTone}
+              variant="board"
+              loading={chartLoading}
+            />
           </div>
         </div>
       </div>
