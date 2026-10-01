@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { LoaderCircle, RotateCcw } from "lucide-react";
 import PerformanceChart from "./PerformanceChart";
+import AnimatedNumber from "./AnimatedNumber";
+import SegmentControl from "./SegmentControl";
 import Tooltip from "./Tooltip";
 import { ChartSkeleton } from "./Skeleton";
 import { usePerformanceRange } from "../hooks/usePerformanceRange";
@@ -19,10 +21,12 @@ const SUMMARY_RANGES = [
   { label: "All time", range: "ALL" },
 ];
 
-const METRICS = [
-  { key: "performance", label: "Performance" },
-  { key: "volume", label: "Volume" },
+const METRIC_OPTIONS = [
+  { value: "performance", label: "Performance" },
+  { value: "volume", label: "Volume" },
 ];
+
+const RANGE_OPTIONS = RANGES.map((r) => ({ value: r, label: r === "ALL" ? "All" : r }));
 
 function useRangeSummary(identifier, metric) {
   const [summary, setSummary] = useState({ loading: false, data: {} });
@@ -93,11 +97,16 @@ export default function PerformanceCard({ identifier, stats }) {
           </div>
           <div className="performance-value-row">
             <span className={`performance-value ${headlineTone}`}>
-              {perf
-                ? isVolume
-                  ? formatCompactCurrency(perf.change)
-                  : formatSignedCurrency(perf.change)
-                : "N/A"}
+              {perf ? (
+                <AnimatedNumber
+                  value={perf.change}
+                  format={isVolume ? formatCompactCurrency : formatSignedCurrency}
+                />
+              ) : loading ? (
+                <span className="stat-pulse" style={{ width: 140, height: 32, display: "inline-block" }} />
+              ) : (
+                "N/A"
+              )}
             </span>
           </div>
           {stats && (
@@ -125,34 +134,20 @@ export default function PerformanceCard({ identifier, stats }) {
         </div>
 
         <div className="performance-controls-row">
-          <div className="metric-toggle" role="group" aria-label="Chart metric">
-            {METRICS.map((m) => (
-              <button
-                key={m.key}
-                type="button"
-                className={`metric-btn ${metric === m.key ? "is-active" : ""}`}
-                onClick={() => handleMetric(m.key)}
-                aria-pressed={metric === m.key}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="range-controls" role="group" aria-label="Performance time range">
-            {RANGES.map((r) => (
-              <button
-                key={r}
-                type="button"
-                className={`range-btn ${range === r ? "is-active" : ""}`}
-                onClick={() => setRange(r)}
-                aria-pressed={range === r}
-              >
-                {r === "ALL" ? "All" : r}
-              </button>
-            ))}
-          </div>
-
+          <SegmentControl
+            options={METRIC_OPTIONS}
+            value={metric}
+            onChange={handleMetric}
+            ariaLabel="Chart metric"
+            size="sm"
+          />
+          <SegmentControl
+            options={RANGE_OPTIONS}
+            value={range}
+            onChange={setRange}
+            ariaLabel="Performance time range"
+            size="sm"
+          />
           <Tooltip label="Reset chart view">
             <button
               type="button"

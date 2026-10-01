@@ -109,11 +109,28 @@ export default function WhalesPage() {
         </button>
       </PageHeader>
 
-      <section className="pulse-kpis stagger" aria-label="Feed summary">
-        <div className="pulse-kpi"><span>Notional in feed</span><strong><AnimatedNumber value={summary.total} format={formatCompactCurrency} /></strong></div>
-        <div className="pulse-kpi"><span>Buy share</span><strong><AnimatedNumber value={summary.buyShare == null ? null : summary.buyShare * 100} format={(v) => (v == null ? "N/A" : `${Math.round(v)}%`)} /></strong></div>
-        <div className="pulse-kpi"><span>Largest trade</span><strong><AnimatedNumber value={summary.largest} format={formatCompactCurrency} /></strong></div>
-        <div className="pulse-kpi"><span>Flagged trades</span><strong><AnimatedNumber value={summary.signals} format={(v) => Math.round(v)} /></strong></div>
+      <section className="soft-kpis stagger" aria-label="Feed summary">
+        <div className="soft-kpi">
+          <span>Notional in feed</span>
+          <strong><AnimatedNumber value={summary.total} format={formatCompactCurrency} /></strong>
+        </div>
+        <div className="soft-kpi">
+          <span>Buy share</span>
+          <strong>
+            <AnimatedNumber
+              value={summary.buyShare == null ? null : summary.buyShare * 100}
+              format={(v) => (v == null ? "N/A" : `${Math.round(v)}%`)}
+            />
+          </strong>
+        </div>
+        <div className="soft-kpi">
+          <span>Largest trade</span>
+          <strong><AnimatedNumber value={summary.largest} format={formatCompactCurrency} /></strong>
+        </div>
+        <div className="soft-kpi">
+          <span>Flagged trades</span>
+          <strong><AnimatedNumber value={summary.signals} format={(v) => Math.round(v)} /></strong>
+        </div>
       </section>
 
       <div className="tab-controls-row">

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Activity, Coins, Droplets, Gift, LoaderCircle, RefreshCw } from "lucide-react";
+import { Activity, Coins, Droplets, Gift, RefreshCw } from "lucide-react";
 import PageHeader from "../components/PageHeader";
+import PageLoader from "../components/PageLoader";
 import RewardShareStudio from "../components/RewardShareStudio";
 import RewardCardSkeleton from "../components/RewardCardSkeleton";
 import { getRewardAccounts, getRewardsSnapshot } from "../services/rewardsService";
@@ -48,7 +49,11 @@ export default function RewardsPage() {
         <button type="button" className="btn btn-secondary rewards-refresh" onClick={() => setReload((value) => value + 1)} disabled={state.status === "loading"}><RefreshCw size={14} className={state.status === "loading" ? "spin" : ""} /> Refresh</button>
       </PageHeader>
 
-      {state.status === "loading" && !data ? <div className="reward-loading"><LoaderCircle className="spin" /> Loading live Polymarket data…</div> : state.status === "error" ? <div className="reward-empty">Live rewards data could not be loaded. Try refreshing.</div> : data && <>
+      {state.status === "loading" && !data ? (
+        <PageLoader label="Loading rewards" detail="Fetching live Polymarket reward markets and emissions" />
+      ) : state.status === "error" ? (
+        <div className="reward-empty">Live rewards data could not be loaded. Try refreshing.</div>
+      ) : data && <>
         <section className="rewards-overview" aria-label="Rewards overview">
           <div className="rewards-pusd"><div className="rewards-pusd-copy"><span>pUSD SUPPLY · POLYGON</span><strong>{formatCompactCurrency(data.pusdSupply)}</strong><p>Live ERC-20 total supply · backed by USDC</p></div><div className="rewards-live"><i />Live on-chain</div></div>
           <div className="rewards-metrics">{METRICS.map(({ key, label, note, icon: Icon, tone, money }) => <article className={`rewards-kpi is-${tone}`} key={key}><div className="rewards-kpi-icon"><Icon size={16} /></div><div><span>{label}</span><strong>{money ? formatCompactCurrency(data[key]) : formatNumber(data[key])}</strong><small>{data.hasMore && money ? "Partial - first API pages" : note}</small></div></article>)}</div>

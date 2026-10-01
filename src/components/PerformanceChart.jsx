@@ -106,12 +106,16 @@ export default function PerformanceChart({
 }) {
   const svgRef = useRef(null);
   const animFrameRef = useRef(null);
+  const lineRef = useRef(null);
+  const areaRef = useRef(null);
 
   // Time Domain state [startMs, endMs]
   const [domain, setDomain] = useState(null);
   // Animated Y-range state for smooth zoom auto-scaling
   const [animY, setAnimY] = useState({ min: 0, max: 1 });
   const [hoverIndex, setHoverIndex] = useState(null);
+  const [drawTick, setDrawTick] = useState(0);
+  const [isMorphing, setIsMorphing] = useState(false);
 
   // Drag pan state
   const dragRef = useRef({ active: false, startX: 0, startDomain: null });
@@ -124,13 +128,20 @@ export default function PerformanceChart({
     return { startMs, endMs, spanMs: endMs - startMs || 1 };
   }, [data]);
 
-  // Reset domain when dataset/range changes
+  // Reset domain when dataset/range changes + kick period-switch morph
   useEffect(() => {
     if (fullBounds) {
       setDomain([fullBounds.startMs, fullBounds.endMs]);
     } else {
       setDomain(null);
     }
+    setHoverIndex(null);
+    setDrawTick((t) => t + 1);
+    setIsMorphing(true);
+    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    const clearMs = prefersReducedMotion ? 0 : 720;
+    const timer = window.setTimeout(() => setIsMorphing(false), clearMs);
+    return () => window.clearTimeout(timer);
   }, [fullBounds, range, metric]);
 
   const activeDomain = domain ?? (fullBounds ? [fullBounds.startMs, fullBounds.endMs] : [0, 1]);
@@ -162,7 +173,7 @@ export default function PerformanceChart({
     };
   }, [visiblePoints, data]);
 
-  // Smooth Y-axis interpolation animation
+  // Smooth Y-axis interpolation animation (longer on period switches)
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
     if (prefersReducedMotion) {
@@ -172,7 +183,7 @@ export default function PerformanceChart({
 
     let start = null;
     const initialY = { ...animY };
-    const duration = 180;
+    const duration = isMorphing ? 560 : 220;
 
     function step(timestamp) {
       if (!start) start = timestamp;
@@ -193,7 +204,44 @@ export default function PerformanceChart({
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [targetY.min, targetY.max]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [targetY.min, targetY.max, isMorphing]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Stroke-draw reveal whenever the series remorphs (period / metric switch)
+  useEffect(() => {
+    const line = lineRef.current;
+    const area = areaRef.current;
+    if (!line) return undefined;
+    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    if (prefersReducedMotion) {
+      line.style.strokeDasharray = "none";
+      line.style.strokeDashoffset = "0";
+      if (area) area.style.opacity = "1";
+      return undefined;
+    }
+
+    // Wait one frame so the new path geometry is committed before measuring.
+    let frame = requestAnimationFrame(() => {
+      const length = line.getTotalLength?.() || 1200;
+      line.style.strokeDasharray = String(length);
+      line.style.strokeDashoffset = String(length);
+      line.style.transition = "none";
+      if (area) {
+        area.style.opacity = "0";
+        area.style.transition = "none";
+      }
+
+      frame = requestAnimationFrame(() => {
+        line.style.transition = "stroke-dashoffset 720ms cubic-bezier(0.16, 1, 0.3, 1)";
+        line.style.strokeDashoffset = "0";
+        if (area) {
+          area.style.transition = "opacity 640ms 120ms cubic-bezier(0.16, 1, 0.3, 1)";
+          area.style.opacity = "1";
+        }
+      });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [drawTick]);
 
   // Canonical Y-scale mapping
   const yScale = useCallback(
@@ -369,7 +417,7 @@ export default function PerformanceChart({
   const areaGradientId = `area-grad-${seriesTone}`;
 
   return (
-    <div className="chart-wrap chart-wrap-tall" onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+    <div className={`chart-wrap chart-wrap-tall ${isMorphing ? "is-morphing" : ""}`} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
       <svg
         ref={svgRef}
         className={`chart-svg ${dragRef.current.active ? "is-grabbing" : ""}`}
@@ -386,7 +434,8 @@ export default function PerformanceChart({
       >
         <defs>
           <linearGradient id={areaGradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={lineColor} stopOpacity="0.14" />
+            <stop offset="0%" stopColor={lineColor} stopOpacity="0.18" />
+            <stop offset="55%" stopColor={lineColor} stopOpacity="0.05" />
             <stop offset="100%" stopColor={lineColor} stopOpacity="0.0" />
           </linearGradient>
         </defs>
@@ -414,21 +463,29 @@ export default function PerformanceChart({
         )}
 
         {/* Subdued area fill */}
-        <path d={areaPath} fill={`url(#${areaGradientId})`} stroke="none" />
+        <path
+          ref={areaRef}
+          className="chart-area-fill"
+          d={areaPath}
+          fill={`url(#${areaGradientId})`}
+          stroke="none"
+        />
 
         {/* Main continuous line */}
         <path
+          ref={lineRef}
+          className="chart-line-path"
           d={linePath}
           fill="none"
           stroke={lineColor}
-          strokeWidth="1.5"
+          strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
 
-        {/* Latest point current value dashed line & circle sitting at exact yScale(lastPoint.value) */}
+        {/* Latest point — single neat circle */}
         {lastPoint && (
-          <g transform={`translate(0, ${lastPoint.y})`}>
+          <g className="chart-end-marker" transform={`translate(0, ${lastPoint.y})`}>
             <line
               x1={lastPoint.x}
               y1={0}
@@ -436,13 +493,13 @@ export default function PerformanceChart({
               y2={0}
               stroke={lineColor}
               strokeDasharray="3 3"
-              strokeOpacity="0.5"
+              strokeOpacity="0.45"
             />
-            <circle cx={lastPoint.x} cy="0" r="3" fill={lineColor} />
+            <circle cx={lastPoint.x} cy="0" r="4" fill={lineColor} stroke="rgba(8,11,17,0.9)" strokeWidth="2" />
           </g>
         )}
 
-        {/* Crosshair guide & active point dot */}
+        {/* Crosshair + single circle marker */}
         {activePoint && (
           <>
             <line
@@ -452,7 +509,12 @@ export default function PerformanceChart({
               y2={PLOT_BOTTOM}
               className="chart-crosshair"
             />
-            <circle cx={activePoint.x} cy={activePoint.y} r="4.5" className={`chart-dot tone-${hoverChangeTone}`} />
+            <circle
+              cx={activePoint.x}
+              cy={activePoint.y}
+              r="5"
+              className={`chart-dot tone-${hoverChangeTone}`}
+            />
           </>
         )}
       </svg>

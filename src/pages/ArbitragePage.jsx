@@ -100,11 +100,27 @@ export default function ArbitragePage() {
         {state.at && <span className="dashboard-updated"><RefreshCw size={12} aria-hidden="true" /> Scanned {formatTimeAgo(state.at)}</span>}
       </PageHeader>
 
-      <section className="pulse-kpis" aria-label="Scan summary">
-        <div className="pulse-kpi"><span>Opportunities</span><strong><AnimatedNumber value={state.list.length} format={(v) => Math.round(v)} /></strong></div>
-        <div className="pulse-kpi"><span>Best gross edge</span><strong className="tone-positive"><AnimatedNumber value={best} format={(v) => (v == null ? "N/A" : `${(v * 100).toFixed(2)}%`)} /></strong></div>
-        <div className="pulse-kpi"><span>Events scanned</span><strong><AnimatedNumber value={state.scanned} format={(v) => Math.round(v)} /></strong></div>
-        <div className="pulse-kpi"><span>Buy / sell baskets</span><strong>{state.list.filter((o) => o.kind === "buy").length} / {state.list.filter((o) => o.kind === "sell").length}</strong></div>
+      <section className="soft-kpis" aria-label="Scan summary">
+        <div className="soft-kpi">
+          <span>Opportunities</span>
+          <strong><AnimatedNumber value={state.list.length} format={(v) => Math.round(v)} /></strong>
+        </div>
+        <div className="soft-kpi">
+          <span>Best gross edge</span>
+          <strong className="tone-positive">
+            <AnimatedNumber value={best} format={(v) => (v == null ? "N/A" : `${(v * 100).toFixed(2)}%`)} />
+          </strong>
+        </div>
+        <div className="soft-kpi">
+          <span>Events scanned</span>
+          <strong><AnimatedNumber value={state.scanned} format={(v) => Math.round(v)} /></strong>
+        </div>
+        <div className="soft-kpi">
+          <span>Buy / sell baskets</span>
+          <strong>
+            {state.list.filter((o) => o.kind === "buy").length} / {state.list.filter((o) => o.kind === "sell").length}
+          </strong>
+        </div>
       </section>
 
       <div className="tab-controls-row">

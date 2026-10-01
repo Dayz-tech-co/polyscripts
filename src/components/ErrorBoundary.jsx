@@ -12,7 +12,6 @@ export default class ErrorBoundary extends Component {
     return { error };
   }
 
-  // Navigating to another page clears the error.
   static getDerivedStateFromProps(props, state) {
     return props.resetKey !== state.resetKey ? { error: null, resetKey: props.resetKey } : null;
   }
@@ -25,12 +24,13 @@ export default class ErrorBoundary extends Component {
     if (!this.state.error) return this.props.children;
     return (
       <main id="main-content" className="container main-content">
-        <div className="error-state">
-          <p className="error-state-title">This page hit an unexpected error</p>
-          <p className="empty-state-description">The rest of PolyScripts still works. Try reloading this page.</p>
-          <button type="button" className="btn btn-secondary" onClick={() => window.location.reload()}>
+        <div className="soft-error">
+          <span className="soft-error-orb" aria-hidden="true" />
+          <h1>Something went sideways</h1>
+          <p>This view crashed, but the rest of PolyScripts is fine. Reload and you should be back.</p>
+          <button type="button" className="btn btn-primary" onClick={() => window.location.reload()}>
             <RefreshCw size={14} aria-hidden="true" />
-            <span>Reload</span>
+            <span>Reload page</span>
           </button>
         </div>
       </main>

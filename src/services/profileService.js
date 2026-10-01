@@ -57,19 +57,27 @@ function buildBundle({ account, rawPositions, positions: normalizedPositions, ra
     ? rawActivity.map(normalizeActivity).sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
     : null;
 
+  const stats = deriveStats({
+    positions,
+    closedPositions: resolvedPositions,
+    value,
+    traded,
+    rankEntry,
+    publicProfile: account,
+    account,
+    cashBalance,
+    pnlSeries,
+  });
+
+  // Surface loaded activity/history lengths when profile sources omit them.
+  if (stats.activityCount == null && activity) stats.activityCount = activity.length;
+  if (stats.resolvedPositionsCount == null && resolvedPositions) {
+    stats.resolvedPositionsCount = resolvedPositions.length;
+  }
+
   return {
     account,
-    stats: deriveStats({
-      positions,
-      closedPositions: resolvedPositions,
-      value,
-      traded,
-      rankEntry,
-      publicProfile: account,
-      account,
-      cashBalance,
-      pnlSeries,
-    }),
+    stats,
     positions,
     resolvedPositions,
     activity,

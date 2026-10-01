@@ -161,7 +161,7 @@ export function normalizeActivity(raw) {
     timestamp: raw.timestamp ? raw.timestamp * 1000 : null,
     slug: raw.slug ?? null,
     icon: raw.icon ?? null,
-    tag: null,
+    tag: shortTag(raw.slug, activityMarketLabel(raw)),
   };
 }
 
@@ -265,6 +265,9 @@ export function deriveStats({ positions, closedPositions, value, traded, rankEnt
   // weightedVolume, which can read 0 (or far smaller) for active accounts.
   const volume = rankEntry?.volume ?? canonical?.volume ?? publicProfile?.volume ?? null;
 
+  // Prefer explicit activity counts from profile sources; never invent trades.
+  const activityCount = canonical?.activityCount ?? null;
+
   return {
     portfolioValue,
     cashBalance: cash,
@@ -289,9 +292,9 @@ export function deriveStats({ positions, closedPositions, value, traded, rankEnt
     settledPnl,
     pnlSource,
     resolvedSampleOldest: hasClosed && closedPositions.length ? closedPositions[closedPositions.length - 1].closeDate : null,
-    activityCount: canonical?.activityCount ?? null,
+    activityCount,
     resolvedPositionsCount: hasClosed ? closedPositions.length : null,
-    realizedPnl,
+    realizedPnl: realizedPnl ?? settledPnl,
     unrealizedPnl,
     openPositionValue,
     rank: rankEntry?.rank ?? null,

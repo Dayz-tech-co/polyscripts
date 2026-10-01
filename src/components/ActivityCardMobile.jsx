@@ -3,6 +3,7 @@ import MarketImage from "./MarketImage";
 import { formatCurrency, formatPrice, formatTimeAgo } from "../utils/formatters";
 
 export default function ActivityCardMobile({ activity }) {
+  const tag = activity.tag || (activity.market ? activity.market.slice(0, 3).toUpperCase() : "ACT");
   return (
     <div className="activity-card-mobile">
       <div className="activity-card-mobile-top">
@@ -10,8 +11,8 @@ export default function ActivityCardMobile({ activity }) {
         <span className="activity-card-time">{formatTimeAgo(activity.timestamp)}</span>
       </div>
       <div className="activity-card-mobile-market">
-        <MarketImage icon={activity.icon} category={activity.category} tag={activity.tag} size={36} />
-        <span className="market-title">{activity.market}</span>
+        <MarketImage icon={activity.icon} category={activity.category} tag={tag} size={34} radius={8} />
+        <span className="market-title" title={activity.market}>{activity.market}</span>
       </div>
       <div className="activity-card-mobile-meta">
         {activity.side && activity.side !== "-" ? (
