@@ -55,7 +55,11 @@ function sliceSeries(series, range) {
   const days = range === "1D" ? 1 : range === "1W" ? 7 : range === "1M" ? 30 : 90;
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
   const sliced = series.filter((p) => new Date(p.date).getTime() >= cutoff);
-  return sliced.length >= 2 ? sliced : series.slice(-Math.min(series.length, 24));
+  const window = sliced.length >= 2 ? sliced : series.slice(-Math.min(series.length, 24));
+  // Rebase so the period spark shows movement, not a flat absolute PnL strip.
+  const baseline = window[0]?.value;
+  if (!Number.isFinite(baseline)) return window;
+  return window.map((p) => ({ ...p, value: p.value - baseline }));
 }
 
 function volumeSplit(activity) {
