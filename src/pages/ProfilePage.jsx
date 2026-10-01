@@ -1,21 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Home, SearchX } from "lucide-react";
-import ProfileHeader from "../components/ProfileHeader";
-import ProfileStats from "../components/ProfileStats";
+import ProfileHero from "../components/ProfileHero";
 import ProfileTabs from "../components/ProfileTabs";
-import PerformanceCard from "../components/PerformanceCard";
-import MonthlyPerformanceCalendar from "../components/MonthlyPerformanceCalendar";
-import PortfolioSummary from "../components/PortfolioSummary";
+import OverviewStatsPanel from "../components/OverviewStatsPanel";
+import OverviewWorkspace from "../components/OverviewWorkspace";
 import MarketExposure from "../components/MarketExposure";
-import ProfileActions from "../components/ProfileActions";
+import SmartScoreCard from "../components/SmartScoreCard";
 import PositionsSection from "../components/PositionsSection";
 import ActivitySection from "../components/ActivitySection";
 import PositionsTab from "../components/PositionsTab";
 import HistoryTab from "../components/HistoryTab";
 import ErrorState from "../components/ErrorState";
-import SmartScoreCard from "../components/SmartScoreCard";
 import AccountSearch from "../components/AccountSearch";
+import PageLoader from "../components/PageLoader";
 import { useProfile } from "../hooks/useProfile";
 import { shortenAddress } from "../utils/address";
 import { validateProfileData, logDataIntegrity } from "../utils/dataIntegrity";
@@ -32,7 +30,10 @@ export default function ProfilePage() {
     setPositionsQuery("");
   }, [identifier]);
 
-  const activePositions = useMemo(() => (data?.positions ? data.positions.filter((p) => p.isActive) : null), [data?.positions]);
+  const activePositions = useMemo(
+    () => (data?.positions ? data.positions.filter((p) => p.isActive) : null),
+    [data?.positions],
+  );
 
   useEffect(() => {
     if (import.meta.env.DEV && status === "success" && data) {
@@ -84,11 +85,7 @@ export default function ProfilePage() {
   if (status === "error") {
     return (
       <main id="main-content" className="container main-content">
-        <ErrorState
-          title="Unable to load this profile"
-          description="Please try again."
-          onRetry={retry}
-        />
+        <ErrorState title="Unable to load this profile" description="Please try again." onRetry={retry} />
       </main>
     );
   }
@@ -99,35 +96,27 @@ export default function ProfilePage() {
   const stats = data?.stats ?? null;
   const chartKey = account?.address || identifier;
 
+  if (loading && !data) {
+    return (
+      <main id="main-content" className="container main-content">
+        <PageLoader label="Loading profile" detail="Resolving wallet, open positions and leaderboard stats" />
+      </main>
+    );
+  }
+
   return (
     <>
-      <ProfileHeader account={account} loading={loading} />
+      <ProfileHero
+        account={account}
+        stats={stats}
+        pnlSeries={data?.pnlSeries}
+        activity={data?.activity}
+        loading={loading}
+        detailsLoading={historyLoading}
+        onRefresh={retry}
+      />
 
-      <main id="main-content" className="container main-content">
-        <ProfileStats
-          stats={stats}
-          loading={loading}
-          detailsLoading={historyLoading}
-        />
-
-        <SmartScoreCard key={`smart-${chartKey}`} data={data} loading={historyLoading} />
-
-        <div className="overview-stack profile-persist-stack">
-          <PerformanceCard
-            key={chartKey}
-            identifier={chartKey}
-          />
-          <MonthlyPerformanceCalendar
-            key={`calendar-${chartKey}`}
-            resolvedPositions={data?.resolvedPositions}
-            activity={data?.activity}
-            performanceSeries={data?.pnlSeries || undefined}
-            loading={historyLoading}
-          />
-        </div>
-
-        <ProfileActions data={data} loading={historyLoading} />
-
+      <main id="main-content" className="container main-content profile-main">
         <ProfileTabs
           active={activeTab}
           onChange={setActiveTab}
@@ -138,17 +127,40 @@ export default function ProfilePage() {
           }}
         />
 
+        {detailsStatus === "error" && (
+          <div className="profile-hydrate-banner" role="status">
+            <span>Some history failed to load (resolved trades / activity / PnL series).</span>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={retry}>
+              Retry
+            </button>
+          </div>
+        )}
+
         {activeTab === "Overview" && (
           <div className="tab-panel" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
-            <div className="overview-grid">
-              <div className="overview-stack">
-                <PositionsSection positions={activePositions} loading={historyLoading} limit={6} />
-                <ActivitySection activity={data?.activity} loading={historyLoading} limit={8} />
-              </div>
-              <div className="overview-stack">
-                <PortfolioSummary stats={stats} loading={historyLoading} />
-                <MarketExposure positions={activePositions} loading={historyLoading} />
-              </div>
+            <div className="overview-gravia">
+              <OverviewWorkspace
+                key={chartKey}
+                identifier={chartKey}
+                stats={stats}
+                resolvedPositions={data?.resolvedPositions}
+                activity={data?.activity}
+                performanceSeries={data?.pnlSeries || undefined}
+                positions={activePositions}
+                loading={historyLoading}
+                defaultView="calendar"
+              />
+              <OverviewStatsPanel
+                stats={stats}
+                resolvedPositions={data?.resolvedPositions}
+                activity={data?.activity}
+                loading={historyLoading}
+              />
+            </div>
+
+            <div className="overview-feed">
+              <PositionsSection positions={activePositions} loading={historyLoading} limit={5} />
+              <ActivitySection activity={data?.activity} loading={historyLoading} limit={6} />
             </div>
           </div>
         )}
@@ -158,7 +170,7 @@ export default function ProfilePage() {
             <PositionsTab
               openPositions={data?.positions}
               resolvedPositions={data?.resolvedPositions}
-              loading={loading}
+              loading={loading || historyLoading}
               query={positionsQuery}
               onQueryChange={setPositionsQuery}
             />
@@ -168,6 +180,31 @@ export default function ProfilePage() {
         {activeTab === "Activity" && (
           <div className="tab-panel" id="panel-activity" role="tabpanel" aria-labelledby="tab-activity">
             <ActivitySection activity={data?.activity} loading={historyLoading} />
+          </div>
+        )}
+
+        {activeTab === "Categories" && (
+          <div className="tab-panel" id="panel-categories" role="tabpanel" aria-labelledby="tab-categories">
+            <div className="categories-layout">
+              <MarketExposure positions={activePositions} loading={historyLoading} />
+              <SmartScoreCard key={`smart-${chartKey}`} data={data} loading={historyLoading} />
+            </div>
+          </div>
+        )}
+
+        {activeTab === "Analytics" && (
+          <div className="tab-panel" id="panel-analytics" role="tabpanel" aria-labelledby="tab-analytics">
+            <OverviewWorkspace
+              key={`analytics-${chartKey}`}
+              identifier={chartKey}
+              stats={stats}
+              resolvedPositions={data?.resolvedPositions}
+              activity={data?.activity}
+              performanceSeries={data?.pnlSeries || undefined}
+              positions={activePositions}
+              loading={historyLoading}
+              defaultView="chart"
+            />
           </div>
         )}
 

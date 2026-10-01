@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import SegmentControl from "./SegmentControl";
 import { buildDailyPerformance, getCalendarInsights } from "../utils/calendarAnalytics";
 import { formatCompactCurrency, formatSignedCurrency } from "../utils/formatters";
 import { getToneClass } from "../utils/states";
@@ -43,11 +44,22 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = EMPTY_L
     return dates.length > 0 ? { first: dates[0], last: dates[dates.length - 1] } : null;
   }, [performanceSeries]);
 
+  // Prefer the last month that actually has PnL, not "today" (which can be empty).
   useEffect(() => {
     if (historyBounds?.last) {
       setCurrentDate(new Date(historyBounds.last.getUTCFullYear(), historyBounds.last.getUTCMonth(), 1));
+      return;
     }
-  }, [historyBounds]);
+    // Fall back to latest resolved position close date when series is missing.
+    const closes = (resolvedPositions || [])
+      .map((p) => (p.closeDate ? new Date(p.closeDate) : null))
+      .filter((d) => d && !Number.isNaN(d.getTime()))
+      .sort((a, b) => a - b);
+    if (closes.length) {
+      const last = closes[closes.length - 1];
+      setCurrentDate(new Date(last.getUTCFullYear(), last.getUTCMonth(), 1));
+    }
+  }, [historyBounds, resolvedPositions]);
 
   const insights = useMemo(() => {
     return getCalendarInsights(byDay);
@@ -219,24 +231,16 @@ export default function MonthlyPerformanceCalendar({ resolvedPositions = EMPTY_L
           </button>
         </div>
 
-        <div className="segmented-toggle" role="group" aria-label="Calendar view toggle">
-          <button
-            type="button"
-            className={`segmented-btn ${viewMode === "daily" ? "is-active" : ""}`}
-            onClick={() => setViewMode("daily")}
-            aria-pressed={viewMode === "daily"}
-          >
-            Daily
-          </button>
-          <button
-            type="button"
-            className={`segmented-btn ${viewMode === "monthly" ? "is-active" : ""}`}
-            onClick={() => setViewMode("monthly")}
-            aria-pressed={viewMode === "monthly"}
-          >
-            Monthly
-          </button>
-        </div>
+        <SegmentControl
+          options={[
+            { value: "daily", label: "Daily" },
+            { value: "monthly", label: "Monthly" },
+          ]}
+          value={viewMode}
+          onChange={setViewMode}
+          ariaLabel="Calendar view toggle"
+          size="sm"
+        />
       </div>
 
       {viewMode === "daily" ? (

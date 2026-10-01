@@ -32,16 +32,19 @@ export function ActivityTypeBadge({ type }) {
 
 export default function ActivityRow({ activity }) {
   const sideCls = sideClass(activity.side);
+  const tag = activity.tag || (activity.market ? activity.market.slice(0, 3).toUpperCase() : "ACT");
   return (
     <tr className="activity-row">
       <td>
         <ActivityTypeBadge type={activity.type} />
       </td>
-      <td className="market-cell">
-        <MarketImage icon={activity.icon} category={activity.category} tag={activity.tag} size={36} />
-        <span className="market-title" title={activity.market}>
-          {activity.market}
-        </span>
+      <td>
+        <div className="market-cell">
+          <MarketImage icon={activity.icon} category={activity.category} tag={tag} size={34} radius={8} />
+          <span className="market-title" title={activity.market}>
+            {activity.market}
+          </span>
+        </div>
       </td>
       <td>
         {sideCls ? (

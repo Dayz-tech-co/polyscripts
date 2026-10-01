@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Activity, BarChart3, BookOpen, Calendar, Database, LayoutGrid, PieChart, SearchX, Terminal, TrendingUp, Trophy, Wrench } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import Filters from "../components/Filters";
 import EmptyState from "../components/EmptyState";
-import { TableSkeleton } from "../components/Skeleton";
+import PageLoader from "../components/PageLoader";
 import { getEcosystemResources } from "../services/ecosystemService";
 
 const ICONS = {
@@ -32,29 +32,38 @@ export default function EcosystemPage() {
   useEffect(() => {
     let active = true;
     getEcosystemResources()
-      .then((list) => active && setResources(list))
-      .catch(() => active && setResources([]));
+      .then((list) => {
+        if (active) setResources(Array.isArray(list) ? list : []);
+      })
+      .catch(() => {
+        if (active) setResources([]);
+      });
     return () => {
       active = false;
     };
   }, []);
 
-  const visible = useMemo(() => {
-    if (!resources) return resources;
-    if (category === "All") return resources;
-    return resources.filter((r) => r.category === category);
-  }, [resources, category]);
+  const visible =
+    resources == null
+      ? null
+      : category === "All"
+        ? resources
+        : resources.filter((r) => r.category === category);
 
   return (
-    <main id="main-content" className="container main-content">
-      <PageHeader title="Ecosystem" description="Curated analytics and research resources for the Polymarket ecosystem." />
+    <main id="main-content" className="container main-content ecosystem-page">
+      <PageHeader
+        eyebrow="Directory"
+        title="Ecosystem"
+        description="Curated analytics, data and research tools around Polymarket."
+      />
 
       <div className="tab-controls-row">
         <Filters options={CATEGORIES} active={category} onChange={setCategory} ariaLabel="Filter resources by category" />
       </div>
 
-      {resources === null ? (
-        <TableSkeleton rows={6} />
+      {visible == null ? (
+        <PageLoader compact label="Loading ecosystem" detail="Gathering public tools and APIs" />
       ) : visible.length === 0 ? (
         <EmptyState icon={SearchX} title="No resources in this category" />
       ) : (
@@ -69,7 +78,9 @@ export default function EcosystemPage() {
                 <div className="resource-card-body">
                   <div className="resource-card-title-row">
                     <h2 className="resource-card-title">{resource.name}</h2>
-                    <span className={`status-pill ${resource.status === "Public" ? "status-open" : ""}`}>{resource.status}</span>
+                    <span className={`status-pill ${resource.status === "Public" ? "status-open" : ""}`}>
+                      {resource.status}
+                    </span>
                   </div>
                   <p className="resource-card-description">{resource.description}</p>
                   <span className="resource-card-category">{resource.category}</span>

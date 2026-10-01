@@ -395,12 +395,17 @@ async function fetchUserPnlSeries(address, { interval, fidelity, signal } = {}) 
   }
   const url = `${USER_PNL_BASE}/user-pnl?user_address=${encodeURIComponent(user)}&interval=${encodeURIComponent(interval)}&fidelity=${encodeURIComponent(fidelity)}`;
   const data = await getJson(url, { signal });
-  const points = Array.isArray(data)
-    ? data
-        .filter((row) => row && Number.isFinite(row.t) && Number.isFinite(row.p))
-        .map((row) => ({ t: row.t, p: row.p }))
-        .sort((a, b) => a.t - b.t)
-    : [];
+  const rows = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : Array.isArray(data?.pnl) ? data.pnl : [];
+  const points = rows
+    .map((row) => {
+      if (!row || typeof row !== "object") return null;
+      const t = Number(row.t ?? row.timestamp ?? row.time);
+      const p = Number(row.p ?? row.pnl ?? row.v ?? row.value);
+      if (!Number.isFinite(t) || !Number.isFinite(p)) return null;
+      return { t, p };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.t - b.t);
 
   userPnlCache.set(cacheKey, { points, fetchedAt: Date.now() });
   return points;
@@ -598,11 +603,28 @@ export async function getPerformanceRange(address, { range = "ALL", metric = "pe
 
   const params = USER_PNL_PARAMS[rangeKey] || USER_PNL_PARAMS.ALL;
   try {
-    const raw = await fetchUserPnlSeries(address, {
+    let raw = await fetchUserPnlSeries(address, {
       interval: params.interval,
       fidelity: params.fidelity,
       signal,
     });
+
+    // Some wallets return a short stalled tail on interval=max; retry with `all`.
+    if (rangeKey === "ALL" && raw.length > 0) {
+      const first = raw[0].p;
+      const last = raw[raw.length - 1].p;
+      const span = Math.abs(last - first);
+      const flat = span < Math.max(Math.abs(last) * 0.005, 1);
+      if (flat || raw.length < 8) {
+        const alt = await fetchUserPnlSeries(address, {
+          interval: "all",
+          fidelity: "1d",
+          signal,
+        });
+        if (alt.length > raw.length) raw = alt;
+      }
+    }
+
     const transformed = transformUserPnlSeries(raw, rangeKey);
     if (transformed && transformed.points.length > 0) {
       if (import.meta.env.DEV) {

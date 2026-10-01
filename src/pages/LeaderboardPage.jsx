@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowUpRight, ChevronRight, Crown, Medal, SearchX } from "lucide-react";
+import { ArrowUpRight, Crown, Medal, Search, SearchX, Trophy } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import Avatar from "../components/Avatar";
-import Filters from "../components/Filters";
-import SearchInput from "../components/SearchInput";
+import SegmentControl from "../components/SegmentControl";
 import EmptyState from "../components/EmptyState";
 import ErrorState from "../components/ErrorState";
-import { TableSkeleton } from "../components/Skeleton";
+import PageLoader from "../components/PageLoader";
 import { getLeaderboard } from "../services/ecosystemService";
 import { shortenAddress } from "../utils/address";
 import { formatCompactCurrency, formatSignedCurrency } from "../utils/formatters";
@@ -32,23 +31,49 @@ const CATEGORIES = [
 ];
 
 const PERIODS = [
-  { label: "Daily", value: "DAY" },
-  { label: "Weekly", value: "WEEK" },
-  { label: "Monthly", value: "MONTH" },
-  { label: "All Time", value: "ALL" },
+  { label: "1D", value: "DAY" },
+  { label: "1W", value: "WEEK" },
+  { label: "1M", value: "MONTH" },
+  { label: "All", value: "ALL" },
 ];
 
-function RankBadge({ rank }) {
-  const isPodium = Number.isFinite(rank) && rank <= 3;
+function RankMark({ rank }) {
+  if (rank === 1) {
+    return (
+      <span className="lb-rank is-gold" aria-label="Rank 1">
+        <Crown size={13} aria-hidden="true" />
+        1
+      </span>
+    );
+  }
+  if (rank === 2 || rank === 3) {
+    return (
+      <span className={`lb-rank is-${rank === 2 ? "silver" : "bronze"}`} aria-label={`Rank ${rank}`}>
+        <Medal size={13} aria-hidden="true" />
+        {rank}
+      </span>
+    );
+  }
+  return <span className="lb-rank" aria-label={`Rank ${rank}`}>{rank}</span>;
+}
+
+function PodiumCard({ row, place, onOpen }) {
+  if (!row) return <div className={`lb-podium-card is-${place} is-empty`} />;
+  const name = row.username || row.displayName || shortenAddress(row.address);
   return (
-    <span
-      className={`leaderboard-rank ${isPodium ? `rank-${rank}` : ""}`}
-      aria-label={isPodium ? `Rank ${rank}, top three` : `Rank ${rank}`}
-    >
-      {rank === 1 && <Crown size={12} strokeWidth={2.2} aria-hidden="true" />}
-      {(rank === 2 || rank === 3) && <Medal size={12} strokeWidth={2.2} aria-hidden="true" />}
-      <span>{rank}</span>
-    </span>
+    <button type="button" className={`lb-podium-card is-${place}`} onClick={() => onOpen(row)}>
+      <div className="lb-podium-place">
+        {place === 1 ? <Crown size={14} /> : <Medal size={14} />}
+        <span>#{place}</span>
+      </div>
+      <Avatar account={row} size={place === 1 ? 56 : 44} />
+      <strong className="lb-podium-name">{name}</strong>
+      <span className="lb-podium-address">{shortenAddress(row.address)}</span>
+      <span className={`lb-podium-pnl ${getToneClass(row.pnl)}`}>
+        {formatSignedCurrency(row.pnl, { decimals: 0 })}
+      </span>
+      <span className="lb-podium-vol">{formatCompactCurrency(row.volume)} vol</span>
+    </button>
   );
 }
 
@@ -91,106 +116,116 @@ export default function LeaderboardPage() {
     });
   }, [rows, query]);
 
+  const podium = useMemo(() => {
+    if (!visible?.length) return [null, null, null];
+    const top = visible.slice(0, 3);
+    return [top[1] || null, top[0] || null, top[2] || null]; // 2nd, 1st, 3rd visual order
+  }, [visible]);
+
   function open(account) {
     navigate(`/profile/${encodeURIComponent(account.username || account.address)}`);
   }
 
-  const metricLabel = METRICS.find((m) => m.value === metric)?.label || "PnL";
+  const rest = visible?.slice(3) || [];
 
   return (
-    <main id="main-content" className="container main-content">
-      <PageHeader title="Leaderboard" description="Top Polymarket traders overall and by category - find the specialists." />
+    <main id="main-content" className="container main-content leaderboard-page-v2">
+      <PageHeader
+        eyebrow="Live Polymarket ranks"
+        title="Leaderboard"
+        description="Top traders by PnL or volume — filter by category and time."
+      />
 
-      <div className="leaderboard-categories">
-        <Filters options={CATEGORIES.map((c) => c.label)} active={CATEGORIES.find((c) => c.value === category)?.label} onChange={(label) => setCategory(CATEGORIES.find((c) => c.label === label)?.value || "OVERALL")} ariaLabel="Leaderboard category" />
+      <div className="lb-controls">
+        <SegmentControl
+          options={METRICS}
+          value={metric}
+          onChange={setMetric}
+          ariaLabel="Leaderboard metric"
+          variant="underline"
+        />
+        <SegmentControl
+          options={PERIODS}
+          value={period}
+          onChange={setPeriod}
+          ariaLabel="Leaderboard period"
+          variant="underline"
+          size="sm"
+        />
+        <label className="lb-search">
+          <Search size={14} aria-hidden="true" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search trader or wallet"
+            aria-label="Search leaderboard"
+          />
+        </label>
       </div>
 
-      <div className="tab-controls-row leaderboard-controls">
-        <Filters options={METRICS.map((m) => m.label)} active={metricLabel} onChange={(label) => setMetric(METRICS.find((m) => m.label === label)?.value || "pnl")} ariaLabel="Leaderboard metric" />
-        <div className="tab-controls-right">
-          <SearchInput value={query} onChange={setQuery} placeholder="Search accounts" ariaLabel="Search leaderboard accounts" />
-          <Filters options={PERIODS.map((p) => p.label)} active={PERIODS.find((p) => p.value === period)?.label} onChange={(label) => setPeriod(PERIODS.find((p) => p.label === label)?.value || "ALL")} ariaLabel="Leaderboard time range" />
-        </div>
+      <div className="lb-categories" role="tablist" aria-label="Categories">
+        {CATEGORIES.map((c) => (
+          <button
+            key={c.value}
+            type="button"
+            role="tab"
+            aria-selected={category === c.value}
+            className={`lb-cat ${category === c.value ? "is-active" : ""}`}
+            onClick={() => setCategory(c.value)}
+          >
+            {c.label}
+          </button>
+        ))}
       </div>
 
       {error ? (
         <ErrorState title="Unable to load the leaderboard" description="Please try again." onRetry={() => setReloadToken((t) => t + 1)} />
       ) : rows === null ? (
-        <TableSkeleton rows={10} />
+        <PageLoader label="Loading leaderboard" detail="Ranking live Polymarket traders" />
       ) : visible.length === 0 ? (
         <EmptyState icon={SearchX} title="No leaderboard results" description="Try a different metric, period or search." />
       ) : (
         <>
-          <div className="table-wrap">
-            <table className="positions-table leaderboard-table">
-              <thead>
-                <tr>
-                  <th>Rank</th>
-                  <th>Account</th>
-                  <th>PnL</th>
-                  <th>Volume</th>
-                  <th aria-label="Open" />
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((row) => {
-                  const pnlTone = getToneClass(row.pnl);
-                  return (
-                    <tr key={row.address} className={`leaderboard-row ${row.rank <= 3 ? "is-top" : ""}`}>
-                      <td>
-                        <RankBadge rank={row.rank} />
-                      </td>
-                      <td className="account-cell">
-                        <button type="button" className="account-cell-btn" onClick={() => open(row)}>
-                          <Avatar account={row} size={30} />
-                          <span className="account-cell-text">
-                            <span className="account-cell-name">{row.username || row.displayName || shortenAddress(row.address)}</span>
-                            <span className="account-cell-address">{shortenAddress(row.address)}</span>
-                          </span>
-                        </button>
-                      </td>
-                      <td className={`num-cell ${pnlTone}`}>{formatSignedCurrency(row.pnl, { decimals: 0 })}</td>
-                      <td className="num-cell">{formatCompactCurrency(row.volume)}</td>
-                      <td className="action-cell">
-                        <button type="button" className="icon-btn icon-btn-sm" aria-label={`Open ${row.username || shortenAddress(row.address)}`} onClick={() => open(row)}>
-                          <ArrowUpRight size={14} aria-hidden="true" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          {!query && (
+            <section className="lb-podium" aria-label="Top three">
+              <PodiumCard row={podium[0]} place={2} onOpen={open} />
+              <PodiumCard row={podium[1]} place={1} onOpen={open} />
+              <PodiumCard row={podium[2]} place={3} onOpen={open} />
+            </section>
+          )}
 
-          <div className="leaderboard-mobile-list">
-            {visible.map((row) => {
-              const pnlTone = getToneClass(row.pnl);
-              return (
-                <button type="button" key={row.address} className="leaderboard-card-mobile" onClick={() => open(row)}>
-                  <div className="leaderboard-card-mobile-top">
-                    <RankBadge rank={row.rank} />
-                    <Avatar account={row} size={32} />
-                    <span className="account-cell-text">
-                      <span className="account-cell-name">{row.username || row.displayName || shortenAddress(row.address)}</span>
-                      <span className="account-cell-address">{shortenAddress(row.address)}</span>
+          <section className="lb-board card" aria-label="Ranked traders">
+            <div className="lb-board-head">
+              <Trophy size={14} aria-hidden="true" />
+              <span>{query ? "Search results" : "Full ranking"}</span>
+              <em>{visible.length}</em>
+            </div>
+            <div className="lb-board-list">
+              {(query ? visible : rest).map((row) => {
+                const name = row.username || row.displayName || shortenAddress(row.address);
+                return (
+                  <button
+                    type="button"
+                    key={row.address}
+                    className={`lb-row ${row.rank <= 3 ? "is-top" : ""}`}
+                    onClick={() => open(row)}
+                  >
+                    <RankMark rank={row.rank} />
+                    <Avatar account={row} size={34} />
+                    <span className="lb-row-id">
+                      <strong>{name}</strong>
+                      <span>{shortenAddress(row.address)}</span>
                     </span>
-                    <ChevronRight size={15} className="top-account-arrow" aria-hidden="true" />
-                  </div>
-                  <div className="leaderboard-card-mobile-grid">
-                    <div className="position-card-stat">
-                      <span className="position-card-stat-label">PnL</span>
-                      <span className={`position-card-stat-value ${pnlTone}`}>{formatSignedCurrency(row.pnl, { decimals: 0 })}</span>
-                    </div>
-                    <div className="position-card-stat">
-                      <span className="position-card-stat-label">Volume</span>
-                      <span className="position-card-stat-value">{formatCompactCurrency(row.volume)}</span>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                    <span className={`lb-row-pnl ${getToneClass(row.pnl)}`}>
+                      {formatSignedCurrency(row.pnl, { decimals: 0 })}
+                    </span>
+                    <span className="lb-row-vol">{formatCompactCurrency(row.volume)}</span>
+                    <ArrowUpRight size={14} className="lb-row-go" aria-hidden="true" />
+                  </button>
+                );
+              })}
+            </div>
+          </section>
         </>
       )}
     </main>

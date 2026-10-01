@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LoaderCircle, RotateCcw } from "lucide-react";
 import PerformanceChart from "./PerformanceChart";
+import AnimatedNumber from "./AnimatedNumber";
+import SegmentControl from "./SegmentControl";
 import Tooltip from "./Tooltip";
 import { ChartSkeleton } from "./Skeleton";
 import { usePerformanceRange } from "../hooks/usePerformanceRange";
@@ -19,10 +21,34 @@ const SUMMARY_RANGES = [
   { label: "All time", range: "ALL" },
 ];
 
-const METRICS = [
-  { key: "performance", label: "Performance" },
-  { key: "volume", label: "Volume" },
+const METRIC_OPTIONS = [
+  { value: "performance", label: "Performance" },
+  { value: "volume", label: "Volume" },
 ];
+
+const RANGE_OPTIONS = RANGES.map((r) => ({ value: r, label: r === "ALL" ? "All" : r }));
+
+function buildSeedPayload(seedSeries, range, metric) {
+  if (metric !== "performance" || range !== "ALL") return null;
+  if (!Array.isArray(seedSeries) || seedSeries.length < 2) return null;
+  const points = seedSeries
+    .filter((p) => p && p.date && Number.isFinite(p.value))
+    .map((p) => ({ date: p.date, value: p.value }));
+  if (points.length < 2) return null;
+  const startValue = points[0].value;
+  const endValue = points[points.length - 1].value;
+  return {
+    points,
+    total: endValue,
+    change: endValue,
+    changePct: null,
+    startValue: 0,
+    endValue,
+    metric: "performance",
+    range: "ALL",
+    source: "seed",
+  };
+}
 
 function useRangeSummary(identifier, metric) {
   const [summary, setSummary] = useState({ loading: false, data: {} });
@@ -53,7 +79,7 @@ function useRangeSummary(identifier, metric) {
   return summary;
 }
 
-export default function PerformanceCard({ identifier, stats }) {
+export default function PerformanceCard({ identifier, stats, seedSeries }) {
   const [range, setRange] = useState("ALL");
   const [metric, setMetric] = useState("performance");
   const [resetKey, setResetKey] = useState(0);
@@ -61,10 +87,13 @@ export default function PerformanceCard({ identifier, stats }) {
   const { status, data } = usePerformanceRange(identifier, range, metric);
   const { loading: summaryLoading, data: summary } = useRangeSummary(identifier, metric);
 
+  const seedPerf = useMemo(() => buildSeedPayload(seedSeries, range, metric), [seedSeries, range, metric]);
+
   const hasIdentifier = Boolean(identifier);
-  const loading = status === "loading" || !hasIdentifier;
-  const perf = status === "ready" && data && data.metric === metric && data.range === range ? data : null;
-  const hasChart = Boolean(perf && perf.points && perf.points.length > 0);
+  const livePerf = status === "ready" && data && data.metric === metric && data.range === range ? data : null;
+  const perf = livePerf || seedPerf;
+  const loading = !perf && (status === "loading" || !hasIdentifier);
+  const hasChart = Boolean(perf && perf.points && perf.points.length > 1);
   const isVolume = metric === "volume";
   const headlineTone = isVolume || !perf ? "" : getToneClass(perf.change);
 
@@ -93,11 +122,16 @@ export default function PerformanceCard({ identifier, stats }) {
           </div>
           <div className="performance-value-row">
             <span className={`performance-value ${headlineTone}`}>
-              {perf
-                ? isVolume
-                  ? formatCompactCurrency(perf.change)
-                  : formatSignedCurrency(perf.change)
-                : "N/A"}
+              {perf ? (
+                <AnimatedNumber
+                  value={perf.change}
+                  format={isVolume ? formatCompactCurrency : formatSignedCurrency}
+                />
+              ) : loading ? (
+                <span className="stat-pulse" style={{ width: 140, height: 32, display: "inline-block" }} />
+              ) : (
+                "N/A"
+              )}
             </span>
           </div>
           {stats && (
@@ -125,34 +159,20 @@ export default function PerformanceCard({ identifier, stats }) {
         </div>
 
         <div className="performance-controls-row">
-          <div className="metric-toggle" role="group" aria-label="Chart metric">
-            {METRICS.map((m) => (
-              <button
-                key={m.key}
-                type="button"
-                className={`metric-btn ${metric === m.key ? "is-active" : ""}`}
-                onClick={() => handleMetric(m.key)}
-                aria-pressed={metric === m.key}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="range-controls" role="group" aria-label="Performance time range">
-            {RANGES.map((r) => (
-              <button
-                key={r}
-                type="button"
-                className={`range-btn ${range === r ? "is-active" : ""}`}
-                onClick={() => setRange(r)}
-                aria-pressed={range === r}
-              >
-                {r === "ALL" ? "All" : r}
-              </button>
-            ))}
-          </div>
-
+          <SegmentControl
+            options={METRIC_OPTIONS}
+            value={metric}
+            onChange={handleMetric}
+            ariaLabel="Chart metric"
+            size="sm"
+          />
+          <SegmentControl
+            options={RANGE_OPTIONS}
+            value={range}
+            onChange={setRange}
+            ariaLabel="Performance time range"
+            size="sm"
+          />
           <Tooltip label="Reset chart view">
             <button
               type="button"
@@ -172,13 +192,13 @@ export default function PerformanceCard({ identifier, stats }) {
         ) : hasChart ? (
           <>
             <PerformanceChart
-              key={resetKey}
+              key={`${resetKey}-${perf.source || "live"}-${range}-${metric}-${perf.points.length}`}
               data={perf.points}
               metric={metric}
               range={range}
               startValue={perf.startValue ?? 0}
             />
-            {loading && (
+            {status === "loading" && livePerf == null && (
               <div className="chart-loading-badge" role="status">
                 <LoaderCircle size={13} className="spin" aria-hidden="true" />
                 <span>Loading {range}…</span>

@@ -101,7 +101,7 @@ export async function getCompare(a, b, { signal } = {}) {
  * computed analytics dataset. No values are fabricated; entries are static
  * references to existing tools/APIs.
  */
-export function getEcosystemResources() {
+export async function getEcosystemResources() {
   return cacheWrap("ecosystem:resources", () => [
     { name: "Gamma API", category: "Data", description: "Event, market and profile lookups for the whole Polymarket universe.", icon: "Database", status: "Public" },
     { name: "Data API", category: "Data", description: "Positions, activity, value and traded market endpoints for public accounts.", icon: "Activity", status: "Public" },

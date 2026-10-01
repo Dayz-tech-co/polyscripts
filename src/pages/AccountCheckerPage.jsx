@@ -1,14 +1,14 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpRight, Search } from "lucide-react";
+import { ArrowUpRight, Sparkles } from "lucide-react";
 import AccountSearch from "../components/AccountSearch";
 import PageHeader from "../components/PageHeader";
 
 const SAMPLE_ACCOUNTS = [
-  { label: "swisstony", identifier: "swisstony" },
-  { label: "RWCS", identifier: "RWCS" },
-  { label: "marketWizard", identifier: "marketWizard" },
-  { label: "ZeroSumHero", identifier: "ZeroSumHero" },
+  { label: "swisstony", identifier: "swisstony", hint: "Whale · Obsidian" },
+  { label: "Theo4", identifier: "Theo4", hint: "Top PnL" },
+  { label: "Fredi9999", identifier: "Fredi9999", hint: "High volume" },
+  { label: "kch123", identifier: "kch123", hint: "Active book" },
 ];
 
 export default function AccountCheckerPage() {
@@ -17,31 +17,41 @@ export default function AccountCheckerPage() {
   }, []);
 
   return (
-    <main id="main-content" className="container main-content">
-      <PageHeader title="Account Checker" description="Inspect the analytics profile of any public account." />
+    <main id="main-content" className="container main-content checker-page">
+      <PageHeader
+        eyebrow="Tools"
+        title="Account Checker"
+        description="Drop in any public username or wallet — jump straight into the full analytics profile."
+      />
 
-      <section className="checker-panel" aria-label="Check an account">
-        <span className="card-label">Enter a username or wallet address</span>
-        <div className="checker-search">
-          <AccountSearch variant="hero" />
+      <section className="checker-hero card" aria-label="Check an account">
+        <div className="checker-hero-copy">
+          <span className="checker-kicker">
+            <Sparkles size={13} aria-hidden="true" />
+            Instant lookup
+          </span>
+          <h2>Who are we checking?</h2>
+          <p>Search resolves Polymarket usernames and 0x wallets, then opens portfolio, PnL, positions and activity.</p>
+        </div>
+
+        <div className="checker-hero-search">
+          <AccountSearch variant="hero" placeholder="Search username or wallet address" />
         </div>
 
         <div className="checker-samples">
-          <span className="checker-samples-label">Try a sample account</span>
+          <span className="checker-samples-label">Try a sample</span>
           <div className="checker-samples-list">
-            {SAMPLE_ACCOUNTS.map(({ label, identifier }) => (
-              <Link key={identifier} to={`/profile/${encodeURIComponent(identifier)}`} className="chip-link">
-                {label}
-                <ArrowUpRight size={12} aria-hidden="true" />
+            {SAMPLE_ACCOUNTS.map(({ label, identifier, hint }) => (
+              <Link key={identifier} to={`/profile/${encodeURIComponent(identifier)}`} className="checker-chip">
+                <span>
+                  <strong>{label}</strong>
+                  <em>{hint}</em>
+                </span>
+                <ArrowUpRight size={14} aria-hidden="true" />
               </Link>
             ))}
           </div>
         </div>
-
-        <p className="checker-note text-muted">
-          <Search size={13} aria-hidden="true" />
-          Checker opens the full analytics profile: summary stats, performance, positions and activity.
-        </p>
       </section>
     </main>
   );

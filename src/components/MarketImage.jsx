@@ -3,13 +3,12 @@ import MarketIcon from "./MarketIcon";
 import { isValidImageUrl } from "../utils/avatar";
 
 /**
- * Renders a market's real icon image (from the data-api `icon` field) with
- * a deterministic category-gradient fallback when the image is missing or
- * fails to load. Never shows a broken image or the brand mark.
+ * Market image with circular crop + instant colored fallback (no grey square).
  */
-export default function MarketImage({ icon, category, tag, size = 40, radius = 8 }) {
+export default function MarketImage({ icon, category, tag, size = 40, radius = 999 }) {
   const [failed, setFailed] = useState(false);
   const showImage = !failed && isValidImageUrl(icon);
+  const round = radius >= 999 || radius === "50%" ? "50%" : radius;
 
   if (showImage) {
     return (
@@ -18,13 +17,14 @@ export default function MarketImage({ icon, category, tag, size = 40, radius = 8
         alt=""
         width={size}
         height={size}
-        className="market-image"
-        style={{ width: size, height: size, borderRadius: radius, objectFit: "cover" }}
+        className="market-image is-circle"
+        style={{ width: size, height: size, borderRadius: round, objectFit: "cover" }}
         loading="lazy"
+        decoding="async"
         onError={() => setFailed(true)}
       />
     );
   }
 
-  return <MarketIcon category={category} tag={tag} size={size} radius={radius} />;
+  return <MarketIcon category={category} tag={tag} size={size} />;
 }
