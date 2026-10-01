@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LoaderCircle, RotateCcw } from "lucide-react";
 import PerformanceChart from "./PerformanceChart";
 import AnimatedNumber from "./AnimatedNumber";
@@ -27,6 +27,28 @@ const METRIC_OPTIONS = [
 ];
 
 const RANGE_OPTIONS = RANGES.map((r) => ({ value: r, label: r === "ALL" ? "All" : r }));
+
+function buildSeedPayload(seedSeries, range, metric) {
+  if (metric !== "performance" || range !== "ALL") return null;
+  if (!Array.isArray(seedSeries) || seedSeries.length < 2) return null;
+  const points = seedSeries
+    .filter((p) => p && p.date && Number.isFinite(p.value))
+    .map((p) => ({ date: p.date, value: p.value }));
+  if (points.length < 2) return null;
+  const startValue = points[0].value;
+  const endValue = points[points.length - 1].value;
+  return {
+    points,
+    total: endValue,
+    change: endValue,
+    changePct: null,
+    startValue: 0,
+    endValue,
+    metric: "performance",
+    range: "ALL",
+    source: "seed",
+  };
+}
 
 function useRangeSummary(identifier, metric) {
   const [summary, setSummary] = useState({ loading: false, data: {} });
@@ -57,7 +79,7 @@ function useRangeSummary(identifier, metric) {
   return summary;
 }
 
-export default function PerformanceCard({ identifier, stats }) {
+export default function PerformanceCard({ identifier, stats, seedSeries }) {
   const [range, setRange] = useState("ALL");
   const [metric, setMetric] = useState("performance");
   const [resetKey, setResetKey] = useState(0);
@@ -65,10 +87,13 @@ export default function PerformanceCard({ identifier, stats }) {
   const { status, data } = usePerformanceRange(identifier, range, metric);
   const { loading: summaryLoading, data: summary } = useRangeSummary(identifier, metric);
 
+  const seedPerf = useMemo(() => buildSeedPayload(seedSeries, range, metric), [seedSeries, range, metric]);
+
   const hasIdentifier = Boolean(identifier);
-  const loading = status === "loading" || !hasIdentifier;
-  const perf = status === "ready" && data && data.metric === metric && data.range === range ? data : null;
-  const hasChart = Boolean(perf && perf.points && perf.points.length > 0);
+  const livePerf = status === "ready" && data && data.metric === metric && data.range === range ? data : null;
+  const perf = livePerf || seedPerf;
+  const loading = !perf && (status === "loading" || !hasIdentifier);
+  const hasChart = Boolean(perf && perf.points && perf.points.length > 1);
   const isVolume = metric === "volume";
   const headlineTone = isVolume || !perf ? "" : getToneClass(perf.change);
 
@@ -167,13 +192,13 @@ export default function PerformanceCard({ identifier, stats }) {
         ) : hasChart ? (
           <>
             <PerformanceChart
-              key={resetKey}
+              key={`${resetKey}-${perf.source || "live"}-${range}-${metric}-${perf.points.length}`}
               data={perf.points}
               metric={metric}
               range={range}
               startValue={perf.startValue ?? 0}
             />
-            {loading && (
+            {status === "loading" && livePerf == null && (
               <div className="chart-loading-badge" role="status">
                 <LoaderCircle size={13} className="spin" aria-hidden="true" />
                 <span>Loading {range}…</span>

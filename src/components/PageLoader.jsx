@@ -1,5 +1,7 @@
+import LogoMark from "./Logo";
+
 /**
- * Soft spring loader — circle only, no logo asset.
+ * Soft spring loader with the real PolyScripts mark.
  */
 export default function PageLoader({
   label = "Loading",
@@ -11,14 +13,13 @@ export default function PageLoader({
       <div className="page-loader-orb" aria-hidden="true">
         <span className="page-loader-ring" />
         <span className="page-loader-ring is-delay" />
-        <span className="page-loader-core" />
+        <span className="page-loader-mark">
+          <LogoMark size={compact ? 22 : 28} />
+        </span>
       </div>
       <div className="page-loader-copy">
         <strong>{label}</strong>
         {detail ? <span>{detail}</span> : null}
-      </div>
-      <div className="page-loader-bar" aria-hidden="true">
-        <i />
       </div>
     </div>
   );

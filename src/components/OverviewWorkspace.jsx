@@ -41,39 +41,44 @@ export default function OverviewWorkspace({
           size="md"
           variant="underline"
         />
-        {loading ? <span className="workspace-live"><i />Syncing history</span> : null}
+        {loading ? (
+          <span className="workspace-live">
+            <i />
+            Syncing history
+          </span>
+        ) : null}
       </div>
 
       <div className="workspace-body">
-        {!calendarReady && view === "calendar" ? (
-          <div className="workspace-loading">
-            <PageLoader compact label="Loading calendar" detail="Official daily PnL history" />
-          </div>
-        ) : (
-          <div className={`workspace-pane ${view === "calendar" ? "is-active" : ""}`} hidden={view !== "calendar"}>
+        {view === "calendar" &&
+          (!calendarReady ? (
+            <div className="workspace-loading">
+              <PageLoader compact label="Loading calendar" detail="Official daily PnL history" />
+            </div>
+          ) : (
             <MonthlyPerformanceCalendar
               resolvedPositions={resolvedPositions}
               activity={activity}
               performanceSeries={performanceSeries}
               loading={loading}
             />
-          </div>
-        )}
+          ))}
 
-        {/* Keep chart mounted so range data is warm when switching */}
-        <div className={`workspace-pane ${view === "chart" ? "is-active" : ""}`} hidden={view !== "chart"}>
-          {identifier ? (
-            <PerformanceCard identifier={identifier} stats={stats} />
+        {view === "chart" &&
+          (identifier ? (
+            <PerformanceCard
+              key={`chart-${identifier}`}
+              identifier={identifier}
+              stats={stats}
+              seedSeries={performanceSeries}
+            />
           ) : (
             <div className="workspace-loading">
               <PageLoader compact label="Preparing chart" detail="Waiting for account" />
             </div>
-          )}
-        </div>
+          ))}
 
-        <div className={`workspace-pane ${view === "matrix" ? "is-active" : ""}`} hidden={view !== "matrix"}>
-          <MarketExposure positions={positions} loading={loading} />
-        </div>
+        {view === "matrix" && <MarketExposure positions={positions} loading={loading} />}
       </div>
     </section>
   );

@@ -111,8 +111,16 @@ export default function PerformanceChart({
 
   // Time Domain state [startMs, endMs]
   const [domain, setDomain] = useState(null);
-  // Animated Y-range state for smooth zoom auto-scaling
-  const [animY, setAnimY] = useState({ min: 0, max: 1 });
+  // Animated Y-range — start from real data bounds so the first paint isn't flat/off-scale
+  const [animY, setAnimY] = useState(() => {
+    if (!data || data.length === 0) return { min: -1, max: 1 };
+    const vals = data.map((d) => d.value).filter(Number.isFinite);
+    if (!vals.length) return { min: -1, max: 1 };
+    const minVal = Math.min(...vals);
+    const maxVal = Math.max(...vals);
+    const spread = maxVal - minVal || Math.max(Math.abs(maxVal) * 0.12, 1);
+    return { min: minVal - spread * 0.12, max: maxVal + spread * 0.12 };
+  });
   const [hoverIndex, setHoverIndex] = useState(null);
   const [drawTick, setDrawTick] = useState(0);
   const [isMorphing, setIsMorphing] = useState(false);
@@ -157,19 +165,23 @@ export default function PerformanceChart({
     });
   }, [data, domainStartMs, domainEndMs]);
 
-  // Tight Y-min and Y-max calculation (7% padding top and bottom)
+  // Y domain — pad enough that small moves on large absolute PnL still read
   const targetY = useMemo(() => {
     const pts = visiblePoints.length > 0 ? visiblePoints : data || [];
     if (pts.length === 0) return { min: -1, max: 1 };
 
-    const allValues = pts.map((d) => d.value);
+    const allValues = pts.map((d) => d.value).filter(Number.isFinite);
+    if (!allValues.length) return { min: -1, max: 1 };
 
     const minVal = Math.min(...allValues);
     const maxVal = Math.max(...allValues);
-    const spread = maxVal - minVal || Math.abs(maxVal) * 0.08 || 1;
+    const rawSpread = maxVal - minVal;
+    // Floor the spread so near-flat absolute series still get readable headroom
+    const floor = Math.max(Math.abs(maxVal) * 0.02, Math.abs(minVal) * 0.02, 50);
+    const spread = Math.max(rawSpread, floor);
     return {
-      min: minVal - spread * 0.07,
-      max: maxVal + spread * 0.07,
+      min: minVal - spread * 0.12,
+      max: maxVal + spread * 0.12,
     };
   }, [visiblePoints, data]);
 
@@ -205,43 +217,6 @@ export default function PerformanceChart({
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
   }, [targetY.min, targetY.max, isMorphing]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Stroke-draw reveal whenever the series remorphs (period / metric switch)
-  useEffect(() => {
-    const line = lineRef.current;
-    const area = areaRef.current;
-    if (!line) return undefined;
-    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-    if (prefersReducedMotion) {
-      line.style.strokeDasharray = "none";
-      line.style.strokeDashoffset = "0";
-      if (area) area.style.opacity = "1";
-      return undefined;
-    }
-
-    // Wait one frame so the new path geometry is committed before measuring.
-    let frame = requestAnimationFrame(() => {
-      const length = line.getTotalLength?.() || 1200;
-      line.style.strokeDasharray = String(length);
-      line.style.strokeDashoffset = String(length);
-      line.style.transition = "none";
-      if (area) {
-        area.style.opacity = "0";
-        area.style.transition = "none";
-      }
-
-      frame = requestAnimationFrame(() => {
-        line.style.transition = "stroke-dashoffset 720ms cubic-bezier(0.16, 1, 0.3, 1)";
-        line.style.strokeDashoffset = "0";
-        if (area) {
-          area.style.transition = "opacity 640ms 120ms cubic-bezier(0.16, 1, 0.3, 1)";
-          area.style.opacity = "1";
-        }
-      });
-    });
-
-    return () => cancelAnimationFrame(frame);
-  }, [drawTick]);
 
   // Canonical Y-scale mapping
   const yScale = useCallback(
@@ -289,6 +264,53 @@ export default function PerformanceChart({
     const last = mappedPoints[mappedPoints.length - 1];
     return `${linePath} L ${last.x.toFixed(2)} ${PLOT_BOTTOM.toFixed(2)} L ${first.x.toFixed(2)} ${PLOT_BOTTOM.toFixed(2)} Z`;
   }, [linePath, mappedPoints]);
+
+  // Stroke-draw reveal whenever the series remorphs (period / metric switch)
+  useEffect(() => {
+    const line = lineRef.current;
+    const area = areaRef.current;
+    if (!line || !linePath) return undefined;
+    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+
+    // Always clear any stale dash state first so a remount can't leave a blank line
+    line.style.transition = "none";
+    line.style.strokeDasharray = "none";
+    line.style.strokeDashoffset = "0";
+    if (area) {
+      area.style.transition = "none";
+      area.style.opacity = "1";
+    }
+
+    if (prefersReducedMotion) return undefined;
+
+    let frame1 = 0;
+    let frame2 = 0;
+    frame1 = requestAnimationFrame(() => {
+      const length = line.getTotalLength?.() ?? 0;
+      if (!Number.isFinite(length) || length < 2) {
+        line.style.strokeDasharray = "none";
+        line.style.strokeDashoffset = "0";
+        return;
+      }
+      line.style.strokeDasharray = String(length);
+      line.style.strokeDashoffset = String(length);
+      if (area) area.style.opacity = "0";
+
+      frame2 = requestAnimationFrame(() => {
+        line.style.transition = "stroke-dashoffset 720ms cubic-bezier(0.16, 1, 0.3, 1)";
+        line.style.strokeDashoffset = "0";
+        if (area) {
+          area.style.transition = "opacity 640ms 120ms cubic-bezier(0.16, 1, 0.3, 1)";
+          area.style.opacity = "1";
+        }
+      });
+    });
+
+    return () => {
+      cancelAnimationFrame(frame1);
+      cancelAnimationFrame(frame2);
+    };
+  }, [drawTick, linePath]);
 
   // Wheel Zoom (centered on cursor)
   const handleWheel = useCallback((e) => {
